@@ -1,0 +1,1 @@
+This is where uploads like MP3 files, playlist/music piece covers, and profile pictures will be stored.
