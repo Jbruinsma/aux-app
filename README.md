@@ -1,60 +1,79 @@
-# Unchained
+# Aux
 
-Unchained is a personal music management platform that allows users to upload, organize, and play their own MP3 collection directly from the browser.  
-It is a complete rebuild of my original project, **TuneTrack**, designed with a modern architecture and extended features.  
+Aux is a social app for finding people with similar music taste. Users select favorite artists/genres (or connect existing listening data), and the app computes a compatibility score with other users.
 
-This was my **first project using a modern frontend framework (Vue.js)**, built intentionally to learn how to structure a frontend application and connect it with an API-driven backend.
+This project is built on top of **UnChained**, an earlier solo project for uploading, organizing, and playing MP3 collections in-browser. Aux extends that foundation with profiles, taste-matching, and a social layer.
+
+Built for the Programming Language Concepts course project.
 
 ---
 
 ## Features
 
-- Upload and manage MP3 files  
-- Create, edit, and manage playlists  
-- In-browser playback with play, pause, skip, shuffle, and back support  
-- Basic playlist sharing (public/private controls, friend permissions)  
+### Inherited from UnChained
+- Upload and manage MP3 files
+- Create, edit, and manage playlists
+- In-browser playback (play, pause, skip, shuffle, back)
+- Basic playlist sharing (public/private, friend permissions)
+
+### New for Aux
+- User profiles with favorite artists/genres
+- Compatibility scoring between users based on shared taste
+- Browse/match view showing compatibility % with other users
 
 ---
 
 ## Tech Stack
 
-- **Backend**: [Python](https://www.python.org/) with [Flask](https://flask.palletsprojects.com/)  
-- **Frontend**: [Vue.js](https://vuejs.org/)  
+- **Backend**: Python, [FastAPI](https://fastapi.tiangolo.com/) with [Pydantic](https://docs.pydantic.dev/) for request/response validation
+- **Frontend**: [Vue.js](https://vuejs.org/)
+- **Database**: SQLite (migrating from the original AVL tree + in-memory persistence)
+- **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
 
 ---
 
 ## Project Structure
 
-- `backend/` → Flask server handling API requests and file management  
-- `frontend/` → Vue.js application providing the music player and interface  
+- `backend/` → FastAPI server: API routes, data models, compatibility logic
+- `frontend/` → Vue.js application: player, profiles, matching UI
 
 ---
 
-## Future Improvements
+## Local Setup
 
-Unchained is currently a base product with core functionality. Planned improvements include:
+> Setup instructions will be filled in as the FastAPI/DB migration lands.
 
-- **Public Profiles** — Support followers and friends for playlist sharing  
-- **Database Integration** — Replace temporary storage solutions with a real database  
-- **Favorites System** — Allow users to favorite playlists and songs  
-- **Authentication** — Add user login and account management  
-- **Cloud Storage** — Optional integration with services like AWS S3  
-- **YouTube Importing** — Personal-use audio importing from YouTube  
+### Backend
+```bash
+cd backend
+pip install -r requirements.txt
+# run migrations, start server — TBD
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## Roadmap
+
+- [ ] Migrate backend from Flask to FastAPI
+- [ ] Replace AVL tree storage with SQLite + Alembic migrations
+- [ ] User authentication
+- [ ] Profile: favorite artists/genres
+- [ ] Compatibility scoring algorithm
+- [ ] Match/browse UI
 
 ---
 
-## Purpose
+## Contributing
 
-Unchained was created to:  
-- Build on my earlier project, **TuneTrack**, with a more scalable design  
-- Learn and apply **Vue.js as my first modern frontend framework**  
-- Explore full-stack development with a structured frontend and API backend  
-- Gain practical experience managing **file uploads, playback, and playlist logic**  
-
-This project highlights my ability to iterate on previous work, learn new technologies quickly, and expand functionality through more modern and maintainable development practices.
-
----
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for branch rules and PR workflow before making changes.
 
 ## License
 
-This project is for educational and portfolio purposes.  
+This project is for educational purposes.
