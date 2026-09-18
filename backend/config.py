@@ -7,6 +7,8 @@ COVERS_DIR = os.path.join(UPLOADS_DIR, "covers")
 MP3S_DIR = os.path.join(UPLOADS_DIR, "mp3s")
 PFPS_DIR = os.path.join(UPLOADS_DIR, "pfps")
 
+DB_PATH = os.path.join(BASE_DIR, "backend", "aux.db")
+
 os.makedirs(COVERS_DIR, exist_ok=True)
 os.makedirs(MP3S_DIR, exist_ok=True)
 os.makedirs(PFPS_DIR, exist_ok=True)
