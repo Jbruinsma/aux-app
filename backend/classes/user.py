@@ -1,3 +1,4 @@
+import uuid as uuid_lib
 from typing import Any
 
 import bcrypt
@@ -10,6 +11,7 @@ from backend.utils.playlist import randomize_playlist
 class User:
 
     def __init__(self, username: str, raw_password: str) -> None:
+        self.uuid: str = str(uuid_lib.uuid4())
         self.profile_picture: str = "/default_profile_picture.svg"
         self.username: str = username
         self.password_hash: bytes = self._hash_password(raw_password)
