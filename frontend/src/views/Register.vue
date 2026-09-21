@@ -11,6 +11,19 @@
             type="text"
             placeholder="Choose a username"
             required
+            minlength="3"
+            maxlength="16"
+          />
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            placeholder="you@example.com"
+            required
+            maxlength="320"
           />
         </div>
         <div class="form-group">
@@ -21,7 +34,8 @@
             type="password"
             placeholder="Create password"
             required
-            minlength="6"
+            minlength="8"
+            maxlength="32"
           />
         </div>
         <div class="form-group">
@@ -58,6 +72,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const username        = ref('')
+const email           = ref('')
 const password        = ref('')
 const confirmPassword = ref('')
 const errorMessage    = ref('')
@@ -74,6 +89,7 @@ async function register() {
     const url = `${API_BASE_URL}/api/auth/register`
     const response = await postToAPI(url, {
       username: username.value,
+      email: email.value,
       password: password.value,
     }, true)
 
@@ -84,6 +100,7 @@ async function register() {
 
     userStore.login(username.value)
     username.value = ''
+    email.value = ''
     password.value = ''
     await router.push('/dashboard')
   } catch (err) {

@@ -26,9 +26,11 @@ export async function postToAPI(url, data, isJson = true) {
   } else { options.body = data }
 
   return fetch(url, options)
-    .then(response => {
+    .then(async response => {
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        // Java backend errors look like {errorDetails: {message, code, parameter}}
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.errorDetails?.message ?? `HTTP error! status: ${response.status}`)
       }
       return response.json()
     })

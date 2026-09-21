@@ -19,6 +19,7 @@ class UserModel(Base):
 
     id: Mapped[str] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(unique=True, index=True)
     profile_picture: Mapped[str | None]
     password_hash: Mapped[bytes | None]
     last_playback: Mapped[str | None]
