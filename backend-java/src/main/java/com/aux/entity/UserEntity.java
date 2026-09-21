@@ -16,6 +16,10 @@ public class UserEntity {
     @Column(nullable = false, unique = true)
     private String username;
 
+    // Nullable: accounts created before the email migration have none
+    @Column(unique = true)
+    private String email;
+
     @Column(name = "profile_picture")
     private String profilePicture;
 
@@ -29,9 +33,10 @@ public class UserEntity {
     protected UserEntity() {}
 
     // New user, same defaults as backend/classes/user.py User.__init__
-    public UserEntity(String id, String username, byte[] passwordHash) {
+    public UserEntity(String id, String username, String email, byte[] passwordHash) {
         this.id = id;
         this.username = username;
+        this.email = email;
         this.passwordHash = passwordHash;
         this.profilePicture = "/default_profile_picture.svg";
         this.lastPlayback = "{\"repeatOn\": false, \"shuffleOn\": false, \"playlistUUID\": null, "
@@ -40,6 +45,7 @@ public class UserEntity {
 
     public String getId() { return id; }
     public String getUsername() { return username; }
+    public String getEmail() { return email; }
     public String getProfilePicture() { return profilePicture; }
     public byte[] getPasswordHash() { return passwordHash; }
     public String getLastPlayback() { return lastPlayback; }
