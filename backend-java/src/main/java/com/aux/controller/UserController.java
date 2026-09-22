@@ -1,6 +1,9 @@
 package com.aux.controller;
 
+import com.aux.auth.CurrentUser;
 import com.aux.dto.users.UserExistance;
+import com.aux.dto.users.UserSummary;
+import com.aux.entity.UserEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +25,11 @@ public class UserController {
     @GetMapping("/check-username/{username}")
     public UserExistance checkUsernameExists(@PathVariable String username) {
         return new UserExistance(users.existsByUsername(username));
+    }
+
+    @GetMapping("/me")
+    public UserSummary me(@CurrentUser UserEntity user) {
+        return UserSummary.of(user);
     }
 
     // TODO GET  /{username}/delete

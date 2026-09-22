@@ -1,52 +1,52 @@
 package com.aux.entity;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-// Example entity: maps the existing `users` table (see backend/models.py UserModel).
+// Maps the `users` table (see schema: users)
 @Entity
 @Table(name = "users")
 public class UserEntity {
 
     @Id
-    private String id;
+    @Column(name = "user_id")
+    private String userId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 16)
     private String username;
 
-    // Nullable: accounts created before the email migration have none
-    @Column(unique = true)
-    private String email;
+    // BCrypt hash, stored as text (fits in 72 chars)
+    @Column(name = "password_hash", nullable = false, length = 72)
+    private String passwordHash;
 
-    @Column(name = "profile_picture")
-    private String profilePicture;
+    @Column(name = "profile_picture_url")
+    private String profilePictureUrl;
 
-    @Column(name = "password_hash")
-    private byte[] passwordHash;
+    @Column(name = "created_at")
+    private Instant createdAt;
 
-    // JSON string, same as Python's json.dumps(user.last_playback)
-    @Column(name = "last_playback")
-    private String lastPlayback;
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
     protected UserEntity() {}
 
-    // New user, same defaults as backend/classes/user.py User.__init__
-    public UserEntity(String id, String username, String email, byte[] passwordHash) {
-        this.id = id;
+    public UserEntity(String userId, String username, String passwordHash) {
+        this.userId = userId;
         this.username = username;
-        this.email = email;
         this.passwordHash = passwordHash;
-        this.profilePicture = "/default_profile_picture.svg";
-        this.lastPlayback = "{\"repeatOn\": false, \"shuffleOn\": false, \"playlistUUID\": null, "
-                + "\"musicPieceUUID\": null, \"position\": 0, \"current_playlist_index\": null}";
+        this.profilePictureUrl = "/default_profile_picture.svg";
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 
-    public String getId() { return id; }
+    public String getUserId() { return userId; }
     public String getUsername() { return username; }
-    public String getEmail() { return email; }
-    public String getProfilePicture() { return profilePicture; }
-    public byte[] getPasswordHash() { return passwordHash; }
-    public String getLastPlayback() { return lastPlayback; }
+    public String getPasswordHash() { return passwordHash; }
+    public String getProfilePictureUrl() { return profilePictureUrl; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -1,4 +1,5 @@
 package com.aux.services;
+import com.aux.dto.auth.SessionToken;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
@@ -34,6 +35,12 @@ public class SessionService {
                 .compact();                                       // Serialize to a compact, URL-safe string
 
         return new SessionToken(token, expiresAt);
+    }
+
+    // Returns the user id ('sub'). Throws JwtException on a bad signature, wrong issuer, or expired token
+    public String verify(String token) {
+        return Jwts.parser().verifyWith(key).requireIssuer("aux").build()
+                .parseSignedClaims(token).getPayload().getSubject();
     }
 
 }
