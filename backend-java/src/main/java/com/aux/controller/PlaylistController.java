@@ -33,6 +33,10 @@ public class PlaylistController {
             throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "playlistId");
         }
 
+        if (!username.equals(playlist.owner().username())) {
+            throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "username");
+        }
+
         if (!userId.equals(playlist.owner().userId()) && !playlist.isPublic()) {
             throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "playlistId");
         }
