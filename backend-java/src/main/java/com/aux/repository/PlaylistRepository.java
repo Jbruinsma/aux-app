@@ -6,6 +6,7 @@ import com.aux.dto.users.PlaylistOwner;
 import com.aux.entity.PlaylistEntity;
 import com.aux.entity.PlaylistTrackEntity;
 import com.aux.entity.PlaylistTrackId;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,18 +23,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             return null;
         }
         PlaylistWithTracksRow first = rows.get(0);
-        List<MusicPieceOverview> pieces = new ArrayList<>(rows.size());
-        for (PlaylistWithTracksRow row : rows) {
-            if (row.getMusicPieceId() == null) {
-                continue; // playlist has no tracks
-            }
-            pieces.add(new MusicPieceOverview(
-                    row.getMusicPieceId(),
-                    row.getPieceName(),
-                    row.getPieceCoverUrl(),
-                    new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
-                    Boolean.TRUE.equals(row.getIsFavorite())));
-        }
+        List<MusicPieceOverview> pieces = createPieces(rows);
         return new PlaylistPage(
                 first.getPlaylistId(),
                 first.getPlaylistCoverUrl(),
@@ -42,6 +32,22 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                 new PlaylistOwner(first.getOwnerId(), first.getOwnerPfpUrl(), first.getOwnerUsername()),
                 Boolean.TRUE.equals(first.getIsSaved()),
                 pieces);
+    }
+
+    private static @NonNull List<MusicPieceOverview> createPieces(List<PlaylistWithTracksRow> rows) {
+        List<MusicPieceOverview> pieces = new ArrayList<>(rows.size());
+        for (PlaylistWithTracksRow row : rows) {
+            if (row.getMusicPieceId() == null) {
+                continue;
+            }
+            pieces.add(new MusicPieceOverview(
+                    row.getMusicPieceId(),
+                    row.getPieceName(),
+                    row.getPieceCoverUrl(),
+                    new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
+                    Boolean.TRUE.equals(row.getIsFavorite())));
+        }
+        return pieces;
     }
 
     @Query(value = """
@@ -99,6 +105,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             boolean isPublic,
             PlaylistOwner owner,
             boolean isSaved,
-            List<MusicPieceOverview> pieces) {}
+            List<MusicPieceOverview> pieces
+    ) {}
 
 }

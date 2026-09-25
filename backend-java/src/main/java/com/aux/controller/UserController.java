@@ -1,9 +1,13 @@
 package com.aux.controller;
 
 import com.aux.auth.CurrentUser;
+import com.aux.auth.OptionalCurrentUser;
 import com.aux.dto.users.UserExistance;
+import com.aux.dto.users.UserProfile;
 import com.aux.dto.users.UserSummary;
 import com.aux.entity.UserEntity;
+import com.aux.error.AuxException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +38,31 @@ public class UserController {
 
     // TODO GET  /{username}/delete
     // TODO GET  /profile/{username}
+
+    @GetMapping("/profile/{username}")
+    public UserProfile retrieveProfile(
+            @PathVariable String username,
+            @OptionalCurrentUser UserEntity user
+    ) {
+        String currentUserId = (user != null) ? user.getUserId() : null;
+
+        UserProfile userProfile = users.findProfile(
+                username,
+                currentUserId
+        );
+
+        if (userProfile == null) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "USER_NOT_FOUND",
+                    "User not found",
+                    "username"
+            );
+        }
+
+        return userProfile;
+    }
+
     // TODO POST /{username}/update/profile-picture       multipart: profile_picture
     // TODO POST /{username}/update-username/{new_username}
     // TODO POST /{username}/update-password              json: old_password, new_password

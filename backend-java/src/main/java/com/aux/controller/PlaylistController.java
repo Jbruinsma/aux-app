@@ -1,5 +1,6 @@
 package com.aux.controller;
 
+import com.aux.dto.playlist.CorePlaylist;
 import com.aux.dto.playlist.PlaylistOverview;
 import com.aux.error.AuxException;
 import com.aux.repository.PlaylistRepository;
@@ -30,21 +31,38 @@ public class PlaylistController {
         PlaylistRepository.PlaylistPage playlist = playlistRepository.findPlaylistWithTracks(playlistId, userId);
 
         if (playlist == null) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "playlistId");
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "PLAYLIST_NOT_FOUND",
+                    "Playlist not found",
+                    "playlistId"
+            );
         }
 
         if (!username.equals(playlist.owner().username())) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "username");
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "PLAYLIST_NOT_FOUND",
+                    "Playlist not found",
+                    "username"
+            );
         }
 
         if (!userId.equals(playlist.owner().userId()) && !playlist.isPublic()) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "playlistId");
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "PLAYLIST_NOT_FOUND",
+                    "Playlist not found",
+                    "playlistId"
+            );
         }
 
         return new PlaylistOverview(
-                playlistId,
-                playlist.playlistCoverUrl(),
-                playlist.playlistName(),
+                new CorePlaylist(
+                        playlistId,
+                        playlist.playlistName(),
+                        playlist.playlistCoverUrl()
+                ),
                 playlist.pieces().size(),
                 playlist.owner(),
                 playlist.isSaved(),
