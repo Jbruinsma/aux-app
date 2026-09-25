@@ -1,5 +1,6 @@
 package com.aux.controller;
 
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux.dto.playlist.CorePlaylist;
 import com.aux.dto.playlist.PlaylistOverview;
 import com.aux.error.AuxException;
@@ -22,6 +23,8 @@ public class PlaylistController {
     }
 
     @GetMapping("/{username}/{playlist_id}")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "404", description = "Playlist not found, or private and not yours (code PLAYLIST_NOT_FOUND)")
     public PlaylistOverview getPlaylist(
             @PathVariable String username,
             @PathVariable("playlist_id") String playlistId,
