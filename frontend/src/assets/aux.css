@@ -1,0 +1,221 @@
+/* Aux design tokens. Source of truth: frontend/STYLE_GUIDE.html. Write CSS against these, never raw hex. */
+:root,
+[data-theme='light'] {
+  --purple: #6a4778;
+  --purple-hover: #573a63;
+  --purple-soft: #f1ecf3;
+  --white: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f5f5f5;
+  --ink: #222222;
+  --ink-muted: #6b6b6b;
+  --line: #e5e5e5;
+  --line-strong: #8a8a8a;
+  --primary: #6a4778;
+  --on-primary: #ffffff;
+  --link: #6a4778;
+  --focus-ring: #6a4778;
+  --danger: #b42318;
+  --success: #2e7d5b;
+}
+
+[data-theme='dark'] {
+  --purple: #6a4778;
+  --purple-hover: #7d5a8c;
+  --purple-soft: #2a2030;
+  --white: #ffffff;
+  --surface: #121212;
+  --surface-alt: #1e1e1e;
+  --ink: #f2f2f2;
+  --ink-muted: #a3a3a3;
+  --line: #2e2e2e;
+  --line-strong: #6b6b6b;
+  --primary: #6a4778;
+  --on-primary: #ffffff;
+  --link: #b593c4;
+  --focus-ring: #b593c4;
+  --danger: #f97066;
+  --success: #6ccb9a;
+}
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+  --font-sans: Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* Pages built on the Aux design system wrap themselves in .aux-page; older UnChained views keep their own dark styles */
+html:has(.aux-page),
+html:has(.aux-page) body,
+html:has(.aux-page) #app {
+  background: var(--surface);
+}
+
+/* App.vue leaves a 70px gap under html, body and #app for the old player; Aux pages let the footer fill it instead */
+html:has(.aux-page),
+html:has(.aux-page) body,
+html:has(.aux-page) #app {
+  margin-bottom: 0;
+}
+
+/* Short pages stretch so the footer always sits at the bottom of the window */
+.aux-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--surface);
+  color: var(--ink);
+  font: 400 16px/24px var(--font-sans);
+}
+
+.aux-page > main {
+  flex: 1 0 auto;
+}
+
+.aux-page *,
+.aux-page *::before,
+.aux-page *::after {
+  box-sizing: border-box;
+}
+
+.aux-page a {
+  color: var(--link);
+}
+
+.aux-page :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.aux-page .btn {
+  display: inline-block;
+  font: 600 15px/22px var(--font-sans);
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.aux-page .btn.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.aux-page .btn.primary:hover {
+  background: var(--purple-hover);
+}
+
+.aux-page .btn.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.aux-page .btn.secondary:hover {
+  background: var(--surface-alt);
+}
+
+.aux-page .btn.text {
+  background: none;
+  color: var(--link);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.aux-page .btn.text:hover {
+  text-decoration: underline;
+}
+
+.aux-page .btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aux-page * {
+    transition: none !important;
+  }
+}
+
+/* Login and sign-up card */
+.aux-page .auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.aux-page .auth-card h1 {
+  font: 700 28px/34px var(--font-sans);
+  margin: 0 0 var(--space-2);
+}
+
+.aux-page .auth-card .label {
+  font: 600 14px/20px var(--font-sans);
+  margin-top: var(--space-2);
+}
+
+.aux-page .auth-card .input {
+  font: 400 16px/24px var(--font-sans);
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+}
+
+.aux-page .auth-card .hint {
+  margin: 0;
+  font: 500 12px/16px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.aux-page .auth-card .error {
+  color: var(--danger);
+  font: 500 14px/20px var(--font-sans);
+  margin: var(--space-1) 0 0;
+}
+
+.aux-page .auth-card .submit {
+  margin-top: var(--space-4);
+  width: 100%;
+}
+
+.aux-page .auth-card .forgot {
+  align-self: center;
+  font-size: 14px;
+}
+
+.aux-page .auth-card .help {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  font: 500 14px/20px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.aux-page .auth-card .switch {
+  margin: var(--space-2) 0 0;
+  text-align: center;
+  font: 500 14px/20px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.aux-page .auth-card .switch a {
+  font-weight: 600;
+}

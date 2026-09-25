@@ -1,5 +1,13 @@
+import { useUserStore } from '@/stores/user.js'
+
+// Sends the logged-in user's session token so the Java backend knows who is asking
+function authHeaders() {
+  const token = useUserStore().token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export async function fetchAPI(url) {
-  return fetch(url)
+  return fetch(url, { headers: authHeaders() })
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -18,10 +26,11 @@ export async function fetchAPI(url) {
 export async function postToAPI(url, data, isJson = true) {
   const options = {
     method: 'POST',
+    headers: authHeaders(),
   }
 
   if (isJson) {
-    options.headers = { 'Content-Type': 'application/json' }
+    options.headers['Content-Type'] = 'application/json'
     options.body = JSON.stringify(data)
   } else { options.body = data }
 
