@@ -24,12 +24,42 @@
           "required" : true
         },
         "responses" : {
+          "409" : {
+            "description" : "Username already exists (code USERNAME_TAKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "201" : {
             "description" : "Created",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -52,12 +82,42 @@
           "required" : true
         },
         "responses" : {
+          "401" : {
+            "description" : "Wrong username or password (code INVALID_CREDENTIALS)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "200" : {
             "description" : "OK",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -87,8 +147,31 @@
                 }
               }
             }
+          },
+          "404" : {
+            "description" : "User not found (code USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           }
-        }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
       }
     },
     "/api/users/me" : {
@@ -105,8 +188,31 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           }
-        }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
       }
     },
     "/api/users/check-username/{username}" : {
@@ -128,6 +234,16 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UserExistance"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -164,8 +280,41 @@
                 }
               }
             }
+          },
+          "404" : {
+            "description" : "Playlist not found, or private and not yours (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           }
-        }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
       }
     }
   },
@@ -395,6 +544,37 @@
             "example" : "justin"
           }
         }
+      },
+      "AuxServerError" : {
+        "properties" : {
+          "errorDetails" : {
+            "$ref" : "#/components/schemas/ErrorDetails"
+          }
+        }
+      },
+      "ErrorDetails" : {
+        "properties" : {
+          "error" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "parameter" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "Token from /api/auth/login or /api/auth/register",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
       }
     }
   }

@@ -1,5 +1,6 @@
 package com.aux.controller;
 
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux.auth.CurrentUser;
 import com.aux.auth.OptionalCurrentUser;
 import com.aux.dto.users.UserExistance;
@@ -40,6 +41,8 @@ public class UserController {
     // TODO GET  /profile/{username}
 
     @GetMapping("/profile/{username}")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
     public UserProfile retrieveProfile(
             @PathVariable String username,
             @OptionalCurrentUser UserEntity user

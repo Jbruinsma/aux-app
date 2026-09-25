@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux.dto.auth.LoginCredentials;
 import com.aux.services.SessionService;
 import com.aux.dto.auth.SessionToken;
@@ -39,6 +40,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @ApiResponse(responseCode = "409", description = "Username already exists (code USERNAME_TAKEN)")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegistrationCredentials credentials) {
         // BCrypt only reads the first 72 bytes; @Size counts chars, and emoji are 4 bytes each
@@ -59,6 +61,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @ApiResponse(responseCode = "401", description = "Wrong username or password (code INVALID_CREDENTIALS)")
     @ResponseStatus(HttpStatus.OK)
     public AuthResponse login(@Valid @RequestBody LoginCredentials credentials) {
         UserEntity user = users.findByUsername(credentials.username());
