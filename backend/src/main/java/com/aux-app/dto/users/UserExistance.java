@@ -1,5 +1,7 @@
 package com.aux.dto.users;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record UserExistance(
-        boolean exists
+        @Schema(example = "true") boolean exists
 ) {}

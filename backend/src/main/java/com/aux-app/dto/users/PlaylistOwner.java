@@ -1,8 +1,10 @@
 package com.aux.dto.users;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record PlaylistOwner(
-        String userId,
-        String pfpUrl,
-        String username
+        @Schema(example = "u_41x9") String userId,
+        @Schema(example = "/uploads/users/u_41x9.jpg") String pfpUrl,
+        @Schema(example = "justin") String username
 ) {
 }
