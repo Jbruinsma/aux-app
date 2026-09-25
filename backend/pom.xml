@@ -89,6 +89,36 @@
                     <!-- sqlite-jdbc loads a native library; without this Java 25 warns at startup -->
                     <jvmArguments>--enable-native-access=ALL-UNNAMED</jvmArguments>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>start-app</id>
+                        <phase>pre-integration-test</phase>
+                        <goals><goal>start</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>stop-app</id>
+                        <phase>post-integration-test</phase>
+                        <goals><goal>stop</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- ./mvnw verify boots the app and writes docs/openapi.json -->
+            <plugin>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-maven-plugin</artifactId>
+                <version>1.5</version>
+                <configuration>
+                    <apiDocsUrl>http://localhost:5000/v3/api-docs</apiDocsUrl>
+                    <outputDir>${project.basedir}/docs</outputDir>
+                    <outputFileName>openapi.json</outputFileName>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>generate-openapi</id>
+                        <phase>integration-test</phase>
+                        <goals><goal>generate</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

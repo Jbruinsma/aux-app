@@ -1,0 +1,401 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost:5000",
+    "description" : "Generated server url"
+  } ],
+  "paths" : {
+    "/api/auth/register" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegistrationCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginCredentials"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/profile/{username}" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "operationId" : "retrieveProfile",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/check-username/{username}" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "operationId" : "checkUsernameExists",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserExistance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/playlists/{username}/{playlist_id}" : {
+      "get" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "getPlaylist",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "RegistrationCredentials" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "example" : "justin",
+            "maxLength" : 16,
+            "minLength" : 3
+          },
+          "password" : {
+            "type" : "string",
+            "example" : "correct-horse-battery",
+            "maxLength" : 32,
+            "minLength" : 8
+          }
+        },
+        "required" : [ "password", "username" ]
+      },
+      "AuthResponse" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "example" : "eyJhbGciOiJIUzI1NiJ9..."
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "example" : "2026-10-25T12:00:00Z"
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/UserSummary"
+          }
+        }
+      },
+      "UserSummary" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "example" : "u_41x9"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          },
+          "profilePictureUrl" : {
+            "type" : "string",
+            "example" : "/uploads/users/u_41x9.jpg"
+          }
+        }
+      },
+      "LoginCredentials" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "example" : "justin",
+            "maxLength" : 16,
+            "minLength" : 3
+          },
+          "password" : {
+            "type" : "string",
+            "example" : "correct-horse-battery",
+            "maxLength" : 32,
+            "minLength" : 8
+          }
+        },
+        "required" : [ "password", "username" ]
+      },
+      "ProfilePlaylist" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "example" : "p_7c2d1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/playlists/p_7c2d1.jpg"
+          },
+          "totalPieces" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 12
+          }
+        }
+      },
+      "UserProfile" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          },
+          "pfpUrl" : {
+            "type" : "string",
+            "example" : "/uploads/users/u_41x9.jpg"
+          },
+          "playlists" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProfilePlaylist"
+            }
+          },
+          "isMe" : {
+            "type" : "boolean",
+            "example" : false
+          },
+          "isFollowing" : {
+            "type" : "boolean",
+            "example" : true
+          },
+          "followingMe" : {
+            "type" : "boolean",
+            "example" : false
+          }
+        }
+      },
+      "UserExistance" : {
+        "type" : "object",
+        "properties" : {
+          "exists" : {
+            "type" : "boolean",
+            "example" : true
+          }
+        }
+      },
+      "ArtistSummary" : {
+        "type" : "object",
+        "properties" : {
+          "artistId" : {
+            "type" : "string",
+            "example" : "a_8f3k2"
+          },
+          "artistName" : {
+            "type" : "string",
+            "example" : "Tame Impala"
+          },
+          "artistPfpUrl" : {
+            "type" : "string",
+            "example" : "/uploads/artists/a_8f3k2.jpg"
+          }
+        }
+      },
+      "MusicPieceOverview" : {
+        "type" : "object",
+        "properties" : {
+          "musicPieceId" : {
+            "type" : "string",
+            "example" : "m_92kd0"
+          },
+          "name" : {
+            "type" : "string",
+            "example" : "Let It Happen"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/covers/m_92kd0.jpg"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary"
+          },
+          "isFavorite" : {
+            "type" : "boolean",
+            "example" : true
+          }
+        }
+      },
+      "PlaylistOverview" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "example" : "p_7c2d1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/playlists/p_7c2d1.jpg"
+          },
+          "totalPieces" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 12
+          },
+          "playlistOwner" : {
+            "$ref" : "#/components/schemas/PlaylistOwner"
+          },
+          "isSaved" : {
+            "type" : "boolean",
+            "example" : false
+          },
+          "musicPieces" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MusicPieceOverview"
+            }
+          }
+        }
+      },
+      "PlaylistOwner" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "example" : "u_41x9"
+          },
+          "pfpUrl" : {
+            "type" : "string",
+            "example" : "/uploads/users/u_41x9.jpg"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          }
+        }
+      }
+    }
+  }
+}

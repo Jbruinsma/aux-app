@@ -1,0 +1,28 @@
+# Boots the backend against a throwaway DB, regenerates backend/docs/openapi.json, and commits it if it changed
+name: API docs
+on:
+  push:
+    branches: [main, java-port]
+    paths: ['backend/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      AUX_JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
+      SPRING_DATASOURCE_URL: jdbc:sqlite:/tmp/ci.db
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 25, cache: maven }
+      - run: ./mvnw -B -q verify
+        working-directory: backend
+      - name: Commit updated spec
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/docs
+          git diff --cached --quiet || { git commit -m "Update OpenAPI spec [skip ci]" && git push; }
