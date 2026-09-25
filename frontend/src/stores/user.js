@@ -2,16 +2,19 @@ import { defineStore } from 'pinia'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    loggedIn: false, userData: {}
+    loggedIn: false, userData: {}, token: null
   }),
   actions: {
-    login(username) {
+    // `token` is the session token from /api/auth/login or /register, sent as `Authorization: Bearer <token>`
+    login(username, token = null) {
       this.loggedIn = true
       this.userData = {'username': username}
+      this.token = token
     },
     logout() {
       this.loggedIn = false
       this.userData = {}
+      this.token = null
       useMusicStore().reset()
     },
     updateUsername(new_username){

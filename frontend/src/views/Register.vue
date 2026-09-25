@@ -1,69 +1,56 @@
 <template>
-  <div class="auth-page">
-    <div class="container">
-      <h1 class="logo">Register</h1>
-      <form class="auth-form" @submit.prevent="register">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input
-            id="username"
-            v-model="username"
-            type="text"
-            placeholder="Choose a username"
-            required
-            minlength="3"
-            maxlength="16"
-          />
-        </div>
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            maxlength="320"
-          />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            placeholder="Create password"
-            required
-            minlength="8"
-            maxlength="32"
-          />
-        </div>
-        <div class="form-group">
-          <label for="confirm-password">Confirm Password</label>
-          <input
-            id="confirm-password"
-            v-model="confirmPassword"
-            type="password"
-            placeholder="Confirm password"
-            required
-          />
-        </div>
+  <HeroLayout :show-join="false">
+    <form class="auth-card" @submit.prevent="register">
+      <h1>Create your account</h1>
 
-        <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-        <button type="submit" class="btn primary">Register</button>
-      </form>
+      <label class="label" for="register-username">Username</label>
+      <input
+        id="register-username"
+        v-model="username"
+        class="input"
+        type="text"
+        autocomplete="username"
+        minlength="3"
+        maxlength="16"
+        required
+        autofocus
+        aria-describedby="register-username-hint"
+      />
+      <p id="register-username-hint" class="hint">3 to 16 characters.</p>
 
-      <p class="switch-auth">
-        Already have an account?
-        <router-link to="/login">Login here</router-link>
-      </p>
-    </div>
-  </div>
+      <label class="label" for="register-email">Email</label>
+      <input id="register-email" v-model="email" class="input" type="email" autocomplete="email" required />
+
+      <label class="label" for="register-password">Password</label>
+      <input
+        id="register-password"
+        v-model="password"
+        class="input"
+        type="password"
+        autocomplete="new-password"
+        minlength="8"
+        maxlength="32"
+        required
+        aria-describedby="register-password-hint"
+      />
+      <p id="register-password-hint" class="hint">8 to 32 characters.</p>
+
+      <label class="label" for="register-confirm">Confirm password</label>
+      <input id="register-confirm" v-model="confirmPassword" class="input" type="password" autocomplete="new-password" required />
+
+      <p v-if="errorMessage" class="error" role="alert">{{ errorMessage }}</p>
+
+      <button type="submit" class="btn primary submit" :disabled="submitting">Create account</button>
+
+      <p class="switch">Have an account? <router-link to="/login">Log in</router-link></p>
+    </form>
+  </HeroLayout>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import HeroLayout from '@/components/HeroLayout.vue'
 import { postToAPI } from '@/utils/api.js'
 import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
@@ -71,58 +58,40 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const router = useRouter()
 const userStore = useUserStore()
 
-const username        = ref('')
-const email           = ref('')
-const password        = ref('')
+const username = ref('')
+const email = ref('')
+const password = ref('')
 const confirmPassword = ref('')
-const errorMessage    = ref('')
+const errorMessage = ref('')
+const submitting = ref(false)
 
 async function register() {
   errorMessage.value = ''
 
   if (password.value !== confirmPassword.value) {
-    errorMessage.value = "Passwords don't match."
+    errorMessage.value = "Those passwords don't match. Type the same password in both fields."
     return
   }
 
+  submitting.value = true
   try {
-    const url = `${API_BASE_URL}/api/auth/register`
-    const response = await postToAPI(url, {
+    const response = await postToAPI(`${API_BASE_URL}/api/auth/register`, {
       username: username.value,
       email: email.value,
       password: password.value,
-    }, true)
-
-    if ('error' in response) {
-      errorMessage.value = response.error
-      return
-    }
-
-    userStore.login(username.value)
-    username.value = ''
-    email.value = ''
-    password.value = ''
+    })
+    userStore.login(response.user.username, response.token)
     await router.push('/dashboard')
   } catch (err) {
-    errorMessage.value = err.message || 'Registration failed.'
+    if (err.message === 'Username already exists') {
+      errorMessage.value = 'That username is taken. Try another one.'
+    } else if (err.message === 'password is too long') {
+      errorMessage.value = 'That password is too long. Use fewer or simpler characters.'
+    } else {
+      errorMessage.value = "We couldn't create your account. Check that the server is running, then try again."
+    }
+  } finally {
+    submitting.value = false
   }
 }
 </script>
-
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Libertinus+Math&display=swap');
-.auth-page{align-items:center;background:#1e1e1e;display:flex;justify-content:center;min-height:100vh;}
-.container{background:rgba(0,0,0,0.6);border-radius:8px;padding:2.5rem;width:400px;}
-.logo{color:#f0f0f0;font-family:'Libertinus Math',serif;font-size:2.5rem;margin-bottom:2rem;text-align:center;}
-.auth-form{display:flex;flex-direction:column;}
-.form-group{margin-bottom:1.5rem;}
-.form-group:last-child{margin-bottom:0;}
-.form-group label{color:#ccc;display:block;margin-bottom:0.5rem;}
-.form-group input{border:none;border-radius:5px;box-sizing:border-box;outline:none;padding:0.75rem;width:100%;}
-.btn{background:#fff;border:none;border-radius:5px;color:#000;cursor:pointer;font-weight:500;padding:0.8rem 1.8rem;text-decoration:none;transition:all 0.3s;}
-.btn:hover{background:#ccc;}
-.switch-auth{color:#ccc;font-size:0.95rem;margin-top:1.5rem;text-align:center;}
-.switch-auth a{color:#fff;text-decoration:underline;transition:color 0.3s;}
-.switch-auth a:hover{color:#ccc;}
-.error{color:#e74c3c;font-size:0.9rem;margin:0.5rem 0;text-align:center;}
-</style>
