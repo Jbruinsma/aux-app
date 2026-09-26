@@ -27,13 +27,13 @@ public class WebConfig implements WebMvcConfigurer {
         }
     }
 
-    // Same as FastAPI's CORSMiddleware(allow_origins=["*"], ...)
+    // Allow requests from any origin
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**").allowedOriginPatterns("*").allowedMethods("*").allowCredentials(true);
     }
 
-    // Replaces the three /uploads/{covers,mp3s,pfps}/{filename} routes in app.py
+    // Serves uploaded files (covers, mp3s, pfps) from /uploads/**
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**").addResourceLocations(uploadsDir.toUri().toString());
