@@ -24,29 +24,37 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
     // Null if username doesn't exist. Guard before use.
     default UserProfile findProfile(String username, String currentUserId) {
         List<ProfileRow> rows = findProfileRows(username, currentUserId);
+
         if (rows.isEmpty()) {
             return null;
         }
-        ProfileRow first = rows.get(0);
-        List<ProfilePlaylist> playlists = createPlaylists(rows);
+
+        ProfileRow first = rows.getFirst();
+
         return new UserProfile(
                 first.getUsername(),
                 first.getPfpUrl(),
-                playlists,
+                formatPlaylists(rows),
                 first.getUserId().equals(currentUserId),
                 Boolean.TRUE.equals(first.getIsFollowing()),
                 Boolean.TRUE.equals(first.getFollowingMe()));
     }
 
-    private static @NonNull List<ProfilePlaylist> createPlaylists(List<ProfileRow> rows) {
+    private static @NonNull List<ProfilePlaylist> formatPlaylists(List<ProfileRow> rows) {
         List<ProfilePlaylist> playlists = new ArrayList<>(rows.size());
+
         for (ProfileRow row : rows) {
             if (row.getPlaylistId() == null) {
                 continue; // user has no visible playlists
             }
+
             playlists.add(
                     new ProfilePlaylist(
-                            new CorePlaylist(row.getPlaylistId(), row.getPlaylistName(), row.getPlaylistCoverUrl()),
+                            new CorePlaylist(
+                                    row.getPlaylistId(),
+                                    row.getPlaylistName(),
+                                    row.getPlaylistCoverUrl()
+                            ),
                             row.getTotalPieces()
                     )
             );
@@ -67,7 +75,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                    p.playlist_cover_url AS playlistCoverUrl,
                    (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces
             FROM users u
-            LEFT JOIN playlists p ON p.owner_id = u.user_id AND (p.is_public = true OR p.owner_id = CAST(:currentUserId AS varchar))
+            LEFT JOIN playlists p ON p.owner_id = u.user_id
+                                 AND (p.is_public = true OR u.user_id = CAST(:currentUserId AS varchar))
             WHERE u.username = :username
             """, nativeQuery = true)
     List<ProfileRow> findProfileRows(@Param("username") String username, @Param("currentUserId") String currentUserId);
