@@ -197,9 +197,10 @@ src/main/java/com/aux/dto/
 ### Response model
 
 ```java
-package com.aux.dto;
+package com.aux_app.dto;
 
-public record UserExistence(boolean exists) {}
+public record UserExistence(boolean exists) {
+}
 ```
 
 ```java
