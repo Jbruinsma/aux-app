@@ -1,1 +1,10 @@
 backend/aux.db
+
+# IDE / AI tooling
+.idea/
+.junie/
+.ai/
+
+# Build output and secrets
+target/
+.env
