@@ -11,11 +11,28 @@ import AddMusic from '@/views/AddMusic.vue'
 import AddFriends from '@/views/AddFriends.vue'
 import EditPlaylist from '@/views/EditPlaylist.vue'
 import EditMusicPiece from '@/views/EditMusicPiece.vue'
+import { useUserStore } from '@/stores/user.js'
 
 const routes = [
-  { path: '/', name: 'Home', component: LandingPage },
-  { path: '/login', name: 'Login', component: Login},
-  { path: '/register', name: 'Register', component: Register},
+  {
+    path: '/',
+    name: 'Home',
+    component: LandingPage,
+    // Logged-in users get their own home instead of the public landing page
+    beforeEnter: () => (useUserStore().loggedIn ? { name: 'Dashboard' } : true),
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    beforeEnter: () => (useUserStore().loggedIn ? { name: 'Dashboard' } : true),
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: Register,
+    beforeEnter: () => (useUserStore().loggedIn ? { name: 'Dashboard' } : true),
+  },
   { path: '/dashboard', name: 'Dashboard', component: Dashboard},
   { path: '/:username', name: 'Profile', component: PublicProfile },
   { path: '/settings/:username', name: 'Settings', component: Settings},
@@ -29,7 +46,13 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    // Leave room for the sticky header when jumping to a section by its #id
+    if (to.hash) return { el: to.hash, top: 72, behavior: 'smooth' }
+    return { top: 0 }
+  },
 })
 
 export default router
