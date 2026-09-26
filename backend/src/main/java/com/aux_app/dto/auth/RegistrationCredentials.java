@@ -7,6 +7,6 @@ import jakarta.validation.constraints.Size;
 
 public record RegistrationCredentials(
         @Schema(example = "justin") @NotBlank @Size(min= 3, max= 16) String username,
-        @Schema(example = "example@gmail.com") @NotBlank @Size(min= 3, max= 32) String email,
+        @Schema(example = "example@gmail.com") @NotBlank @Size(min= 3, max= 254) String email,
         @Schema(example = "correct-horse-battery") @NotBlank @Size(min= 8, max= 32) String password
 ) {}
