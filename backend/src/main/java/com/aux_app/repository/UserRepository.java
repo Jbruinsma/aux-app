@@ -30,24 +30,22 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         }
 
         ProfileRow first = rows.getFirst();
-        List<ProfilePlaylist> playlists = formatPublicPlaylists(rows);
 
         return new UserProfile(
                 first.getUsername(),
                 first.getPfpUrl(),
-                playlists,
+                formatPlaylists(rows),
                 first.getUserId().equals(currentUserId),
                 Boolean.TRUE.equals(first.getIsFollowing()),
                 Boolean.TRUE.equals(first.getFollowingMe()));
     }
 
-    private static @NonNull List<ProfilePlaylist> formatPublicPlaylists(List<ProfileRow> rows) {
+    private static @NonNull List<ProfilePlaylist> formatPlaylists(List<ProfileRow> rows) {
         List<ProfilePlaylist> playlists = new ArrayList<>(rows.size());
 
         for (ProfileRow row : rows) {
-
             if (row.getPlaylistId() == null) {
-                continue;
+                continue; // user has no visible playlists
             }
 
             playlists.add(
@@ -77,7 +75,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                    p.playlist_cover_url AS playlistCoverUrl,
                    (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces
             FROM users u
-            LEFT JOIN playlists p ON p.owner_id = u.user_id AND p.is_public = true
+            LEFT JOIN playlists p ON p.owner_id = u.user_id
+                                 AND (p.is_public = true OR u.user_id = CAST(:currentUserId AS varchar))
             WHERE u.username = :username
             """, nativeQuery = true)
     List<ProfileRow> findProfileRows(@Param("username") String username, @Param("currentUserId") String currentUserId);
