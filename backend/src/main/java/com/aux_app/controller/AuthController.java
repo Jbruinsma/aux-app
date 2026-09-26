@@ -49,27 +49,32 @@ public class AuthController {
             throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "password is too long", "password");
         }
 
-        if (users.existsByEmail(credentials.email())) {
+        String registrationUsername = credentials.username();
+        String registrationEmail = credentials.email();
+
+        if (users.existsByEmail(registrationEmail)) {
             throw new AuxException(HttpStatus.CONFLICT, "EMAIL_TAKEN", "Email is already associated with an account", "email");
         }
 
-        if (users.existsByUsername(credentials.username())) {
+        if (users.existsByUsername(registrationUsername)) {
             throw new AuxException(HttpStatus.CONFLICT, "USERNAME_TAKEN", "Username already exists", "username");
         }
+
+        String newUserIdentifier = UUID.randomUUID().toString();
 
         try {
 
             String hash = bcrypt.encode(credentials.password());
             UserEntity user = users.save(
                     new UserEntity(
-                            UUID.randomUUID().toString(),
-                            credentials.username(),
-                            credentials.email(),
+                            newUserIdentifier,
+                            registrationUsername,
+                            registrationEmail,
                             hash
                     )
             );
 
-            SessionToken session = sessions.issueSymmetricToken(user.getUserId(), Map.of());
+            SessionToken session = sessions.issueSymmetricToken(newUserIdentifier, Map.of());
             return new AuthResponse(session.token(), session.expiresAt(), UserSummary.of(user));
 
         } catch (Exception accountCreationException) {
