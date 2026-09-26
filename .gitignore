@@ -8,3 +8,4 @@ backend/aux.db
 # Build output and secrets
 target/
 .env
+*.iml
