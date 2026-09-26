@@ -1,7 +1,6 @@
-# Aux backend (Java)
+# Aux backend
 
-Spring Boot port of `../backend`. Same API contract (port 5000, same paths/JSON) so the Vue frontend works unchanged.
-Shares `../backend/aux.db` with the Python backend: Alembic owns the schema, Hibernate only validates it (`ddl-auto=validate`).
+Spring Boot API on port 5000, backed by the SQLite file `aux.db` (Hibernate only validates the schema: `ddl-auto=validate`).
 
 ## Requirements
 
@@ -16,14 +15,12 @@ Maven is not needed; `./mvnw` downloads it on first run.
 ## Run
 
 ```bash
-cd backend-java
+cd backend
+cp .env.example .env   # then set AUX_JWT_SECRET
 ./mvnw spring-boot:run
 ```
 
-Stop the Python backend first — both use port 5000.
+## API docs
 
-## Porting status
-
-- Done: `GET /api/users/check-username/{username}` (reference pattern: entity → repository → controller), static `/uploads/**`, CORS.
-- TODO: see the `// TODO` lists in `controller/*Controller.java` and the stub classes in `entity/`.
-  Each new entity must match the existing table exactly or startup fails validation.
+`docs/openapi.json` is the generated OpenAPI spec; open `docs/index.html` to browse it.
+CI regenerates it on PRs that touch `backend/**`. To regenerate locally: `./mvnw verify`.

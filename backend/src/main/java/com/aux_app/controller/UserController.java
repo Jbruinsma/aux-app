@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.aux_app.repository.UserRepository;
 
-// Port of backend/routes/users.py
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

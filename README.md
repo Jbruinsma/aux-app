@@ -25,29 +25,26 @@ Built for the Programming Language Concepts course project.
 
 ## Tech Stack
 
-- **Backend**: Python, [FastAPI](https://fastapi.tiangolo.com/) with [Pydantic](https://docs.pydantic.dev/) for request/response validation
+- **Backend**: Java 25, [Spring Boot](https://spring.io/projects/spring-boot) with Spring Data JPA and Bean Validation
 - **Frontend**: [Vue.js](https://vuejs.org/)
-- **Database**: SQLite (migrating from the original AVL tree + in-memory persistence)
-- **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
+- **Database**: SQLite
+- **API docs**: OpenAPI spec generated from the code, in `backend/docs/`
 
 ---
 
 ## Project Structure
 
-- `backend/` → FastAPI server: API routes, data models, compatibility logic
+- `backend/` → Spring Boot server: controllers, entities, compatibility logic
 - `frontend/` → Vue.js application: player, profiles, matching UI
 
 ---
 
 ## Local Setup
 
-> Setup instructions will be filled in as the FastAPI/DB migration lands.
-
 ### Backend
 ```bash
 cd backend
-pip install -r requirements.txt
-# run migrations, start server — TBD
+./mvnw spring-boot:run   # port 5000; see backend/README.md
 ```
 
 ### Frontend
@@ -61,8 +58,6 @@ npm run dev
 
 ## Roadmap
 
-- [ ] Migrate backend from Flask to FastAPI
-- [ ] Replace AVL tree storage with SQLite + Alembic migrations
 - [ ] User authentication
 - [ ] Profile: favorite artists/genres
 - [ ] Compatibility scoring algorithm
