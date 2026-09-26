@@ -22,7 +22,7 @@ git checkout -b <prefix>/<short-description>
 
 **Prefixes:**
 - `frontend/` — Vue components, UI, styling
-- `backend/` — FastAPI routes, models, DB logic
+- `backend/` — Spring Boot controllers, entities, DB logic
 - `fix/` — bug fixes
 - `chore/` — config, tooling, docs, non-feature work
 
