@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS users;
 CREATE TABLE users (
     user_id VARCHAR NOT NULL PRIMARY KEY,
     username VARCHAR(16) NOT NULL UNIQUE,
+    email VARCHAR(320) NOT NULL UNIQUE,
     password_hash VARCHAR(72) NOT NULL,
     profile_picture_url VARCHAR,
     created_at TIMESTAMP,

@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
 
     UserEntity findByUsername(String username);
 
+    boolean existsByEmail(String email);
+
     // Null if username doesn't exist. Guard before use.
     default UserProfile findProfile(String username, String currentUserId) {
         List<ProfileRow> rows = findProfileRows(username, currentUserId);
