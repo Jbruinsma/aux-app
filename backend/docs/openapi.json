@@ -332,7 +332,7 @@
           "email" : {
             "type" : "string",
             "example" : "example@gmail.com",
-            "maxLength" : 32,
+            "maxLength" : 254,
             "minLength" : 3
           },
           "password" : {
