@@ -43,23 +43,43 @@ public class AuthController {
     @ApiResponse(responseCode = "409", description = "Username already exists (code USERNAME_TAKEN)")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegistrationCredentials credentials) {
+
         // BCrypt only reads the first 72 bytes; @Size counts chars, and emoji are 4 bytes each
         if (credentials.password().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "password is too long", "password");
         }
 
-
+        if (users.existsByEmail(credentials.email())) {
+            throw new AuxException(HttpStatus.CONFLICT, "EMAIL_TAKEN", "Email is already associated with an account", "email");
+        }
 
         if (users.existsByUsername(credentials.username())) {
             throw new AuxException(HttpStatus.CONFLICT, "USERNAME_TAKEN", "Username already exists", "username");
         }
 
-        // Check-then-insert race: a concurrent duplicate hits a UNIQUE index and AuxErrorHandler returns 409
-        String hash = bcrypt.encode(credentials.password());
-        UserEntity user = users.save(new UserEntity(UUID.randomUUID().toString(), credentials.username(), hash));
+        try {
 
-        SessionToken session = sessions.issueSymmetricToken(user.getUserId(), Map.of());
-        return new AuthResponse(session.token(), session.expiresAt(), UserSummary.of(user));
+            String hash = bcrypt.encode(credentials.password());
+            UserEntity user = users.save(
+                    new UserEntity(
+                            UUID.randomUUID().toString(),
+                            credentials.username(),
+                            credentials.email(),
+                            hash
+                    )
+            );
+
+            SessionToken session = sessions.issueSymmetricToken(user.getUserId(), Map.of());
+            return new AuthResponse(session.token(), session.expiresAt(), UserSummary.of(user));
+
+        } catch (Exception accountCreationException) {
+            throw new AuxException(
+                    HttpStatus.CONFLICT,
+                    "USERNAME_TAKEN",
+                    "There has been an error creating your account. Please try again.",
+                    "username"
+            );
+        }
     }
 
     @PostMapping("/login")
