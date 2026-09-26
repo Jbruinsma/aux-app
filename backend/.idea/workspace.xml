@@ -4,23 +4,70 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a7094d37-c808-4b06-abae-f22bb47aed24" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/auth/OptionalCurrentUser.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/dto/playlist/CorePlaylist.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/dto/playlist/ProfilePlaylist.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/dto/users/UserProfile.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/auth/CurrentUser.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/auth/CurrentUser.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/auth/CurrentUserResolver.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/auth/CurrentUserResolver.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/controller/PlaylistController.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/controller/PlaylistController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/controller/UserController.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/controller/UserController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/dto/playlist/PlaylistOverview.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/dto/playlist/PlaylistOverview.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/repository/PlaylistRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/repository/PlaylistRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend-java/src/main/java/com/aux/repository/UserRepository.java" afterDir="false" />
+    <list default="true" id="a7094d37-c808-4b06-abae-f22bb47aed24" name="Changes" comment="Rename `com.aux` package to `com.aux_app` across backend for namespace consistency">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.run/aux-backend.run.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.run/aux-backend.run.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SPRING_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/SPRING_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/AuxApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/AuxApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/auth/CurrentUser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/auth/CurrentUser.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/auth/CurrentUserResolver.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/auth/CurrentUserResolver.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/auth/OptionalCurrentUser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/auth/OptionalCurrentUser.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/config/OpenApiConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/config/OpenApiConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/config/WebConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/config/WebConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/controller/PlaylistController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/controller/PlaylistController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/controller/UserController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/controller/UserController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/artist/ArtistSummary.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/artist/ArtistSummary.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/auth/AuthResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/auth/AuthResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/auth/LoginCredentials.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/auth/LoginCredentials.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/auth/RegistrationCredentials.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/auth/RegistrationCredentials.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/auth/SessionToken.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/auth/SessionToken.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/base/AuxServerError.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/base/AuxServerError.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/base/ErrorDetails.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/base/ErrorDetails.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/base/Message.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/base/Message.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/music_piece/MusicPieceOverview.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/music_piece/MusicPieceOverview.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/playlist/CorePlaylist.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/playlist/CorePlaylist.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/playlist/PlaylistOverview.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/playlist/PlaylistOverview.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/playlist/ProfilePlaylist.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/playlist/ProfilePlaylist.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/users/PlaylistOwner.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/users/PlaylistOwner.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/users/UserExistance.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/users/UserExistance.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/users/UserProfile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/users/UserProfile.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/dto/users/UserSummary.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/dto/users/UserSummary.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/ArtistEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/ArtistEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/FollowEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/FollowEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/FollowId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/FollowId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/MusicPieceEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/MusicPieceEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/MusicPieceTagEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/MusicPieceTagEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/MusicPieceTagId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/MusicPieceTagId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/PlayEventEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/PlayEventEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/PlaylistEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/PlaylistEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/PlaylistTagEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/PlaylistTagEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/PlaylistTagId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/PlaylistTagId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/PlaylistTrackEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/PlaylistTrackEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/PlaylistTrackId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/PlaylistTrackId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/TagEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/TagEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserFavoriteArtistEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserFavoriteArtistEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserFavoriteArtistId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserFavoriteArtistId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserFavoriteTrackEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserFavoriteTrackEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserFavoriteTrackId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserFavoriteTrackId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserSavedPlaylistEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserSavedPlaylistEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/entity/UserSavedPlaylistId.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserSavedPlaylistId.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/error/AuxErrorHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/error/AuxErrorHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/error/AuxException.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/error/AuxException.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/repository/PlaylistRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/repository/PlaylistRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/repository/PlaylistTrackRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/repository/PlaylistTrackRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/repository/UserRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux-app/services/SessionService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/services/SessionService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -30,11 +77,82 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$/.." value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
   </component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0000659562979932" />
+      <entry key="S5" value="1.0337313250311713" />
+      <entry key="S10" value="1.3625475775648561" />
+      <entry key="S30" value="3.7065118113272533" />
+      <entry key="S60" value="6.819036989426945" />
+      <entry key="M2" value="11.597408700822344" />
+      <entry key="M5" value="18.8820406721719" />
+      <entry key="M10" value="23.13270529878443" />
+      <entry key="M15" value="24.878107310438935" />
+      <entry key="M30" value="26.82484419142654" />
+      <entry key="H1" value="27.882030991951762" />
+      <entry key="H2" value="28.433174106042884" />
+      <entry key="H4" value="28.714595347586336" />
+      <entry key="D1" value="28.952153227345654" />
+      <entry key="W1" value="28.993157870448623" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="0.0" />
+      <entry key="M10" value="0.0" />
+      <entry key="M15" value="0.0" />
+      <entry key="M30" value="0.0" />
+      <entry key="H1" value="0.0" />
+      <entry key="H2" value="0.0" />
+      <entry key="H4" value="0.0" />
+      <entry key="D1" value="0.0" />
+      <entry key="W1" value="0.0" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.03257705502628504" />
+      <entry key="MS500" value="0.5041762274472975" />
+      <entry key="S2" value="0.8426988391614404" />
+      <entry key="S5" value="0.9634479155210928" />
+      <entry key="S10" value="1.3060663662759129" />
+      <entry key="S30" value="3.646715936587397" />
+      <entry key="S60" value="6.7717272539655795" />
+      <entry key="M2" value="11.566069592144178" />
+      <entry key="M5" value="18.86633563297628" />
+      <entry key="M10" value="23.12405923557477" />
+      <entry key="M15" value="24.872134674088706" />
+      <entry key="M30" value="26.82174361068389" />
+      <entry key="H1" value="27.88045005170235" />
+      <entry key="H2" value="28.43237569212505" />
+      <entry key="H4" value="28.714194118125274" />
+      <entry key="D1" value="28.952086071696346" />
+      <entry key="W1" value="28.993148269785785" />
+    </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0,
@@ -45,25 +163,30 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;java-port&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/justin-bruinsma/current-projects/aux-app/backend-java&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "directory-rename-fix",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/justin-bruinsma/current-projects/aux-app/backend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
+    "to.speed.mode.migration.done": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="backend" />
@@ -216,8 +339,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-PY-262.10968.92" />
-        <option value="bundled-python-sdk-73a66231627c-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10968.92" />
+        <option value="bundled-jdk-30f59d01ecdd-a203e0a19954-intellij.indexing.shared.core-IU-262.10968.63" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.10968.63" />
       </set>
     </attachedChunks>
   </component>
@@ -248,5 +371,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Rename `com.aux` package to `com.aux_app` across backend for namespace consistency" />
+    <option name="LAST_COMMIT_MESSAGE" value="Rename `com.aux` package to `com.aux_app` across backend for namespace consistency" />
   </component>
 </project>
