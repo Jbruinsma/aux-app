@@ -128,6 +128,8 @@
     "/api/users/profile/{username}" : {
       "get" : {
         "tags" : [ "user-controller" ],
+        "summary" : "Get a user's profile",
+        "description" : "This will be a public endpoint. The playlists returned depend on who is asking:\n- If the person who makes the request is the profile owner: returns public AND private playlists.\n- If anyone else makes the request, or there is no token: returns public playlists only.\n`isMe` in the response is true when the caller is the profile owner.\nMaybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).\n",
         "operationId" : "retrieveProfile",
         "parameters" : [ {
           "name" : "username",
