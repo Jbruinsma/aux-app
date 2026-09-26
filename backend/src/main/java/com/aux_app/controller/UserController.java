@@ -1,5 +1,6 @@
 package com.aux_app.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.auth.OptionalCurrentUser;
@@ -40,6 +41,15 @@ public class UserController {
     // TODO GET  /profile/{username}
 
     @GetMapping("/profile/{username}")
+    @Operation(
+            summary = "Get a user's profile",
+            description = """
+                    This will be a public endpoint. The playlists returned depend on who is asking:
+                    - If the person who makes the request is the profile owner: returns public AND private playlists.
+                    - If anyone else makes the request, or there is no token: returns public playlists only.
+                    `isMe` in the response is true when the caller is the profile owner.
+                    Maybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).
+                    """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
     public UserProfile retrieveProfile(
