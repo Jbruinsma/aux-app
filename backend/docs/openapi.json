@@ -329,6 +329,12 @@
             "maxLength" : 16,
             "minLength" : 3
           },
+          "email" : {
+            "type" : "string",
+            "example" : "example@gmail.com",
+            "maxLength" : 32,
+            "minLength" : 3
+          },
           "password" : {
             "type" : "string",
             "example" : "correct-horse-battery",
@@ -336,7 +342,7 @@
             "minLength" : 8
           }
         },
-        "required" : [ "password", "username" ]
+        "required" : [ "email", "password", "username" ]
       },
       "AuthResponse" : {
         "type" : "object",
