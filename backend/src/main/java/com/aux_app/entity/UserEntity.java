@@ -19,6 +19,9 @@ public class UserEntity {
     @Column(nullable = false, unique = true, length = 16)
     private String username;
 
+    @Column(nullable = false, unique = true, length = 320)
+    private String email;
+
     // BCrypt hash, stored as text (fits in 72 chars)
     @Column(name = "password_hash", nullable = false, length = 72)
     private String passwordHash;
@@ -34,9 +37,10 @@ public class UserEntity {
 
     protected UserEntity() {}
 
-    public UserEntity(String userId, String username, String passwordHash) {
+    public UserEntity(String userId, String username, String email, String passwordHash) {
         this.userId = userId;
         this.username = username;
+        this.email = email;
         this.passwordHash = passwordHash;
         this.profilePictureUrl = "/default_profile_picture.svg";
         this.createdAt = Instant.now();
@@ -45,6 +49,7 @@ public class UserEntity {
 
     public String getUserId() { return userId; }
     public String getUsername() { return username; }
+    public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public Instant getCreatedAt() { return createdAt; }
