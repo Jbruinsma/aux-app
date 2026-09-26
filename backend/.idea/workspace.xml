@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a7094d37-c808-4b06-abae-f22bb47aed24" name="Changes" comment="Rename `com.aux` package to `com.aux_app` across backend for namespace consistency">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux_app/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/controller/AuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/entity/UserEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/aux_app/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/aux_app/repository/UserRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/db/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/schema.sql" afterDir="false" />
-    </list>
+    <list default="true" id="a7094d37-c808-4b06-abae-f22bb47aed24" name="Changes" comment="Rename `com.aux` package to `com.aux_app` across backend for namespace consistency" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -29,11 +23,40 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$/.." value="main" />
+        <entry key="$PROJECT_DIR$/.." value="registration-email-update" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Jbruinsma"
+  }
+}]]></component>
+  <component name="GithubProjectSettings">
+    <option name="branchProtectionPatterns">
+      <list>
+        <option value="main" />
+      </list>
+    </option>
+  </component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "git@github.com:Jbruinsma/aux-app.git",
+    "accountId": "5afd2294-2daa-47b7-843b-fb9044ce5727"
+  },
+  "recentNewPullRequestHead": {
+    "server": {
+      "useHttp": false,
+      "host": "github.com",
+      "port": null,
+      "suffix": null
+    },
+    "owner": "Jbruinsma",
+    "repository": "aux-app"
+  }
+}]]></component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -47,61 +70,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0000000318982607" />
-      <entry key="MS500" value="1.0492915961526879" />
-      <entry key="S2" value="1.7868691677810045" />
-      <entry key="S5" value="2.3763922587402333" />
-      <entry key="S10" value="2.6690444558676063" />
-      <entry key="S30" value="3.323210935992361" />
-      <entry key="S60" value="4.249120549117519" />
-      <entry key="M2" value="6.535368181868768" />
-      <entry key="M5" value="15.6015054042301" />
-      <entry key="M10" value="26.647789492580237" />
-      <entry key="M15" value="32.95564967576396" />
-      <entry key="M30" value="41.45174561893452" />
-      <entry key="H1" value="46.777601063551295" />
-      <entry key="H2" value="49.767032181921614" />
-      <entry key="H4" value="51.35176448692918" />
-      <entry key="D1" value="52.72076814790187" />
-      <entry key="W1" value="52.95999734998682" />
+      <entry key="MS100" value="1.9612228198007382" />
+      <entry key="MS500" value="3.83657543935106" />
+      <entry key="S2" value="4.663274816158424" />
+      <entry key="S5" value="5.148725764269462" />
+      <entry key="S10" value="6.364462930433555" />
+      <entry key="S30" value="11.430052641580719" />
+      <entry key="S60" value="15.802640882959464" />
+      <entry key="M2" value="20.57458128268764" />
+      <entry key="M5" value="31.225467585854314" />
+      <entry key="M10" value="43.14353285745065" />
+      <entry key="M15" value="49.974337202687785" />
+      <entry key="M30" value="59.25009912122789" />
+      <entry key="H1" value="65.11035904232526" />
+      <entry key="H2" value="68.41472442761325" />
+      <entry key="H4" value="70.17065110132617" />
+      <entry key="D1" value="71.68986793309763" />
+      <entry key="W1" value="71.95556518526402" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
-      <entry key="S2" value="4.1380659401478874E-91" />
-      <entry key="S5" value="7.026175003956554E-37" />
-      <entry key="S10" value="8.382228226406483E-19" />
-      <entry key="S30" value="9.428729152175295E-7" />
-      <entry key="S60" value="9.710164340615097E-4" />
-      <entry key="M2" value="0.031161136597715893" />
-      <entry key="M5" value="0.24971539415734664" />
-      <entry key="M10" value="0.49971531311072165" />
-      <entry key="M15" value="0.6297213802471057" />
-      <entry key="M30" value="0.7935498599628793" />
-      <entry key="H1" value="0.890814155681689" />
-      <entry key="H2" value="0.9438295162166142" />
-      <entry key="H4" value="0.9715088863292061" />
-      <entry key="D1" value="0.9951941082337552" />
-      <entry key="W1" value="0.999312025734625" />
+      <entry key="S2" value="2.0702564474122326E-100" />
+      <entry key="S5" value="1.3378568860639212E-40" />
+      <entry key="S10" value="1.1566576356311838E-20" />
+      <entry key="S30" value="2.2615261284931718E-7" />
+      <entry key="S60" value="4.755550576424533E-4" />
+      <entry key="M2" value="0.021807224895489405" />
+      <entry key="M5" value="0.21649115676004677" />
+      <entry key="M10" value="0.465286102049101" />
+      <entry key="M15" value="0.6004544305124451" />
+      <entry key="M30" value="0.7748899473553935" />
+      <entry key="H1" value="0.8802783351618937" />
+      <entry key="H2" value="0.9382314933756447" />
+      <entry key="H4" value="0.9686235044513655" />
+      <entry key="D1" value="0.9947008763397122" />
+      <entry key="W1" value="0.9992412574458011" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.7422618091883183" />
-      <entry key="MS500" value="0.9742196145932885" />
-      <entry key="S2" value="1.6174530213181502" />
-      <entry key="S5" value="2.2402285251957883" />
-      <entry key="S10" value="2.5816003507125638" />
-      <entry key="S30" value="3.2773773545012963" />
-      <entry key="S60" value="4.2142903644227925" />
-      <entry key="M2" value="6.531424612715197" />
-      <entry key="M5" value="15.815791820667348" />
-      <entry key="M10" value="27.119933623939485" />
-      <entry key="M15" value="33.56371718578687" />
-      <entry key="M30" value="42.232433137226494" />
-      <entry key="H1" value="47.66138325744006" />
-      <entry key="H2" value="50.7071822155075" />
-      <entry key="H4" value="52.321390964572075" />
-      <entry key="D1" value="53.715642436814505" />
-      <entry key="W1" value="53.95926353612607" />
+      <entry key="MS100" value="1.897270181573079" />
+      <entry key="MS500" value="3.8160420309014373" />
+      <entry key="S2" value="4.657351179202463" />
+      <entry key="S5" value="5.14600221037741" />
+      <entry key="S10" value="6.359299436949702" />
+      <entry key="S30" value="11.408816375652568" />
+      <entry key="S60" value="15.776341624700889" />
+      <entry key="M2" value="20.565587633371344" />
+      <entry key="M5" value="31.408256153263206" />
+      <entry key="M10" value="43.5815607185786" />
+      <entry key="M15" value="50.55306486418691" />
+      <entry key="M30" value="60.01187855359292" />
+      <entry key="H1" value="65.98341048361883" />
+      <entry key="H2" value="69.34915850945893" />
+      <entry key="H4" value="71.13732773528517" />
+      <entry key="D1" value="72.68423744865618" />
+      <entry key="W1" value="72.95475893433509" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -113,30 +136,30 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "main",
-    "junie.onboarding.icon.badge.shown": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/home/justin-bruinsma/current-projects/aux-app/backend",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.jshint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.jshint": "",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
-    "to.speed.mode.migration.done": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/justin-bruinsma/current-projects/aux-app/backend&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
       <recent name="com.aux_app.services" />
