@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
+import com.aux_app.dto.users.OnboardingStep;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.dto.auth.LoginCredentials;
 import com.aux_app.services.SessionService;
@@ -46,18 +47,23 @@ public class AuthController {
 
         // BCrypt only reads the first 72 bytes; @Size counts chars, and emoji are 4 bytes each
         if (credentials.password().getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "password is too long", "password");
+            throw new AuxException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_FIELD",
+                    "password is too long",
+                    "password"
+            );
         }
 
-        String registrationUsername = credentials.username();
         String registrationEmail = credentials.email();
 
         if (users.existsByEmail(registrationEmail)) {
-            throw new AuxException(HttpStatus.CONFLICT, "EMAIL_TAKEN", "Email is already associated with an account", "email");
-        }
-
-        if (users.existsByUsername(registrationUsername)) {
-            throw new AuxException(HttpStatus.CONFLICT, "USERNAME_TAKEN", "Username already exists", "username");
+            throw new AuxException(
+                    HttpStatus.CONFLICT,
+                    "EMAIL_TAKEN",
+                    "Email is already associated with an account",
+                    "email"
+            );
         }
 
         String newUserIdentifier = UUID.randomUUID().toString();
@@ -68,9 +74,9 @@ public class AuthController {
             UserEntity user = users.save(
                     new UserEntity(
                             newUserIdentifier,
-                            registrationUsername,
                             registrationEmail,
-                            hash
+                            hash,
+                            OnboardingStep.USERNAME
                     )
             );
 
