@@ -3,13 +3,13 @@
     <div class="topin">
       <router-link class="logo" :to="loggedIn ? '/dashboard' : '/'">Aux</router-link>
 
-      <nav v-if="loggedIn" aria-label="Main">
+      <nav v-if="loggedIn && userStore.onboarded" aria-label="Main">
         <a href="/dashboard" :class="{ active: route.name === 'Dashboard' }" @click.prevent="rerouteToDashboard()">Home</a>
         <a href="#" :class="{ active: route.name === 'Profile' }" @click.prevent="rerouteToPublicProfile()">Profile</a>
         <a href="#" :class="{ active: route.name === 'Settings' }" @click.prevent="rerouteToSettings()">Settings</a>
       </nav>
       <!-- These sections need an account, so logged-out visitors are sent to log in -->
-      <nav v-else aria-label="Main">
+      <nav v-else-if="!loggedIn" aria-label="Main">
         <router-link v-for="item in GUEST_NAV" :key="item" to="/login">{{ item }}</router-link>
       </nav>
 

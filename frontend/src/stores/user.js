@@ -4,12 +4,19 @@ export const useUserStore = defineStore('user', {
   state: () => ({
     loggedIn: false, userData: {}, token: null
   }),
+  getters: {
+    onboarded: (state) => state.userData.onboardingStep === 'DONE',
+  },
   actions: {
     // `token` is the session token from /api/auth/login or /register, sent as `Authorization: Bearer <token>`
-    login(username, token = null) {
+    // `user` is the UserSummary from the backend: {userId, username, profilePictureUrl, onboardingStep}
+    login(user, token = null) {
       this.loggedIn = true
-      this.userData = {'username': username}
+      this.userData = { ...user }
       this.token = token
+    },
+    updateUser(user) {
+      Object.assign(this.userData, user)
     },
     logout() {
       this.loggedIn = false

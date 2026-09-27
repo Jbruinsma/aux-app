@@ -17,10 +17,23 @@
 </template>
 
 <style scoped>
-.blocks { width: 100%; height: auto; display: block; }
+.blocks { width: 100%; height: auto; display: block; view-transition-name: brand-blocks; }
 .pu { fill: var(--purple); }
 .so { fill: var(--purple-soft); }
 .gr { fill: var(--line-strong); }
 .ik { fill: var(--ink); }
-.bar { fill: var(--white); }
+.bar {
+  fill: var(--white);
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: bar-bounce calc(var(--dur-med) * 2) var(--ease-pop) both;
+}
+/* The equalizer plays once whenever the blocks appear */
+.bar:nth-of-type(odd) { animation-delay: 60ms; }
+.bar:nth-of-type(3n) { animation-delay: 120ms; }
+@keyframes bar-bounce {
+  0% { transform: scaleY(0.15); }
+  45% { transform: scaleY(1.15); }
+  70% { transform: scaleY(0.85); }
+}
 </style>
