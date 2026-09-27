@@ -16,9 +16,6 @@ import com.aux_app.repository.UserRepository;
 import com.aux_app.services.OnboardingService;
 import com.aux_app.services.UploadService;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

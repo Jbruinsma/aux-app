@@ -85,8 +85,9 @@ public class UserEntity {
     }
 
     private String generateBaseUsername(String userId) {
-        String slice = userId.substring(0, Math.min(userId.length(), 8));
-        return "aux_" + slice;
+        String baseId = "aux_";
+        String slice = userId.substring(0, Math.min(userId.length(), 12));
+        return baseId + slice;
     }
 
 }
