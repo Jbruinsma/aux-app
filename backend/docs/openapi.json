@@ -9,6 +9,189 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/users/me/profile-picture" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Replace the caller's profile picture",
+        "description" : "Multipart field `file`: a JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256.\nSend the original image; do NOT crop it on the frontend. The server applies EXIF rotation,\ncenter-crops to a square, resizes to at most 1024x1024, and stores it as WebP.\nReturns the new public URL.\n",
+        "operationId" : "updateProfilePicture",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfilePictureUpdate"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/users/onboarding/step" : {
+      "post" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Complete an onboarding step",
+        "description" : "Steps must be completed in order (USERNAME, PFP). Send the step the user is currently on.\n- `step=USERNAME`: also send form field `username` (3-16 chars: letters, numbers, underscore).\n- `step=PFP`: also send multipart field `file` (same rules as PUT /me/profile-picture).\nReturns the updated user; `onboardingStep` is the next step, or `DONE` when finished.\n",
+        "operationId" : "completeOnboardingStep",
+        "parameters" : [ {
+          "name" : "step",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "USERNAME", "PFP", "DONE" ]
+          }
+        }, {
+          "name" : "username",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Step accepted; body is the updated user",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserSummary"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Username taken (code USERNAME_TAKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/auth/register" : {
       "post" : {
         "tags" : [ "auth-controller" ],
@@ -176,17 +359,20 @@
         }, { } ]
       }
     },
-    "/api/users/me" : {
+    "/api/users/onboarding/status" : {
       "get" : {
         "tags" : [ "user-controller" ],
-        "operationId" : "me",
+        "summary" : "Get the current onboarding step",
+        "description" : "Returns the step the user must complete next. `DONE` means onboarding is finished.",
+        "operationId" : "getOnboardingStatus",
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/UserSummary"
+                  "type" : "string",
+                  "enum" : [ "USERNAME", "PFP", "DONE" ]
                 }
               }
             }
@@ -322,44 +508,12 @@
   },
   "components" : {
     "schemas" : {
-      "RegistrationCredentials" : {
+      "ProfilePictureUpdate" : {
         "type" : "object",
         "properties" : {
-          "username" : {
+          "profilePictureUrl" : {
             "type" : "string",
-            "example" : "justin",
-            "maxLength" : 16,
-            "minLength" : 3
-          },
-          "email" : {
-            "type" : "string",
-            "example" : "example@gmail.com",
-            "maxLength" : 254,
-            "minLength" : 3
-          },
-          "password" : {
-            "type" : "string",
-            "example" : "correct-horse-battery",
-            "maxLength" : 32,
-            "minLength" : 8
-          }
-        },
-        "required" : [ "email", "password", "username" ]
-      },
-      "AuthResponse" : {
-        "type" : "object",
-        "properties" : {
-          "token" : {
-            "type" : "string",
-            "example" : "eyJhbGciOiJIUzI1NiJ9..."
-          },
-          "expiresAt" : {
-            "type" : "string",
-            "format" : "date-time",
-            "example" : "2026-10-25T12:00:00Z"
-          },
-          "user" : {
-            "$ref" : "#/components/schemas/UserSummary"
+            "example" : "https://media.example.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
@@ -377,6 +531,46 @@
           "profilePictureUrl" : {
             "type" : "string",
             "example" : "/uploads/users/u_41x9.jpg"
+          },
+          "onboardingStep" : {
+            "type" : "string",
+            "enum" : [ "USERNAME", "PFP", "DONE" ],
+            "example" : "USERNAME (1) | PFP (2) | DONE (3)"
+          }
+        }
+      },
+      "RegistrationCredentials" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "example" : "example@gmail.com",
+            "maxLength" : 254,
+            "minLength" : 3
+          },
+          "password" : {
+            "type" : "string",
+            "example" : "correct-horse-battery",
+            "maxLength" : 32,
+            "minLength" : 8
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "AuthResponse" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "example" : "eyJhbGciOiJIUzI1NiJ9..."
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "example" : "2026-10-25T12:00:00Z"
+          },
+          "user" : {
+            "$ref" : "#/components/schemas/UserSummary"
           }
         }
       },

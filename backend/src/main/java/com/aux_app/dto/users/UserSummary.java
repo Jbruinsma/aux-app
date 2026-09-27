@@ -8,9 +8,15 @@ import com.aux_app.entity.UserEntity;
 public record UserSummary(
         @Schema(example = "u_41x9") String userId,
         @Schema(example = "justin") String username,
-        @Schema(example = "/uploads/users/u_41x9.jpg") String profilePictureUrl
+        @Schema(example = "/uploads/users/u_41x9.jpg") String profilePictureUrl,
+        @Schema(example = "USERNAME (1) | PFP (2) | DONE (3)") OnboardingStep onboardingStep
 ) {
     public static UserSummary of(UserEntity user) {
-        return new UserSummary(user.getUserId(), user.getUsername(), user.getProfilePictureUrl());
+        return new UserSummary(
+                user.getUserId(),
+                user.getUsername(),
+                user.getProfilePictureUrl(),
+                user.getOnboardingStep()
+        );
     }
 }

@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AUX_JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
+      AUX_R2_ACCOUNT_ID: ci
+      AUX_R2_ACCESS_KEY_ID: ci
+      AUX_R2_SECRET_ACCESS_KEY: ci
+      AUX_R2_BUCKET: ci
+      AUX_R2_PUBLIC_BASE_URL: https://ci.invalid
       SPRING_DATASOURCE_URL: jdbc:sqlite:/tmp/ci.db
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
     steps:
