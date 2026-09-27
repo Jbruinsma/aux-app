@@ -3,23 +3,8 @@
     <form class="auth-card" @submit.prevent="register">
       <h1>Create your account</h1>
 
-      <label class="label" for="register-username">Username</label>
-      <input
-        id="register-username"
-        v-model="username"
-        class="input"
-        type="text"
-        autocomplete="username"
-        minlength="3"
-        maxlength="16"
-        required
-        autofocus
-        aria-describedby="register-username-hint"
-      />
-      <p id="register-username-hint" class="hint">3 to 16 characters.</p>
-
       <label class="label" for="register-email">Email</label>
-      <input id="register-email" v-model="email" class="input" type="email" autocomplete="email" required />
+      <input id="register-email" v-model="email" class="input" type="email" autocomplete="email" required autofocus />
 
       <label class="label" for="register-password">Password</label>
       <input
@@ -58,7 +43,6 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const router = useRouter()
 const userStore = useUserStore()
 
-const username = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -76,17 +60,16 @@ async function register() {
   submitting.value = true
   try {
     const response = await postToAPI(`${API_BASE_URL}/api/auth/register`, {
-      username: username.value,
       email: email.value,
       password: password.value,
     })
-    userStore.login(response.user.username, response.token)
-    await router.push('/dashboard')
+    userStore.login(response.user, response.token)
+    await router.push({ name: 'Onboarding' })
   } catch (err) {
-    if (err.message === 'Username already exists') {
-      errorMessage.value = 'That username is taken. Try another one.'
-    } else if (err.message === 'password is too long') {
-      errorMessage.value = 'That password is too long. Use fewer or simpler characters.'
+    if (err.code === 'EMAIL_TAKEN') {
+      errorMessage.value = 'That email already has an account. Log in instead.'
+    } else if (err.code === 'INVALID_FIELD' && err.parameter === 'password') {
+      errorMessage.value = "That password isn't allowed. Use 8 to 32 characters."
     } else {
       errorMessage.value = "We couldn't create your account. Check that the server is running, then try again."
     }

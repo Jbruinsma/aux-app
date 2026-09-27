@@ -97,7 +97,7 @@ public class AuthController {
     @ApiResponse(responseCode = "401", description = "Wrong username or password (code INVALID_CREDENTIALS)")
     @ResponseStatus(HttpStatus.OK)
     public AuthResponse login(@Valid @RequestBody LoginCredentials credentials) {
-        UserEntity user = users.findByUsername(credentials.username());
+        UserEntity user = users.findByEmail(credentials.email());
 
         String hash = user != null ? user.getPasswordHash() : dummyHash;
         if (!bcrypt.matches(credentials.password(), hash) || user == null) {
