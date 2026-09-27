@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
 
     UserEntity findByUsername(String username);
 
+    UserEntity findByEmail(String email);
+
     boolean existsByEmail(String email);
 
     // Null if username doesn't exist. Guard before use.
@@ -36,8 +38,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                 first.getPfpUrl(),
                 formatPlaylists(rows),
                 first.getUserId().equals(currentUserId),
-                Boolean.TRUE.equals(first.getIsFollowing()),
-                Boolean.TRUE.equals(first.getFollowingMe()));
+                Integer.valueOf(1).equals(first.getIsFollowing()),
+                Integer.valueOf(1).equals(first.getFollowingMe()));
     }
 
     private static @NonNull List<ProfilePlaylist> formatPlaylists(List<ProfileRow> rows) {
@@ -85,8 +87,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getUserId();
         String getUsername();
         String getPfpUrl();
-        Boolean getIsFollowing();
-        Boolean getFollowingMe();
+        Integer getIsFollowing(); // SQLite has no boolean type: 1 or 0
+        Integer getFollowingMe(); // SQLite has no boolean type: 1 or 0
         String getPlaylistId();
         String getPlaylistName();
         String getPlaylistCoverUrl();

@@ -14,7 +14,7 @@ import { useMusicStore } from '@/stores/music.js'
 import { fetchAPI } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-const bannedRoutes = ['/', '/login', '/register']
+const bannedRoutes = ['/', '/login', '/register', '/onboarding']
 
 const route = useRoute()
 const userStore = useUserStore()

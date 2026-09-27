@@ -26,9 +26,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                 first.getPlaylistId(),
                 first.getPlaylistCoverUrl(),
                 first.getPlaylistName(),
-                Boolean.TRUE.equals(first.getIsPublic()),
+                Integer.valueOf(1).equals(first.getIsPublic()),
                 new PlaylistOwner(first.getOwnerId(), first.getOwnerPfpUrl(), first.getOwnerUsername()),
-                Boolean.TRUE.equals(first.getIsSaved()),
+                Integer.valueOf(1).equals(first.getIsSaved()),
                 pieces);
     }
 
@@ -43,7 +43,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                     row.getPieceName(),
                     row.getPieceCoverUrl(),
                     new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
-                    Boolean.TRUE.equals(row.getIsFavorite())));
+                    Integer.valueOf(1).equals(row.getIsFavorite())));
         }
         return pieces;
     }
@@ -80,12 +80,12 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     interface PlaylistWithTracksRow {
         String getPlaylistId();
         String getOwnerId();
-        Boolean getIsPublic();
+        Integer getIsPublic(); // SQLite has no boolean type: 1 or 0
         String getPlaylistCoverUrl();
         String getPlaylistName();
         String getOwnerUsername();
         String getOwnerPfpUrl();
-        Boolean getIsSaved();
+        Integer getIsSaved(); // SQLite has no boolean type: 1 or 0
         String getMusicPieceId();
         Integer getPlaylistPosition();
         String getPieceName();
@@ -93,7 +93,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         String getArtistId();
         String getArtistName();
         String getArtistPfpUrl();
-        Boolean getIsFavorite();
+        Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
     }
 
     record PlaylistPage(
