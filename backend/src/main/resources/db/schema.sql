@@ -22,7 +22,8 @@ CREATE TABLE users (
     password_hash VARCHAR(72) NOT NULL,
     profile_picture_url VARCHAR,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    onboarding_step VARCHAR
 );
 
 CREATE TABLE playlists (
