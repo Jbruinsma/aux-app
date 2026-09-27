@@ -166,8 +166,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* The fixed music player covers the bottom of the page, so the footer extends underneath it */
-.with-player > footer { padding-bottom: 120px; }
 .home { max-width: 1120px; margin: 0 auto; padding: 0 var(--space-6) var(--space-8); }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }

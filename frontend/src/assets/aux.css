@@ -83,6 +83,11 @@ html:has(.aux-page) #app {
   flex: 1 0 auto;
 }
 
+/* Pages that show the fixed music player extend the footer underneath it, so nothing is hidden */
+.aux-page.with-player > footer {
+  padding-bottom: 120px;
+}
+
 .aux-page *,
 .aux-page *::before,
 .aux-page *::after {

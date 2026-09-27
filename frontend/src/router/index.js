@@ -47,7 +47,8 @@ const routes = [
   },
   { path: '/dashboard', name: 'Dashboard', component: Dashboard},
   { path: '/:username', name: 'Profile', component: PublicProfile },
-  { path: '/settings/:username', name: 'Settings', component: Settings},
+  // :tab is empty for the Profile tab, or 'applications'
+  { path: '/settings/:username/:tab?', name: 'Settings', component: Settings },
   { path: '/create', name: 'Create', component: CreatePlaylist},
   { path: '/playlist/:username/:id', name: 'Playlist', component: PlaylistDetail },
   { path: '/add/:username/:id', name: 'Add', component: AddMusic },
