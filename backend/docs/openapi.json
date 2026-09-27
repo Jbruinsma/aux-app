@@ -504,6 +504,37 @@
           "bearerAuth" : [ ]
         } ]
       }
+    },
+    "/api/core/top" : {
+      "get" : {
+        "tags" : [ "core-controller" ],
+        "operationId" : "getTopMusicPieces",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TopMusicPiece"
+                  }
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -744,6 +775,22 @@
           "username" : {
             "type" : "string",
             "example" : "justin"
+          }
+        }
+      },
+      "TopMusicPiece" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "example" : "Devil In a New Dress"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/covers/m_92kd0.jpg"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary"
           }
         }
       },
