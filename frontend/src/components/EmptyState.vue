@@ -6,6 +6,9 @@
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </template>
+      <template v-else-if="icon === 'disc'">
+        <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="2" />
+      </template>
       <template v-else-if="icon === 'mic'">
         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
         <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" />
@@ -22,7 +25,7 @@
 
 <script setup>
 defineProps({
-  // Lucide outline icon name: 'music' (default), 'users' or 'mic'
+  // Lucide outline icon name: 'music' (default), 'users', 'mic' or 'disc'
   icon: { type: String, default: 'music' },
   title: { type: String, required: true },
   text: { type: String, required: true },

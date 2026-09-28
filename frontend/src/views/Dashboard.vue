@@ -27,29 +27,7 @@
               title="No playlists yet"
               text="Create a playlist and upload an MP3 to start your library."
             />
-            <ul v-else class="grid">
-              <li v-for="playlist in playlists" :key="playlist.playlistId">
-                <router-link
-                  class="tile"
-                  :to="{ name: 'Playlist', params: { username, id: playlist.playlistId } }"
-                >
-                  <img
-                    v-if="playlist.playlistCoverUrl"
-                    class="cover"
-                    :src="resolveCoverURL(playlist.playlistCoverUrl)"
-                    alt=""
-                  />
-                  <span v-else class="cover cover-empty" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                    </svg>
-                  </span>
-                  <span class="tile-name">{{ playlist.playlistName }}</span>
-                  <span class="tile-meta">{{ songCount(playlist.totalPieces) }}</span>
-                </router-link>
-              </li>
-            </ul>
+            <PlaylistGrid v-else :playlists="playlists" :owner="username" />
           </section>
 
           <section aria-labelledby="recent-heading">
@@ -114,6 +92,7 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import PlaylistGrid from '@/components/PlaylistGrid.vue'
 import { fetchAPI } from '@/utils/api.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
@@ -137,10 +116,6 @@ const playlistSummary = computed(() => {
   const count = playlists.value.length
   return count === 1 ? '1 playlist' : `${count} playlists`
 })
-
-function songCount(total) {
-  return total === 1 ? '1 song' : `${total} songs`
-}
 
 function openProfile() {
   const target = searchQuery.value.trim()
@@ -166,7 +141,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.home { max-width: 1120px; margin: 0 auto; padding: 0 var(--space-6) var(--space-8); }
+.home { width: 100%; padding: 0 var(--page-gutter) var(--space-8); }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
 .meta { font: 500 14px/20px var(--font-sans); color: var(--ink-muted); margin: 0; }
@@ -181,13 +156,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); flex-wrap: wrap; }
 .section-head h2 { margin: 0; }
 
-.grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-4); }
-.tile { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); border-radius: var(--radius-sm); }
-.tile:hover .tile-name { color: var(--link); text-decoration: underline; }
-.cover { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-sm); background: var(--surface-alt); margin-bottom: var(--space-2); }
-.cover-empty { display: grid; place-items: center; color: var(--ink-muted); }
-.tile-name { font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tile-meta { font: 500 14px/20px var(--font-sans); color: var(--ink-muted); }
 
 .side { display: flex; flex-direction: column; gap: var(--space-4); }
 .panel { background: var(--surface-alt); border-radius: var(--radius-md); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
@@ -204,7 +172,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
   .layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .home { padding-left: var(--space-4); padding-right: var(--space-4); }
   .welcome { padding-top: var(--space-6); }
   .av { width: 48px; height: 48px; font-size: 19px; }
 }
