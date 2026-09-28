@@ -8,7 +8,8 @@ import { API_BASE_URL } from '@/utils/variables.js'
 export const useMusicStore = defineStore('music', () => {
   // Default values
   const DEFAULT_UUID = ''
-  const DEFAULT_COVER = '/default_cover.png'
+  // Empty means no cover; the player shows a music-note placeholder (there is no default cover file)
+  const DEFAULT_COVER = ''
   const DEFAULT_TITLE = 'No song playing'
   const DEFAULT_ARTIST = displayArtist('')
   const DEFAULT_PLAYLIST = []

@@ -1,60 +1,70 @@
 <template>
   <div>
-    <button v-if="showArrow" @click="collapsed = !collapsed" class="collapse-toggle">
-      <svg v-if="collapsed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" />
-      </svg>
-      <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+    <button
+      v-if="showArrow"
+      type="button"
+      class="collapse-toggle"
+      :aria-label="collapsed ? 'Show player' : 'Hide player'"
+      :aria-expanded="collapsed ? 'false' : 'true'"
+      @click="collapsed = !collapsed"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path v-if="collapsed" d="m18 15-6-6-6 6" />
+        <path v-else d="m6 9 6 6 6-6" />
       </svg>
     </button>
 
     <div class="bottom-player" :class="{ collapsed }" v-if="shouldShowPlayer">
       <div class="now-playing-info">
-        <div class="song-cover" :style="{ backgroundImage: `url(${currentMusicPiece?.cover || '/default_cover.png'})` }"></div>
+        <img v-if="currentMusicPiece?.cover" class="song-cover" :src="currentMusicPiece.cover" alt="" />
+        <span v-else class="song-cover cover-empty" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+          </svg>
+        </span>
         <div class="song-details">
-          <div class="song-title">{{ currentMusicPiece?.title || 'No song playing' }}</div>
-          <div class="song-artist">{{ currentMusicPiece?.artist || '' }}</div>
+          <p class="song-title">{{ currentMusicPiece?.title || 'No song playing' }}</p>
+          <p v-if="currentMusicPiece?.artist" class="song-artist">{{ currentMusicPiece.artist }}</p>
         </div>
       </div>
 
       <div class="controls">
-        <button @click="prevTrack">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061A1.125 1.125 0 0 1 21 8.689v8.122ZM11.25 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.061a1.125 1.125 0 0 1 0-1.954l7.108-4.061a1.125 1.125 0 0 1 1.683.977v8.122Z" />
+        <button type="button" class="icon-btn" aria-label="Previous" @click="prevTrack">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M6 5h2v14H6zM19 5.5v13a.5.5 0 0 1-.77.42L9 12.42a.5.5 0 0 1 0-.84l9.23-6.5a.5.5 0 0 1 .77.42z" />
           </svg>
         </button>
-        <button @click="togglePlay">
-          <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-          </svg>
+        <button type="button" class="play" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="togglePlay">
+          <svg v-if="!isPlaying" width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
+          <svg v-else width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor" /></svg>
         </button>
-        <button @click="nextTrack">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+        <button type="button" class="icon-btn" aria-label="Next" @click="nextTrack">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" />
           </svg>
         </button>
       </div>
 
       <div class="right-side">
-        <button @click="toggleShuffle" :class="{ active: shuffleOn }">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" />
+            <path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" />
+            <path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" />
           </svg>
         </button>
-        <button @click="toggleRepeat" :class="{ active: repeatOn }">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
+        <button type="button" class="icon-btn toggle" :class="{ active: repeatOn }" aria-label="Repeat" :aria-pressed="repeatOn ? 'true' : 'false'" @click="toggleRepeat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+            <path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
           </svg>
         </button>
         <div class="volume">
-          <input type="range" min="0" max="1" step="0.01" v-model="volume" />
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 volume-icon">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+          <svg class="volume-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" />
+            <path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" />
           </svg>
+          <input class="slider" type="range" min="0" max="1" step="0.01" v-model="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" />
         </div>
       </div>
     </div>
@@ -63,13 +73,22 @@
 
     <div class="progress-bar-container" :class="{ collapsed }" v-if="shouldShowPlayer">
       <span class="time">{{ formattedCurrentTime }}</span>
-      <input type="range" min="0" :max="Math.floor(duration)" step="any" :value="progress" @input="e => progress = parseFloat(e.target.value)" />
+      <input
+        class="slider"
+        type="range"
+        min="0"
+        :max="Math.floor(duration)"
+        step="any"
+        :value="progress"
+        aria-label="Seek"
+        :aria-valuetext="`${formattedCurrentTime} of ${formattedDuration}`"
+        :style="{ '--fill': progressFill }"
+        @input="e => progress = parseFloat(e.target.value)"
+      />
       <span class="time">{{ formattedDuration }}</span>
     </div>
   </div>
 </template>
-
-
 
 <script setup>
 import { computed, watch, nextTick, ref } from 'vue'
@@ -118,6 +137,10 @@ watch(volume, v => {
   const audio = audioRef.value
   if (audio) audio.volume = v
 }, { immediate: true })
+
+// How much of each slider is filled, for the purple part of the track
+const progressFill = computed(() => (duration.value ? `${Math.min(100, (progress.value / duration.value) * 100)}%` : '0%'))
+const volumeFill = computed(() => `${volume.value * 100}%`)
 
 const formattedDuration = computed(() => {
   const m = Math.floor(duration.value / 60)
@@ -235,43 +258,56 @@ function nextTrack() {
 </script>
 
 <style scoped>
-.bottom-player { align-items: center; background: #1e1e1e; border-top: 2px solid rgba(255,255,255,0.1); bottom: 30px; color: #f0f0f0; display: flex; justify-content: space-between; left: 0; padding: 0.5rem 1.5rem; position: fixed; right: 0; transition: transform 0.3s; z-index: 100; }
-.bottom-player.collapsed { transform: translateY(calc(100% + 30px)); }
-.collapse-toggle { align-items: center; background: #1e1e1e; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; bottom: 100px; color: #f0f0f0; cursor: pointer; display: flex; padding: 0.4rem; position: fixed; right: 1.5rem; transition: background 0.2s, color 0.2s; z-index: 101; }
-.controls { align-items: center; display: flex; gap: 1.5rem; left: 50%; position: absolute; transform: translateX(-50%); }
-.controls button { align-items: center; background: none; border: none; color: #f0f0f0; cursor: pointer; display: flex; font-size: 1.5rem; }
-.controls button:hover { color: #4caf50; }
-.now-playing-info { align-items: center; color: #f0f0f0; display: flex; gap: 1rem; }
-.progress-bar-container { align-items: center; background: #1e1e1e; bottom: 0; color: #aaa; display: flex; gap: 0.8rem; left: 0; padding: 0.3rem 1.5rem; position: fixed; right: 0; transition: transform 0.3s; z-index: 99; }
+/* Styled to the Aux design system: a light gray bar, purple only on the play button and slider fills */
+.bottom-player,
+.progress-bar-container { position: fixed; left: 0; right: 0; background: var(--surface-alt); color: var(--ink); font-family: var(--font-sans); transition: transform var(--dur-med) var(--ease); }
+.bottom-player { bottom: 32px; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--page-gutter) var(--space-1); border-top: 1px solid var(--line); }
+.bottom-player.collapsed { transform: translateY(calc(100% + 32px)); }
+.progress-bar-container { bottom: 0; z-index: 99; height: 32px; display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--page-gutter); }
 .progress-bar-container.collapsed { transform: translateY(100%); }
-.progress-bar-container input[type="range"] { -webkit-appearance: none; background: transparent; cursor: pointer; flex: 1; height: 6px; }
-.progress-bar-container input[type="range"]::-moz-range-thumb { background: #fff; border-radius: 50%; height: 14px; width: 14px; }
-.progress-bar-container input[type="range"]::-moz-range-track { background: #666; border-radius: 3px; height: 6px; }
-.progress-bar-container input[type="range"]::-webkit-slider-runnable-track { background: #666; border-radius: 3px; height: 6px; }
-.progress-bar-container input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; background: #fff; border-radius: 50%; height: 14px; margin-top: -4px; width: 14px; }
-.right-side { align-items: center; display: flex; gap: 1rem; }
-.right-side button { align-items: center; background: none; border: none; color: #f0f0f0; cursor: pointer; display: flex; transition: color 0.2s, transform 0.2s; }
-.right-side button.active { color: #4caf50; transform: scale(1.2); }
-.right-side button.active:hover { color: #fff; }
-.size-6 { height: 24px; width: 24px; }
-.song-artist { color: #aaa; font-size: 0.85rem; }
-.song-cover { background: #444 center; background-size: cover; border-radius: 8px; height: 50px; width: 50px; }
-.song-details { display: flex; flex-direction: column; }
-.song-title { font-size: 1rem; font-weight: 500; }
-.time { font-size: 0.85rem; }
-.volume input[type="range"] { -webkit-appearance: none; background: transparent; cursor: pointer; height: 6px; width: 100px; }
-.volume input[type="range"]::-moz-range-thumb { background: #fff; border-radius: 50%; height: 14px; width: 14px; }
-.volume input[type="range"]::-moz-range-track { background: #666; border-radius: 3px; height: 6px; }
-.volume input[type="range"]::-webkit-slider-runnable-track { background: #666; border-radius: 3px; height: 6px; }
-.volume input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; background: #fff; border-radius: 50%; height: 14px; margin-top: -4px; width: 14px; }
-.volume-icon { width: 15px; height: 15px; margin-left: 0.5rem; }
+.time { font: 500 12px/16px var(--font-sans); color: var(--ink-muted); font-variant-numeric: tabular-nums; min-width: 32px; }
+.time:last-child { text-align: right; }
 
-@media (max-width:600px){
-  .bottom-player{flex-direction:column;align-items:center;gap:1rem;padding:1rem;}
-  .now-playing-info{flex-direction:column;align-items:center;text-align:center;}
-  .controls{justify-content:center;width:100%;}
-  .right-side{justify-content:center;width:100%;flex-wrap:wrap;}
+.collapse-toggle { position: fixed; right: var(--page-gutter); bottom: 108px; z-index: 101; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: var(--radius-pill); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-muted); cursor: pointer; }
+.collapse-toggle:hover { color: var(--ink); background: var(--surface-alt); }
+
+.now-playing-info { display: flex; align-items: center; gap: var(--space-3); min-width: 0; flex: 1; }
+.song-cover { width: 48px; height: 48px; flex: none; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface); }
+.cover-empty { display: grid; place-items: center; color: var(--ink-muted); border: 1px solid var(--line); }
+.song-details { min-width: 0; }
+.song-title { margin: 0; font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-artist { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.controls { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-4); }
+.icon-btn { position: relative; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--radius-pill); background: none; color: var(--ink-muted); cursor: pointer; }
+.icon-btn:hover { color: var(--ink); background: var(--surface); }
+/* The play button is the one purple fill in the bar, like the play button in a track row */
+.play { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); background: var(--primary); color: var(--on-primary); cursor: pointer; }
+.play:hover { background: var(--purple-hover); }
+
+.right-side { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex: 1; }
+/* On is purple plus a dot underneath, so it doesn't rely on color alone */
+.toggle.active { color: var(--link); }
+.toggle.active::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; border-radius: var(--radius-pill); background: currentColor; }
+.volume { display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-2); color: var(--ink-muted); }
+.volume .slider { width: 100px; }
+
+/* Sliders: a thin gray track with the played or set part in purple (--fill is set inline) */
+.slider { -webkit-appearance: none; appearance: none; flex: 1; height: 16px; margin: 0; background: transparent; cursor: pointer; }
+.slider::-webkit-slider-runnable-track { height: 4px; border-radius: var(--radius-pill); background: linear-gradient(to right, var(--purple) var(--fill, 0%), var(--line) var(--fill, 0%)); }
+.slider::-moz-range-track { height: 4px; border-radius: var(--radius-pill); background: var(--line); }
+.slider::-moz-range-progress { height: 4px; border-radius: var(--radius-pill); background: var(--purple); }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4px; border-radius: var(--radius-pill); background: var(--purple); border: 0; }
+.slider::-moz-range-thumb { width: 12px; height: 12px; border-radius: var(--radius-pill); background: var(--purple); border: 0; }
+
+.bottom-player :focus-visible,
+.progress-bar-container :focus-visible,
+.collapse-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+@media (max-width: 600px) {
+  .bottom-player { flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); }
+  .controls { position: static; transform: none; }
+  .right-side { justify-content: center; }
+  .collapse-toggle { bottom: 196px; }
 }
-
-
 </style>

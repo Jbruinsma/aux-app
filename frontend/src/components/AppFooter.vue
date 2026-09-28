@@ -5,7 +5,7 @@
         <div class="col">
           <h2>Aux</h2>
           <ul>
-            <li><router-link to="/">Home</router-link></li>
+            <li><router-link to="/music">Music</router-link></li>
           </ul>
         </div>
         <div class="col">
@@ -18,7 +18,7 @@
         <div class="col">
           <h2>Account</h2>
           <ul v-if="loggedIn">
-            <li><router-link to="/dashboard">Home</router-link></li>
+            <li><router-link to="/music">Music</router-link></li>
             <li><router-link :to="{ name: 'Profile', params: { username } }">Your Profile</router-link></li>
             <li><router-link :to="{ name: 'Settings', params: { username } }">Settings</router-link></li>
           </ul>
@@ -67,7 +67,7 @@ const year = new Date().getFullYear()
 
 <style scoped>
 .foot { background: var(--surface-alt); border-top: 1px solid var(--line); }
-.footin { max-width: 1120px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-6); }
+.footin { padding: var(--space-8) var(--page-gutter) var(--space-6); }
 .cols { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-6); }
 h2 { font: 700 14px/20px var(--font-sans); color: var(--ink); margin: 0 0 var(--space-3); }
 ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
@@ -80,6 +80,5 @@ a:hover { color: var(--link); text-decoration: underline; }
 }
 @media (max-width: 520px) {
   .cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .footin { padding-left: var(--space-4); padding-right: var(--space-4); }
 }
 </style>
