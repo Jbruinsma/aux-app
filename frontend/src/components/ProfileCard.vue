@@ -1,5 +1,5 @@
 <template>
-  <article class="profile-card">
+  <article class="profile-card" :class="{ flat }">
     <div class="banner">
       <img v-if="bannerUrl" :src="bannerUrl" :class="{ cover: !bannerStyle }" :style="bannerStyle" alt="" />
     </div>
@@ -31,6 +31,8 @@ const props = defineProps({
   country: { type: String, default: '' },
   about: { type: String, default: '' },
   website: { type: String, default: '' },
+  // Flat drops the card box so it blends into the page, as in the profile's left column
+  flat: { type: Boolean, default: false },
 })
 
 const initial = computed(() => props.username.charAt(0).toUpperCase())
@@ -39,6 +41,10 @@ const initial = computed(() => props.username.charAt(0).toUpperCase())
 <style scoped>
 .profile-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
 /* Banners are 3:1; without one the strip stays a soft purple */
+.profile-card.flat { background: none; border: 0; border-radius: 0; overflow: visible; }
+.flat .banner { border-radius: 0; }
+.flat .body { padding: 0 var(--space-8) var(--space-6) 0; }
+.flat .av { margin-left: var(--space-4); }
 .banner { position: relative; overflow: hidden; aspect-ratio: 3 / 1; background: var(--purple-soft); }
 .banner img { display: block; }
 .banner img.cover { width: 100%; height: 100%; object-fit: cover; }

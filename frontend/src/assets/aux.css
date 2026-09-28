@@ -53,6 +53,16 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
   --font-sans: Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif;
+  /* The sticky top bar's height on desktop, including its bottom border; things pinned below it use this */
+  --header-height: 69px;
+  /* Space between the window edge and page content; the Aux logo and every page line up on it */
+  --page-gutter: 2rem;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --page-gutter: 1rem;
+  }
 }
 
 /* Pages built on the Aux design system wrap themselves in .aux-page; older UnChained views keep their own dark styles */
