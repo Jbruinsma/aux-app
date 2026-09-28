@@ -78,7 +78,8 @@
               <img :src="bannerPreviewUrl" :style="bannerStyle" alt="" draggable="false" />
             </div>
             <div v-else class="banner-frame">
-              <p class="banner-empty">No banner yet</p>
+              <img v-if="savedBanner" class="banner-saved" :src="savedBanner" alt="Your current banner" />
+              <p v-else class="banner-empty">No banner yet</p>
             </div>
 
             <div v-if="newBanner" class="adjust">
@@ -118,25 +119,43 @@
                 sharpest. See how it looks on your profile card.
               </p>
               <p v-if="bannerError" class="error" role="alert">{{ bannerError }}</p>
-              <button type="button" class="btn primary" disabled>Upload banner</button>
-              <p class="hint">Saving banners is coming soon.</p>
+              <p v-if="bannerSaved" class="success" role="status">Your new banner is saved.</p>
+              <button type="button" class="btn primary" :disabled="!newBanner || bannerUploading" @click="uploadBanner">
+                {{ bannerUploading ? 'Uploading…' : 'Upload banner' }}
+              </button>
             </div>
           </section>
 
-          <section aria-labelledby="creative-heading">
+          <section class="wide" aria-labelledby="creative-heading">
             <h2 id="creative-heading">Get creative!</h2>
-            <form class="details" @submit.prevent>
-              <label class="row-label" for="display-name">Display name</label>
-              <input id="display-name" v-model="details.displayName" class="input" type="text" maxlength="32" :placeholder="username" />
+            <form class="details" @submit.prevent="saveDetails">
+              <div class="field">
+                <label class="row-label" for="display-name">Display name</label>
+                <input
+                  id="display-name"
+                  v-model="details.displayName"
+                  class="input"
+                  type="text"
+                  :maxlength="NAME_MAX"
+                  :placeholder="username"
+                  :aria-invalid="nameInvalid ? 'true' : 'false'"
+                  aria-describedby="name-error"
+                />
+                <p v-if="nameInvalid" id="name-error" class="error">
+                  Use {{ NAME_MIN }} to {{ NAME_MAX }} characters, or leave it empty.
+                </p>
+              </div>
 
-              <label class="row-label" for="country">Country</label>
-              <select id="country" v-model="details.country" class="input">
-                <option value="">None</option>
-                <option v-for="country in COUNTRIES" :key="country.code" :value="country.code">{{ country.name }}</option>
-              </select>
+              <div class="field">
+                <label class="row-label" for="country">Country</label>
+                <select id="country" v-model="details.country" class="input">
+                  <option value="">None</option>
+                  <option v-for="country in COUNTRIES" :key="country.code" :value="country.code">{{ country.name }}</option>
+                </select>
+              </div>
 
-              <label class="row-label" for="website">Website</label>
-              <div>
+              <div class="field">
+                <label class="row-label" for="website">Website</label>
                 <input
                   id="website"
                   v-model="details.website"
@@ -151,13 +170,13 @@
                 </p>
               </div>
 
-              <label class="row-label" for="about">About you</label>
-              <div>
+              <div class="field about-field">
+                <label class="row-label" for="about">About you</label>
                 <textarea
                   id="about"
                   v-model="details.about"
                   class="input textarea"
-                  rows="5"
+                  rows="4"
                   :maxlength="ABOUT_LIMIT"
                   aria-describedby="about-hint"
                 ></textarea>
@@ -166,10 +185,12 @@
                 </p>
               </div>
 
-              <div></div>
-              <div>
-                <button type="submit" class="btn primary" disabled>Save changes</button>
-                <p class="hint coming-soon">Saving these details is coming soon.</p>
+              <div class="wide">
+                <button type="submit" class="btn primary" :disabled="detailsSaving || nameInvalid || websiteInvalid">
+                  {{ detailsSaving ? 'Saving…' : 'Save changes' }}
+                </button>
+                <p v-if="detailsError" class="error status-line" role="alert">{{ detailsError }}</p>
+                <p v-if="detailsSaved" class="success status-line" role="status">Your details are saved.</p>
               </div>
             </form>
           </section>
@@ -181,8 +202,8 @@
             :username="username"
             :display-name="details.displayName"
             :picture-url="shownPicture"
-            :banner-url="bannerPreviewUrl"
-            :banner-style="bannerStyle"
+            :banner-url="bannerPreviewUrl || savedBanner"
+            :banner-style="bannerPreviewUrl ? bannerStyle : null"
             :country="countryName"
             :about="details.about"
             :website="websiteLabel"
@@ -235,15 +256,18 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ProfileCard from '@/components/ProfileCard.vue'
-import { request } from '@/utils/api.js'
+import { fetchAPI, request } from '@/utils/api.js'
 import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { resolveCoverURL } from '@/utils/display.js'
-import { PHOTO_ERRORS, bannerProblem, photoProblem } from '@/utils/photo.js'
-import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
+import { BANNER_ERRORS, PHOTO_ERRORS, bannerProblem, photoProblem } from '@/utils/photo.js'
+import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerCropRect, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
 import { COUNTRIES } from '@/utils/countries.js'
 
 const ABOUT_LIMIT = 200
+// Same limits as the backend's ProfileDetailsUpdate
+const NAME_MIN = 3
+const NAME_MAX = 15
 
 const TABS = [
   { id: 'profile', label: 'Profile' },
@@ -274,8 +298,20 @@ const tab = computed(() => (TABS.some((t) => t.id === route.params.tab) ? route.
 const initial = computed(() => username.value.charAt(0).toUpperCase())
 
 onMounted(() => {
-  if (!userStore.loggedIn) router.replace({ name: 'Login' })
+  if (!userStore.loggedIn) {
+    router.replace({ name: 'Login' })
+    return
+  }
+  loadSavedProfile()
 })
+
+// A 401 means the session ended: log out and go to the login page
+async function handleUnauthorized(err) {
+  if (err.status !== 401) return false
+  userStore.logout()
+  await router.replace({ name: 'Login' })
+  return true
+}
 
 /* Picture: choosing a file only previews it; nothing is sent until "Upload picture" */
 
@@ -339,18 +375,14 @@ async function uploadPhoto() {
     clearChoice()
     photoSaved.value = true
   } catch (err) {
-    if (err.status === 401) {
-      userStore.logout()
-      await router.replace({ name: 'Login' })
-      return
-    }
+    if (await handleUnauthorized(err)) return
     photoError.value = PHOTO_ERRORS[err.code] ?? "We couldn't upload your picture. Check that the server is running, then try again."
   } finally {
     uploading.value = false
   }
 }
 
-/* Banner: the backend can't store one yet, so choosing a file only previews it. The crop lives here and
+/* Banner: choosing a file only previews it; nothing is sent until "Upload banner". The crop lives here and
    drives both the editor frame and the profile card, so they always show the same framing */
 
 const bannerInput = ref(null)
@@ -358,6 +390,8 @@ const bannerFrame = ref(null)
 const newBanner = ref(null)
 const bannerPreviewUrl = ref('')
 const bannerError = ref('')
+const bannerSaved = ref(false)
+const bannerUploading = ref(false)
 const bannerSize = ref(null) // { width, height } of the original image
 const bannerCrop = ref({ ...DEFAULT_CROP })
 const bannerDrag = ref(null) // { pointerId, x, y, crop } while dragging
@@ -421,6 +455,7 @@ async function onPickBanner(event) {
   if (!file) return
   const problem = await bannerProblem(file)
   revertBanner()
+  bannerSaved.value = false
   if (problem) {
     bannerError.value = problem
     return
@@ -446,9 +481,98 @@ function revertBanner() {
   if (bannerInput.value) bannerInput.value.value = ''
 }
 
-/* Get creative: the backend has no endpoint for these yet, so they can be filled in and previewed but not saved */
+const savedBanner = computed(() => {
+  const url = userStore.userData?.bannerUrl
+  return url ? resolveCoverURL(url) : ''
+})
+
+// The server crops, so we send the original file plus the visible area in pixels of the original image
+async function uploadBanner() {
+  if (!newBanner.value || bannerUploading.value) return
+  bannerError.value = ''
+  bannerUploading.value = true
+  try {
+    const { width, height } = bannerSize.value
+    const rect = bannerCropRect(bannerCrop.value, width, height)
+    // Rounding can push the area one pixel past the image edge, which the server rejects
+    rect.x = Math.min(rect.x, width - rect.width)
+    rect.y = Math.min(rect.y, height - rect.height)
+
+    const query = new URLSearchParams({
+      cropX: rect.x,
+      cropY: rect.y,
+      cropWidth: rect.width,
+      cropHeight: rect.height,
+    })
+    const form = new FormData()
+    form.append('file', newBanner.value)
+    const { bannerUrl } = await request('PUT', `${API_BASE_URL}/api/users/me/banner?${query}`, form)
+    userStore.updateUser({ bannerUrl })
+    revertBanner()
+    bannerSaved.value = true
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    bannerError.value = BANNER_ERRORS[err.code] ?? "We couldn't upload your banner. Check that the server is running, then try again."
+  } finally {
+    bannerUploading.value = false
+  }
+}
+
+/* Get creative: the saved details load when the page opens, and "Save changes" replaces them on the server */
 
 const details = reactive({ displayName: '', country: '', website: '', about: '' })
+const detailsSaving = ref(false)
+const detailsSaved = ref(false)
+const detailsError = ref('')
+
+// The server sends null for anything the user never filled in; the form wants empty strings
+function showDetails(saved) {
+  details.displayName = saved?.displayName ?? ''
+  details.country = saved?.country ?? ''
+  details.website = saved?.website ?? ''
+  details.about = saved?.about ?? ''
+}
+
+// The profile endpoint has both the saved details and the saved banner
+async function loadSavedProfile() {
+  try {
+    const profile = await fetchAPI(`${API_BASE_URL}/api/users/profile/${encodeURIComponent(username.value)}`)
+    showDetails(profile.profileDetails)
+    userStore.updateUser({ bannerUrl: profile.bannerUrl })
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    detailsError.value = "We couldn't load your saved details. Check that the server is running, then reload."
+  }
+}
+
+const nameInvalid = computed(() => {
+  const length = details.displayName.trim().length
+  return length > 0 && (length < NAME_MIN || length > NAME_MAX)
+})
+
+async function saveDetails() {
+  if (detailsSaving.value || nameInvalid.value || websiteInvalid.value) return
+  detailsError.value = ''
+  detailsSaved.value = false
+  detailsSaving.value = true
+  try {
+    // Empty values are sent as null, which clears them on the server
+    const body = {
+      displayName: details.displayName.trim() || null,
+      country: details.country || null,
+      website: details.website.trim() || null,
+      about: details.about.trim() || null,
+    }
+    const saved = await request('PUT', `${API_BASE_URL}/api/users/me/profile-details`, body)
+    showDetails(saved)
+    detailsSaved.value = true
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    detailsError.value = err.code === 'INVALID_FIELD' ? err.message : "We couldn't save your details. Check that the server is running, then try again."
+  } finally {
+    detailsSaving.value = false
+  }
+}
 
 const websiteInvalid = computed(() => {
   const value = details.website.trim()
@@ -477,7 +601,10 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-4); }
 .tab.active { color: var(--link); border-bottom-color: var(--primary); }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--space-8); padding-top: var(--space-6); padding-bottom: var(--space-8); }
-.main-col { display: flex; flex-direction: column; gap: var(--space-8); }
+/* Wide screens: picture beside banner, then "Get creative" across both, so the fields fill the width up to the preview.
+   Fixed tracks, not auto-fit: a full-row item keeps auto-fit's empty tracks open and leaves a gap on the right */
+.main-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); align-content: start; }
+.wide { grid-column: 1 / -1; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .hint { margin: 0; font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
 .error { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--danger); }
@@ -499,13 +626,16 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .visually-hidden:focus-visible + label { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* Get creative */
-.details { display: grid; grid-template-columns: 160px minmax(0, 480px); gap: var(--space-4) var(--space-6); align-items: start; }
-.row-label { font: 600 14px/20px var(--font-sans); text-align: right; padding-top: 10px; }
+/* Name, country and website share a row; "About you" lines up under the first two, the save button gets its own row */
+.details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4) var(--space-6); align-items: start; }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.about-field { grid-column: span 2; }
+.row-label { font: 600 14px/20px var(--font-sans); }
 .input { width: 100%; font: 400 16px/24px var(--font-sans); padding: 8px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); }
 .input[aria-invalid='true'] { border-color: var(--danger); }
-.textarea { resize: vertical; min-height: 120px; }
+.textarea { resize: vertical; }
 .details .hint, .details .error { margin-top: var(--space-1); }
-.coming-soon { margin-top: var(--space-2) !important; }
+.status-line { margin-top: var(--space-2) !important; }
 
 /* Applications: flat rows split by hairlines, like the track list */
 .intro { margin: 0; color: var(--ink-muted); }
@@ -520,14 +650,15 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .app-desc { margin: 0; font: 400 14px/20px var(--font-sans); }
 .app-status { margin: var(--space-1) 0 0; font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
 
-.banner-frame { aspect-ratio: 3 / 1; max-width: 480px; border-radius: var(--radius-md); overflow: hidden; background: var(--purple-soft); display: grid; place-items: center; margin-bottom: var(--space-4); }
+.banner-frame { aspect-ratio: 3 / 1; border-radius: var(--radius-md); overflow: hidden; background: var(--purple-soft); display: grid; place-items: center; margin-bottom: var(--space-4); }
 .banner-frame.editing { position: relative; display: block; cursor: grab; touch-action: none; user-select: none; }
 .banner-frame.editing.dragging { cursor: grabbing; }
 .banner-frame img { display: block; pointer-events: none; }
-.adjust { display: flex; flex-direction: column; gap: var(--space-2); max-width: 480px; margin-bottom: var(--space-4); }
+.adjust { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
 .zoom-row { display: flex; align-items: center; gap: var(--space-3); }
 .zoom-label { font: 600 14px/20px var(--font-sans); }
 .zoom { flex: 1; accent-color: var(--primary); }
+.banner-saved { width: 100%; height: 100%; object-fit: cover; }
 .banner-empty { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--ink-muted); }
 
 /* Preview */
@@ -535,6 +666,14 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .side { position: sticky; top: calc(88px + env(safe-area-inset-top, 0px)); align-self: start; display: flex; flex-direction: column; gap: var(--space-3); }
 .side-title { font: 700 16px/24px var(--font-sans); margin: 0; }
 
+/* Too narrow for two sections or three fields side by side */
+@media (max-width: 1400px) {
+  .main-col { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 1200px) {
+  .details { grid-template-columns: minmax(0, 1fr); }
+  .about-field { grid-column: auto; }
+}
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .side { position: static; }
@@ -542,8 +681,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 @media (max-width: 600px) {
   .picture { grid-template-columns: 1fr; }
   .avatar-col { align-items: flex-start; }
-  .details { grid-template-columns: 1fr; gap: var(--space-2); }
-  .row-label { text-align: left; padding-top: var(--space-2); }
   .app { grid-template-columns: 40px minmax(0, 1fr); }
   .app .btn { grid-column: 2; justify-self: start; }
 }

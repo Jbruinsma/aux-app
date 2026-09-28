@@ -98,6 +98,191 @@
         } ]
       }
     },
+    "/api/users/me/profile-details" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Replace the caller's profile details",
+        "description" : "Full replace. Every field is optional: a missing, null, empty or whitespace-only value clears it.\nStrings are trimmed. `website` must be an http(s) URL. Returns the saved details.\n",
+        "operationId" : "updateProfileDetails",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileDetailsUpdate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileDetails"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/users/me/banner" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Replace the caller's banner image",
+        "description" : "Multipart field `file`: the ORIGINAL JPEG or PNG (do not crop on the frontend), at most 5MB and\n25 megapixels, at least 600x200. Plus `cropX`, `cropY`, `cropWidth`, `cropHeight`: the 3:1 area\nthe user framed, in pixels of the original image as displayed (after EXIF rotation).\nThe server crops to that area, resizes down to at most 1500x500 (never upscales), and stores it\nas WebP. Returns the new public URL.\n",
+        "operationId" : "updateBanner",
+        "parameters" : [ {
+          "name" : "cropX",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "cropY",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "cropWidth",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "cropHeight",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BannerUpdate"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/onboarding/step" : {
       "post" : {
         "tags" : [ "user-controller" ],
@@ -548,6 +733,66 @@
           }
         }
       },
+      "ProfileDetailsUpdate" : {
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "type" : "string",
+            "example" : "Joe Mama",
+            "maxLength" : 15,
+            "minLength" : 3
+          },
+          "country" : {
+            "type" : "string",
+            "enum" : [ "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT", "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM", "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN", "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK", "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW", "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP", "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF", "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW" ],
+            "example" : "US"
+          },
+          "website" : {
+            "type" : "string",
+            "example" : "https://google.com",
+            "maxLength" : 2048,
+            "minLength" : 0,
+            "pattern" : "https?://\\S+"
+          },
+          "about" : {
+            "type" : "string",
+            "example" : "I am a cool guy",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        }
+      },
+      "ProfileDetails" : {
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "type" : "string",
+            "example" : "Joe Mama"
+          },
+          "country" : {
+            "type" : "string",
+            "enum" : [ "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT", "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM", "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN", "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK", "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW", "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP", "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF", "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW" ],
+            "example" : "US"
+          },
+          "website" : {
+            "type" : "string",
+            "example" : "https://google.com"
+          },
+          "about" : {
+            "type" : "string",
+            "example" : "I am a cool guy"
+          }
+        }
+      },
+      "BannerUpdate" : {
+        "type" : "object",
+        "properties" : {
+          "bannerUrl" : {
+            "type" : "string",
+            "example" : "https://media.example.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          }
+        }
+      },
       "UserSummary" : {
         "type" : "object",
         "properties" : {
@@ -561,7 +806,11 @@
           },
           "profilePictureUrl" : {
             "type" : "string",
-            "example" : "/uploads/users/u_41x9.jpg"
+            "example" : "https://aux.justinabruinsma.com/pfp/66fa2.webp"
+          },
+          "bannerUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/banner/66fa2.webp"
           },
           "onboardingStep" : {
             "type" : "string",
@@ -654,7 +903,14 @@
           },
           "pfpUrl" : {
             "type" : "string",
-            "example" : "/uploads/users/u_41x9.jpg"
+            "example" : "https://aux.justinabruinsma.com/pfp/66fa2.webp"
+          },
+          "bannerUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/banner/66fa2.webp"
+          },
+          "profileDetails" : {
+            "$ref" : "#/components/schemas/ProfileDetails"
           },
           "playlists" : {
             "type" : "array",

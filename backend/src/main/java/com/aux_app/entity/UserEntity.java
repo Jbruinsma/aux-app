@@ -32,6 +32,9 @@ public class UserEntity {
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 
+    @Column(name = "banner_url")
+    private String bannerUrl;
+
     @Column(name = "created_at")
     private Instant createdAt;
 
@@ -65,6 +68,7 @@ public class UserEntity {
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getProfilePictureUrl() { return profilePictureUrl; }
+    public String getBannerUrl() { return bannerUrl; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public OnboardingStep getOnboardingStep() { return onboardingStep; }
@@ -76,6 +80,11 @@ public class UserEntity {
 
     public void setOnboardingStep(OnboardingStep onboardingStep) {
         this.onboardingStep = onboardingStep;
+        this.updatedAt = Instant.now();
+    }
+
+    public void setBannerUrl(String bannerUrl) {
+        this.bannerUrl = bannerUrl;
         this.updatedAt = Instant.now();
     }
 
