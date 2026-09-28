@@ -1,7 +1,9 @@
 package com.aux_app.repository;
 
+import com.aux_app.dto.base.Country;
 import com.aux_app.dto.playlist.CorePlaylist;
 import com.aux_app.dto.playlist.ProfilePlaylist;
+import com.aux_app.dto.users.ProfileDetails;
 import com.aux_app.dto.users.UserProfile;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,6 +38,12 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         return new UserProfile(
                 first.getUsername(),
                 first.getPfpUrl(),
+                first.getBannerUrl(),
+                new ProfileDetails(
+                        first.getDisplayName(),
+                        first.getCountry(),
+                        first.getWebsite(),
+                        first.getAbout()),
                 formatPlaylists(rows),
                 first.getUserId().equals(currentUserId),
                 Integer.valueOf(1).equals(first.getIsFollowing()),
@@ -68,8 +76,13 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
             SELECT u.user_id AS userId,
                    u.username AS username,
                    u.profile_picture_url AS pfpUrl,
-                   EXISTS (SELECT 1 FROM follows f1
-                           WHERE f1.follower_user_id = CAST(:currentUserId AS varchar) AND f1.following_user_id = u.user_id) AS isFollowing,
+                   u.banner_url AS bannerUrl,
+                   pd.display_name AS displayName,
+                   pd.country AS country,
+                   pd.website AS website,
+                   pd.about AS about,
+                            EXISTS (SELECT 1 FROM follows f1
+                                    WHERE f1.follower_user_id = CAST(:currentUserId AS varchar) AND f1.following_user_id = u.user_id) AS isFollowing,
                    EXISTS (SELECT 1 FROM follows f2
                            WHERE f2.follower_user_id = u.user_id AND f2.following_user_id = CAST(:currentUserId AS varchar)) AS followingMe,
                    p.playlist_id AS playlistId,
@@ -77,6 +90,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                    p.playlist_cover_url AS playlistCoverUrl,
                    (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces
             FROM users u
+            LEFT JOIN profile_details pd ON pd.user_id = u.user_id
             LEFT JOIN playlists p ON p.owner_id = u.user_id
                                  AND (p.is_public = true OR u.user_id = CAST(:currentUserId AS varchar))
             WHERE u.username = :username
@@ -87,6 +101,11 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getUserId();
         String getUsername();
         String getPfpUrl();
+        String getBannerUrl();
+        String getDisplayName();
+        Country getCountry();
+        String getWebsite();
+        String getAbout();
         Integer getIsFollowing(); // SQLite has no boolean type: 1 or 0
         Integer getFollowingMe(); // SQLite has no boolean type: 1 or 0
         String getPlaylistId();

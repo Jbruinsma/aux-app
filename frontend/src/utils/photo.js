@@ -11,7 +11,7 @@ export const PHOTO_ERRORS = {
   INVALID_IMAGE: "We couldn't read that photo. Choose a different one.",
 }
 
-// Banner rules are proposed: the backend has no banner upload yet, so these may change when it does
+// Banner rules, matching what the backend enforces
 export const MIN_BANNER_WIDTH = 600
 export const MIN_BANNER_HEIGHT = 200
 
@@ -20,6 +20,7 @@ export const BANNER_ERRORS = {
   IMAGE_TOO_SMALL: 'That image is too small. Use one at least 600 × 200 pixels.',
   UNSUPPORTED_IMAGE_TYPE: "That file isn't a JPEG or PNG. Choose a different image.",
   INVALID_IMAGE: "We couldn't read that image. Choose a different one.",
+  INVALID_CROP: "That framing didn't work. Reposition the banner and try again.",
 }
 
 export async function bannerProblem(file) {
