@@ -1,16 +1,21 @@
 package com.aux_app.controller;
 
 import com.aux_app.dto.users.*;
+import com.aux_app.repository.ProfileDetailsRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.auth.OptionalCurrentUser;
+import com.aux_app.entity.ProfileDetailsEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.OnboardingService;
@@ -21,15 +26,18 @@ import com.aux_app.services.UploadService;
 public class UserController {
 
     private final UserRepository users;
+    private final ProfileDetailsRepository profileDetails;
     private final UploadService uploads;
     private final OnboardingService onboarding;
 
     public UserController(
             UserRepository users,
+            ProfileDetailsRepository profileDetails,
             UploadService uploads,
             OnboardingService onboarding
     ) {
         this.users = users;
+        this.profileDetails = profileDetails;
         this.uploads = uploads;
         this.onboarding = onboarding;
     }
@@ -126,6 +134,60 @@ public class UserController {
             @RequestParam("file") MultipartFile file
     ) {
         return new ProfilePictureUpdate(uploads.replaceProfilePicture(user, file));
+    }
+
+    @PutMapping(value = "/me/banner", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Replace the caller's banner image",
+            description = """
+                    Multipart field `file`: the ORIGINAL JPEG or PNG (do not crop on the frontend), at most 5MB and
+                    25 megapixels, at least 600x200. Plus `cropX`, `cropY`, `cropWidth`, `cropHeight`: the 3:1 area
+                    the user framed, in pixels of the original image as displayed (after EXIF rotation).
+                    The server crops to that area, resizes down to at most 1500x500 (never upscales), and stores it
+                    as WebP. Returns the new public URL.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Unreadable or too small image, or bad crop (code INVALID_IMAGE, IMAGE_TOO_SMALL, INVALID_CROP)")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token (code INVALID_TOKEN)")
+    @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
+    public BannerUpdate updateBanner(
+            @CurrentUser UserEntity user,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam int cropX,
+            @RequestParam int cropY,
+            @RequestParam int cropWidth,
+            @RequestParam int cropHeight
+    ) {
+        return new BannerUpdate(uploads.replaceBanner(user, file, cropX, cropY, cropWidth, cropHeight));
+    }
+
+    @PutMapping("/me/profile-details")
+    @Operation(
+            summary = "Replace the caller's profile details",
+            description = """
+                    Full replace. Every field is optional: a missing, null, empty or whitespace-only value clears it.
+                    Strings are trimmed. `website` must be an http(s) URL. Returns the saved details.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Validation failed")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token (code INVALID_TOKEN)")
+    public ProfileDetails updateProfileDetails(
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody ProfileDetailsUpdate update
+    ) {
+        Optional<ProfileDetailsEntity> existing = profileDetails.findById(user.getUserId());
+
+        ProfileDetailsEntity details;
+        details = existing.orElseGet(() -> new ProfileDetailsEntity(user.getUserId()));
+
+        details.setDisplayName(update.displayName());
+        details.setCountry(update.country());
+        details.setWebsite(update.website());
+        details.setAbout(update.about());
+        profileDetails.save(details);
+
+        return new ProfileDetails(update.displayName(), update.country(), update.website(), update.about());
     }
 
     // TODO POST /{username}/update-username/{new_username}

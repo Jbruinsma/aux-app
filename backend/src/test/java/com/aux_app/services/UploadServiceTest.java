@@ -88,6 +88,62 @@ class UploadServiceTest {
         assertRejected(encode(solid(100, 100, Color.RED, false), "png"), HttpStatus.BAD_REQUEST, "IMAGE_TOO_SMALL");
     }
 
+    @Test
+    void bannerIsCroppedAndDownscaledTo1500x500() throws IOException {
+        // Left half red, right half blue; crop the right 3000x1000 area only
+        BufferedImage image = solid(4000, 1500, Color.RED, false);
+        Graphics2D g = image.createGraphics();
+        g.setColor(Color.BLUE);
+        g.fillRect(1000, 0, 3000, 1500);
+        g.dispose();
+
+        BufferedImage out = webp(UploadService.bannerToWebp(encode(image, "png"), 1000, 200, 3000, 1000));
+        assertEquals(1500, out.getWidth());
+        assertEquals(500, out.getHeight());
+        Color c = new Color(out.getRGB(10, 10));
+        assertTrue(c.getBlue() > 200 && c.getRed() < 60, "expected blue, got " + c);
+    }
+
+    @Test
+    void unscaledBannerCropWithOffsetKeepsItsPixels() throws IOException {
+        // Top 100 rows red, the rest blue; the crop starts below the red, so no red may appear in the output
+        BufferedImage image = solid(900, 400, Color.BLUE, false);
+        Graphics2D g = image.createGraphics();
+        g.setColor(Color.RED);
+        g.fillRect(0, 0, 900, 100);
+        g.dispose();
+
+        BufferedImage out = webp(UploadService.bannerToWebp(encode(image, "png"), 0, 100, 900, 300));
+        for (int y : new int[] {0, 150, 299}) {
+            Color c = new Color(out.getRGB(450, y));
+            assertTrue(c.getBlue() > 200 && c.getRed() < 60, "row " + y + " expected blue, got " + c);
+        }
+    }
+
+    @Test
+    void smallBannerCropIsNotUpscaled() throws IOException {
+        BufferedImage out = webp(UploadService.bannerToWebp(encode(solid(900, 400, Color.RED, false), "png"), 0, 0, 900, 300));
+        assertEquals(900, out.getWidth());
+        assertEquals(300, out.getHeight());
+    }
+
+    @Test
+    void badBannerCropIsRejected() throws IOException {
+        byte[] png = encode(solid(900, 400, Color.RED, false), "png");
+        int[][] crops = {{0, 0, 900, 400}, {100, 0, 900, 300}, {-1, 0, 900, 300}, {0, 0, 0, 0}};
+        for (int[] c : crops) {
+            AuxException e = assertThrows(AuxException.class, () -> UploadService.bannerToWebp(png, c[0], c[1], c[2], c[3]));
+            assertEquals("INVALID_CROP", e.getDetails().code());
+        }
+    }
+
+    @Test
+    void bannerBelowMinimumSizeIsRejected() throws IOException {
+        byte[] png = encode(solid(500, 300, Color.RED, false), "png");
+        AuxException e = assertThrows(AuxException.class, () -> UploadService.bannerToWebp(png, 0, 0, 500, 166));
+        assertEquals("IMAGE_TOO_SMALL", e.getDetails().code());
+    }
+
     private static void assertRejected(byte[] bytes, HttpStatus status, String code) {
         AuxException e = assertThrows(AuxException.class, () -> UploadService.toWebp(bytes));
         assertEquals(status, e.getStatus());

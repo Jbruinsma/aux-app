@@ -11,7 +11,7 @@ const CODES = (
 
 const names = new Intl.DisplayNames(['en'], { type: 'region' })
 
-// [{ code: 'US', name: 'United States' }, ...] sorted by name
-export const COUNTRIES = CODES.map((code) => ({ code, name: names.of(code) })).sort((a, b) =>
-  a.name.localeCompare(b.name),
+// [{ code: 'US', name: 'United States' }, ...] United States first, the rest sorted by name
+export const COUNTRIES = CODES.map((code) => ({ code, name: names.of(code) })).sort(
+  (a, b) => (b.code === 'US') - (a.code === 'US') || a.name.localeCompare(b.name),
 )

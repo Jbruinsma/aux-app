@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS user_favorite_artists;
 DROP TABLE IF EXISTS follows;
 DROP TABLE IF EXISTS artists;
 DROP TABLE IF EXISTS playlists;
+DROP TABLE IF EXISTS profile_details;
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
@@ -21,9 +22,18 @@ CREATE TABLE users (
     email VARCHAR(320) NOT NULL UNIQUE,
     password_hash VARCHAR(72) NOT NULL,
     profile_picture_url VARCHAR,
+    banner_url VARCHAR,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
-    onboarding_step VARCHAR
+    onboarding_step VARCHAR NOT NULL
+);
+
+CREATE TABLE profile_details (
+    user_id VARCHAR NOT NULL PRIMARY KEY REFERENCES users(user_id),
+    display_name VARCHAR,
+    country VARCHAR,
+    website VARCHAR,
+    about VARCHAR(200)
 );
 
 CREATE TABLE playlists (
