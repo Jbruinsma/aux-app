@@ -5,6 +5,7 @@ import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import Dashboard from '@/views/Dashboard.vue'
 import PublicProfile from '@/views/PublicProfile.vue'
+import ComingSoon from '@/views/ComingSoon.vue'
 import Settings from '@/views/Settings.vue'
 import CreatePlaylist from '@/views/CreatePlaylist.vue'
 import PlaylistDetail from '@/views/PlaylistDetail.vue'
@@ -46,6 +47,14 @@ const routes = [
     },
   },
   { path: '/dashboard', name: 'Dashboard', component: Dashboard},
+  // Placeholders until these sections are built; listed before /:username so they aren't read as profiles
+  ...['Music', 'Friends', 'Explore'].map((title) => ({
+    path: `/${title.toLowerCase()}`,
+    name: title,
+    component: ComingSoon,
+    props: { title },
+    beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
+  })),
   { path: '/:username', name: 'Profile', component: PublicProfile },
   // :tab is empty for the Profile tab, or 'applications'
   { path: '/settings/:username/:tab?', name: 'Settings', component: Settings },

@@ -468,7 +468,7 @@ const websiteLabel = computed(() =>
 </script>
 
 <style scoped>
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--space-6); }
+.wrap { padding: 0 var(--page-gutter); }
 .page-head { border-bottom: 1px solid var(--line); padding-top: var(--space-8); }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-4); }
 .tabs { display: flex; gap: var(--space-6); }
@@ -540,7 +540,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
   .side { position: static; }
 }
 @media (max-width: 600px) {
-  .wrap { padding-left: var(--space-4); padding-right: var(--space-4); }
   .picture { grid-template-columns: 1fr; }
   .avatar-col { align-items: flex-start; }
   .details { grid-template-columns: 1fr; gap: var(--space-2); }

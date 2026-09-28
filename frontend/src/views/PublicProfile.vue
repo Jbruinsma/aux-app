@@ -1,147 +1,187 @@
 <template>
-  <div class="profile-page">
-    <nav class="navbar">
-      <div class="container nav-content">
-        <router-link to="/" class="site-name">Unchained</router-link>
-        <div class="nav-links">
-          <span class="nav-link" @click="rerouteToDashboard()">Playlists</span>
-          <span class="nav-link" @click="rerouteToPublicProfile()">Profile</span>
-          <span class="nav-link" @click="rerouteToSettings()">Settings</span>
-        </div>
-        <div class="nav-search">
-          <input type="text" v-model="searchQuery" @keyup.enter="performSearch" placeholder="Search user..." />
-        </div>
-      </div>
-    </nav>
+  <div class="aux-page with-player">
+    <AppHeader />
 
-    <div v-if="user" class="container profile-layout">
-      <div v-if="'error' in user" class="not-found">
-        <h1>User does not exist</h1>
-        <p>Sorry, we couldn’t find @{{ username }}.</p>
-      </div>
+    <main class="wrap">
+      <p v-if="status === 'loading'" class="meta page-state">Loading @{{ username }}…</p>
 
-      <div v-else class="profile-container">
-        <div class="profile-info">
-          <div class="profile-pic" :style="{ backgroundImage: `url(${resolveCoverURL(user.profilePicture)})` }"></div>
-          <div class="username">@{{ user.username }}</div>
-        </div>
+      <section v-else-if="status === 'missing'" class="page-state">
+        <h1>No one here goes by @{{ username }}</h1>
+        <p class="meta">Check the spelling, or find people from your home screen.</p>
+        <router-link to="/dashboard" class="btn secondary">Go home</router-link>
+      </section>
 
-        <div class="profile-content">
-          <div v-if="publicPlaylists.length !== 0">
-          <h2>Public Playlists</h2>
-          <div class="playlist-grid">
+      <section v-else-if="status === 'error'" class="page-state">
+        <h1>We couldn't load this profile</h1>
+        <p class="meta">Check that the server is running, then try again.</p>
+        <button type="button" class="btn secondary" @click="loadProfile">Try again</button>
+      </section>
+
+      <div v-else class="layout">
+        <aside class="side">
+          <ProfileCard flat :username="profile.username" :picture-url="pictureUrl">
+            <p v-if="profile.followingMe && !profile.isMe" class="badge">Follows you</p>
+            <dl class="stats">
+              <div>
+                <dt>Playlists</dt>
+                <dd>{{ profile.playlists.length }}</dd>
+              </div>
+            </dl>
             <router-link
-              v-for="(playlist, index) in publicPlaylists"
-              :key="index"
-              class="playlist-box"
-              :to="{ name: 'Playlist', params: { username: playlist.owner, id: playlist.uuid } }"
-            >
-              <div class="playlist-image" :style="{ backgroundImage: `url(${resolveCoverURL(playlist.cover)})` }"></div>
-              <div class="playlist-name">{{ playlist.name }}</div>
-            </router-link>
-          </div>
-        </div>
-          <div v-else class="empty-state">
-            <p>This user hasn’t made any public playlists yet. Check back later!</p>
-          </div>
+              v-if="profile.isMe"
+              :to="{ name: 'Settings', params: { username: profile.username } }"
+              class="btn secondary action"
+            >Edit profile</router-link>
+            <router-link v-else-if="!loggedIn" to="/login" class="btn secondary action">Log in to follow</router-link>
+            <template v-else>
+              <button type="button" class="btn secondary action" disabled aria-describedby="follow-soon">
+                {{ profile.isFollowing ? 'Following' : 'Follow' }}
+              </button>
+              <p id="follow-soon" class="hint">Following is coming soon.</p>
+            </template>
+          </ProfileCard>
+        </aside>
+
+        <div class="main-col">
+          <section aria-labelledby="recent-heading">
+            <h2 id="recent-heading">Recent tracks</h2>
+            <EmptyState
+              title="No plays yet"
+              :text="profile.isMe ? 'Play a song and it shows up here.' : `Songs @${profile.username} plays show up here.`"
+            />
+          </section>
+
+          <section aria-labelledby="artists-heading">
+            <h2 id="artists-heading">Top artists</h2>
+            <EmptyState
+              icon="mic"
+              title="No top artists yet"
+              :text="profile.isMe
+                ? 'Your most-played artists appear here once you’ve listened to a few songs.'
+                : `@${profile.username}’s most-played artists appear here once they’ve listened to a few songs.`"
+            />
+          </section>
+
+          <section aria-labelledby="albums-heading">
+            <h2 id="albums-heading">Top albums</h2>
+            <EmptyState
+              icon="disc"
+              title="No top albums yet"
+              :text="profile.isMe
+                ? 'Your most-played albums appear here once you’ve listened to a few songs.'
+                : `@${profile.username}’s most-played albums appear here once they’ve listened to a few songs.`"
+            />
+          </section>
+
+          <section aria-labelledby="playlists-heading">
+            <h2 id="playlists-heading">Playlists</h2>
+            <PlaylistGrid v-if="profile.playlists.length" :playlists="profile.playlists" :owner="profile.username" />
+            <EmptyState
+              v-else
+              title="No playlists yet"
+              :text="profile.isMe ? 'Create a playlist and it shows up here.' : `@${profile.username} hasn’t shared any playlists yet.`"
+            />
+          </section>
         </div>
       </div>
-    </div>
+    </main>
 
-    <div v-else class="loading-container">
-      <p>Loading profile...</p>
-    </div>
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { computed, onMounted, ref, watch } from 'vue'
-import {fetchAPI} from "@/utils/api.js";
-import {resolveCoverURL} from "@/utils/display.js";
-import { rerouteToDashboard, rerouteToPublicProfile, rerouteToSettings } from '@/utils/reroutes.js'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import PlaylistGrid from '@/components/PlaylistGrid.vue'
+import ProfileCard from '@/components/ProfileCard.vue'
+import { fetchAPI } from '@/utils/api.js'
+import { resolveCoverURL } from '@/utils/display.js'
+import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
-import router from '@/router/index.js'
 
 const route = useRoute()
+const userStore = useUserStore()
+
 const username = computed(() => route.params.username)
-const user = ref(null)
-const publicPlaylists = ref([])
+const loggedIn = computed(() => userStore.loggedIn)
 
-const searchQuery = ref('')
+const profile = ref(null)
+const status = ref('loading') // loading | ready | missing | error
 
+const pictureUrl = computed(() => (profile.value?.pfpUrl ? resolveCoverURL(profile.value.pfpUrl) : ''))
+
+// Playlists here are already filtered by the backend: other people only see public ones
 async function loadProfile() {
-  const url = `${API_BASE_URL}/api/users/profile/${username.value}`
-  const data = await fetchAPI(url)
-  user.value = data
-
-  if ("error" in data) {
-    console.log("Error fetching user:", data.error)
-    return
-  }
-
-  const userPlaylists = user.value.playlists
-  for (const playlistID in userPlaylists){
-    const currPlaylist = userPlaylists[playlistID]
-    if (currPlaylist.isPublic === true && currPlaylist.owner === username.value) {
-      publicPlaylists.value.push(currPlaylist)
-    }
+  const requested = username.value
+  status.value = 'loading'
+  try {
+    const data = await fetchAPI(`${API_BASE_URL}/api/users/profile/${encodeURIComponent(requested)}`)
+    // Ignore a slow answer for a profile the user has already navigated away from
+    if (requested !== username.value) return
+    profile.value = data
+    status.value = 'ready'
+    glideToTopAfterRefresh()
+  } catch (err) {
+    if (requested !== username.value) return
+    status.value = err.code === 'USER_NOT_FOUND' || err.status === 404 ? 'missing' : 'error'
   }
 }
 
-onMounted(loadProfile)
+// After a refresh, start where the reader was (Vue Router keeps it in history.state) and glide back to the top.
+// Only once per page load, and never when the reader prefers reduced motion.
+let glidePending = performance.getEntriesByType('navigation')[0]?.type === 'reload'
 
-watch(() => route.params.username,() => {
-  publicPlaylists.value = []
-  loadProfile()
-})
-
-
-function performSearch() {
-  if (searchQuery.value.trim() !== '') {
-    router.push({ name: 'Profile', params: { username: searchQuery.value.trim() } })
-    searchQuery.value = ''
-  }
+async function glideToTopAfterRefresh() {
+  if (!glidePending) return
+  glidePending = false
+  const saved = history.state?.scroll?.top ?? 0
+  if (saved <= 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  await nextTick()
+  window.scrollTo({ top: saved, behavior: 'instant' })
+  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
 }
 
+// Also reloads when moving from one profile straight to another, where the component is reused
+watch(username, loadProfile, { immediate: true })
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Libertinus+Math&display=swap');
-.container.profile-layout{margin:2rem auto;max-width:1200px;padding:0 1rem;}
-.empty-state{color:#ccc;font-size:1.1rem;margin-top:4rem;text-align:center;}
-.loading-container{margin-top:4rem;text-align:center;}
-.nav-content{align-items:center;display:flex;justify-content:space-between;margin:0 auto;max-width:1200px;padding:0 1rem;}
-.nav-link{color:#fff;font-weight:500;text-decoration:none;transition:color 0.3s;}
-.nav-link:hover{color:#ccc;cursor:pointer;}
-.nav-links{display:flex;gap:2rem;}
-.nav-search{display:flex;justify-content:flex-end;margin-left:2rem;}
-.nav-search input{background:#121212;border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#f0f0f0;font-size:1rem;padding:0.4rem 0.8rem;transition:border 0.3s;width:180px;}
-.nav-search input:focus{border:1px solid #f0f0f0;outline:none;}
-.navbar{background:#000;padding:1rem 0;}
-.not-found{margin:4rem auto;max-width:600px;text-align:center;}
-.not-found h1{font-size:2rem;margin-bottom:1rem;}
-.not-found p{color:#ccc;font-size:1.1rem;}
-.playlist-box{background:rgba(255,255,255,0.05);border-radius:8px;color:inherit;cursor:pointer;overflow:hidden;text-align:center;text-decoration:none;transition:transform 0.3s;}
-.playlist-box:hover{transform:scale(1.05);}
-.playlist-grid{display:grid;gap:2rem;grid-template-columns:repeat(auto-fit,180px);}
-.playlist-image{background:#444;background-position:center;background-repeat:no-repeat;background-size:100% 100%;height:180px;width:100%;}
-.playlist-name{color:#ddd;font-size:1.1rem;padding:1rem;}
-.profile-container{align-items:flex-start;display:flex;gap:3rem;}
-.profile-content{flex:1;}
-.profile-content h2{border-bottom:2px solid rgba(255,255,255,0.2);font-size:2rem;margin-bottom:1.5rem;padding-bottom:0.5rem;}
-.profile-info{align-items:center;display:flex;flex:0 0 220px;flex-direction:column;}
-.profile-page{background:#1e1e1e;color:#f0f0f0;min-height:100vh;}
-.profile-pic{background:#444;background-position:center;background-repeat:no-repeat;background-size:cover;border-radius:50%;height:150px;margin-bottom:1rem;width:150px;}
-.site-name{color:#fff;font-family:'Libertinus Math',serif;font-size:1.8rem;text-decoration:none;}
-.username{color:#ddd;font-family:'Libertinus Math',serif;font-size:1.8rem;}
-@media (max-width: 768px){
-  .nav-content{align-items:flex-start;flex-direction:column;gap:1rem;}
-  .nav-links{flex-wrap:wrap;gap:1rem;justify-content:center;width:100%;}
-  .nav-search{justify-content:center;margin-left:0;width:100%;}
-  .nav-search input{width:80%;}
-  .profile-container{align-items:center;flex-direction:column;gap:2rem;}
-  .playlist-grid{grid-template-columns:1fr;justify-items:center;width:100%;}
-}
+.wrap { width: 100%; padding: 0 var(--page-gutter); display: flex; flex-direction: column; }
+/* The profile panel runs to the window's left edge, so the page drops its left gutter once it's showing */
+.wrap:has(.layout) { padding-left: 0; }
+h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-2); }
+h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
+.meta { font: 500 14px/20px var(--font-sans); color: var(--ink-muted); margin: 0; }
+.hint { margin: var(--space-1) 0 0; font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
 
+.page-state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-8) 0; }
+p.page-state { display: block; }
+
+/* The profile fills the left side; a full-height divider separates it from the listening sections */
+.layout { flex: 1; display: grid; grid-template-columns: calc(400px + var(--page-gutter)) minmax(0, 1fr); }
+/* The banner fills the panel edge to edge; the text inside lines up with the Aux logo */
+.side :deep(.body) { padding-left: var(--page-gutter); }
+/* The profile fills the left side from under the top bar to the bottom of the window and stays put while
+   the right side scrolls; the banner sits flush against the top bar and the divider */
+.side { position: sticky; top: calc(var(--header-height) + env(safe-area-inset-top, 0px)); align-self: start; height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
+.main-col { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8) 0 var(--space-8) var(--space-8); border-left: 1px solid var(--line); }
+
+.badge { align-self: flex-start; margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--purple-soft); font: 600 12px/16px var(--font-sans); }
+.stats { display: flex; gap: var(--space-6); margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.stats div { display: flex; flex-direction: column-reverse; }
+.stats dt { font: 600 12px/16px var(--font-sans); color: var(--ink-muted); }
+.stats dd { margin: 0; font: 700 20px/28px var(--font-sans); }
+.action { margin-top: var(--space-4); text-align: center; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  /* Stacked: the panel spans the full window width, and the sections below keep both gutters */
+  .side { position: static; height: auto; overflow: visible; margin-right: calc(-1 * var(--page-gutter)); border-bottom: 1px solid var(--line); }
+  .side :deep(.body) { padding-right: var(--page-gutter); }
+  .main-col { padding-left: var(--page-gutter); border-left: 0; }
+}
 </style>
