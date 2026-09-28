@@ -34,7 +34,12 @@ public class OnboardingService {
 
     // Accepts only the step the user is on, does that step's work, saves the next step, and returns the updated user.
     // USERNAME needs `username`; PFP needs `file`. The other argument is ignored.
-    public UserEntity completeStep(UserEntity user, OnboardingStep step, MultipartFile file, String username) {
+    public UserEntity completeStep(
+            UserEntity user,
+            OnboardingStep step,
+            MultipartFile file,
+            String username
+    ) {
         OnboardingStep expected = currentStep(user);
 
         if (step != expected || expected == OnboardingStep.DONE) {

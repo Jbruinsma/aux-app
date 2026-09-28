@@ -81,7 +81,7 @@ public class AuthController {
             );
 
             SessionToken session = sessions.issueSymmetricToken(newUserIdentifier, Map.of());
-            return new AuthResponse(session.token(), session.expiresAt(), UserSummary.of(user));
+            return new AuthResponse(session.token(), session.expiresAt(),  UserSummary.of(user));
 
         } catch (Exception accountCreationException) {
             throw new AuxException(

@@ -8,7 +8,9 @@ import java.util.List;
 
 public record UserProfile(
         @Schema(example = "justin") String username,
-        @Schema(example = "/uploads/users/u_41x9.jpg") String pfpUrl,
+        @Schema(example = "https://aux.justinabruinsma.com/pfp/66fa2.webp") String pfpUrl,
+        @Schema(example = "https://aux.justinabruinsma.com/banner/66fa2.webp") String bannerUrl,
+        ProfileDetails profileDetails,
         List<ProfilePlaylist> playlists,
         @Schema(example = "false") boolean isMe,
         @Schema(example = "true") boolean isFollowing,
