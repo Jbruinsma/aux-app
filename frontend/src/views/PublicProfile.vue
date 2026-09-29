@@ -31,9 +31,9 @@
           >
             <p v-if="profile.followingMe && !profile.isMe" class="badge">Follows you</p>
             <dl class="stats">
-              <div>
-                <dt>Playlists</dt>
-                <dd>{{ profile.playlists.length }}</dd>
+              <div v-for="stat in stats" :key="stat.label">
+                <dt>{{ stat.label }}</dt>
+                <dd>{{ stat.value.toLocaleString() }}</dd>
               </div>
             </dl>
             <router-link
@@ -91,6 +91,16 @@
               :text="profile.isMe ? 'Create a playlist and it shows up here.' : `@${profile.username} hasn’t shared any playlists yet.`"
             />
           </section>
+
+          <section aria-labelledby="uploads-heading">
+            <h2 id="uploads-heading">Uploads</h2>
+            <EmptyState
+              title="No uploads yet"
+              :text="profile.isMe
+                ? 'Songs you upload show up here, where others can play and download them.'
+                : `Songs @${profile.username} uploads show up here, ready to play and download.`"
+            />
+          </section>
         </div>
       </div>
     </main>
@@ -121,6 +131,14 @@ const loggedIn = computed(() => userStore.loggedIn)
 
 const profile = ref(null)
 const status = ref('loading') // loading | ready | missing | error
+
+// These counts aren't in the profile response yet; they show 0 until the backend sends
+// uploadsCount, followersCount and followingCount
+const stats = computed(() => [
+  { label: 'Uploads', value: profile.value.uploadsCount ?? 0 },
+  { label: 'Followers', value: profile.value.followersCount ?? 0 },
+  { label: 'Following', value: profile.value.followingCount ?? 0 },
+])
 
 const pictureUrl = computed(() => (profile.value?.pfpUrl ? resolveCoverURL(profile.value.pfpUrl) : ''))
 const bannerUrl = computed(() => (profile.value?.bannerUrl ? resolveCoverURL(profile.value.bannerUrl) : ''))
@@ -183,10 +201,10 @@ p.page-state { display: block; }
 .main-col { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8) 0 var(--space-8) var(--space-8); border-left: 1px solid var(--line); }
 
 .badge { align-self: flex-start; margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--purple-soft); font: 600 12px/16px var(--font-sans); }
-.stats { display: flex; gap: var(--space-6); margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.stats { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
 .stats div { display: flex; flex-direction: column-reverse; }
 .stats dt { font: 600 12px/16px var(--font-sans); color: var(--ink-muted); }
-.stats dd { margin: 0; font: 700 20px/28px var(--font-sans); }
+.stats dd { margin: 0; font: 700 20px/28px var(--font-sans); font-variant-numeric: tabular-nums; }
 .action { margin-top: var(--space-4); text-align: center; }
 
 @media (max-width: 900px) {

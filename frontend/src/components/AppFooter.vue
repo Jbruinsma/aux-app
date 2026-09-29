@@ -43,7 +43,10 @@
         <div class="col">
           <h2>Team</h2>
           <ul class="team">
-            <li v-for="name in TEAM" :key="name">{{ name }}</li>
+            <li v-for="member in TEAM" :key="member.name">
+              <a v-if="member.github" :href="member.github" target="_blank" rel="noopener noreferrer">{{ member.name }}</a>
+              <template v-else>{{ member.name }}</template>
+            </li>
           </ul>
         </div>
       </div>
@@ -57,7 +60,13 @@ import { computed } from 'vue'
 import { useUserStore } from '@/stores/user.js'
 
 const REPO_URL = 'https://github.com/Jbruinsma/aux-app'
-const TEAM = ['Justin', 'Mo', 'Muaz', 'RJ', 'Milind']
+const TEAM = [
+  { name: 'Justin', github: 'https://github.com/Jbruinsma' },
+  { name: 'Mo', github: 'https://github.com/fwmo' },
+  { name: 'RJ', github: 'https://github.com/Arjay05Rai' },
+  { name: 'Muaz' },
+  { name: 'Milind' },
+]
 
 const userStore = useUserStore()
 const username = computed(() => userStore.userData?.username)
