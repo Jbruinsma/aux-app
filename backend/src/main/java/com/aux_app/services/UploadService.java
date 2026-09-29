@@ -42,9 +42,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.aux_app.entity.MusicPieceEntity;
+import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.MusicPieceRepository;
+import com.aux_app.repository.PlaylistRepository;
 import com.aux_app.repository.UserRepository;
 import com.luciad.imageio.webp.CompressionType;
 
@@ -113,6 +115,7 @@ public class UploadService {
     private final String publicBaseUrl;
     private final UserRepository users;
     private final MusicPieceRepository musicPieces;
+    private final PlaylistRepository playlists;
     private final EntityManager entityManager;
     private final TransactionTemplate transactions;
 
@@ -128,6 +131,7 @@ public class UploadService {
             @Value("${aux.r2.public-base-url}") String publicBaseUrl,
             UserRepository users,
             MusicPieceRepository musicPieces,
+            PlaylistRepository playlists,
             EntityManager entityManager,
             TransactionTemplate transactions
     ) {
@@ -147,6 +151,7 @@ public class UploadService {
         this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
         this.users = users;
         this.musicPieces = musicPieces;
+        this.playlists = playlists;
         this.entityManager = entityManager;
         this.transactions = transactions;
     }
@@ -164,13 +169,27 @@ public class UploadService {
 
     public String replaceProfilePicture(UserEntity user, MultipartFile file) {
         byte[] webp = toWebp(readUpload(file));
-        return store(user, "pfp", webp, user.getProfilePictureUrl(), user::setProfilePictureUrl);
+        return store("pfp", webp, user.getProfilePictureUrl(), user::setProfilePictureUrl, () -> users.save(user));
     }
 
     // Crop is in pixels of the EXIF-rotated original, i.e. what the browser shows the user
     public String replaceBanner(UserEntity user, MultipartFile file, int x, int y, int width, int height) {
         byte[] webp = bannerToWebp(readUpload(file), x, y, width, height);
-        return store(user, "banner", webp, user.getBannerUrl(), user::setBannerUrl);
+        return store("banner", webp, user.getBannerUrl(), user::setBannerUrl, () -> users.save(user));
+    }
+
+    // Also saves the playlist, so a new playlist can be passed in unsaved: its cover column is NOT NULL.
+    // Any other pending changes on the entity are saved with it
+    public String replacePlaylistCover(PlaylistEntity playlist, MultipartFile file) {
+        byte[] webp;
+        try {
+            webp = toWebp(readUpload(file));
+        } catch (AuxException e) {
+            // The image checks report the pfp/banner field name
+            throw new AuxException(e.getStatus(), e.getDetails().code(), e.getMessage(), "playlistCover");
+        }
+        return store("playlist-cover", webp, playlist.getPlaylistCoverUrl(), playlist::setPlaylistCoverUrl,
+                () -> playlists.save(playlist));
     }
 
     // mp3FileUrl in music_pieces holds this key; turn it into a playable URL with signedAudioUrl.
@@ -181,8 +200,11 @@ public class UploadService {
     // Stores a batch of MP3s and inserts their music_pieces rows; toPieces builds one row per track, in upload
     // order. All or nothing: if any file is invalid, the quota is exceeded, or the insert fails, no row is
     // saved and no object is left in R2. Per-file size is capped by spring.servlet.multipart.
-    public List<MusicPieceEntity> storeTracks(UserEntity user, List<MultipartFile> files,
-                                              Function<List<StoredTrack>, List<MusicPieceEntity>> toPieces) {
+    public List<MusicPieceEntity> storeTracks(
+            UserEntity user,
+            List<MultipartFile> files,
+            Function<List<StoredTrack>, List<MusicPieceEntity>> toPieces
+    ) {
         // SQLite takes its write lock at BEGIN (transaction_mode=IMMEDIATE), so a caller's transaction would
         // block every other writer in the app for as long as the R2 uploads below take
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -345,8 +367,14 @@ public class UploadService {
     }
 
     // Returns the new public URL. Order: upload new, then point the user at it, then delete the old one,
-    // so a failure at any step never leaves the user with a broken image.
-    private String store(UserEntity user, String prefix, byte[] webp, String oldUrl, Consumer<String> setUrl) {
+    // so a failure at any step never leaves a broken image. save persists the entity setUrl changed.
+    private String store(
+            String prefix,
+            byte[] webp,
+            String oldUrl,
+            Consumer<String> setUrl,
+            Runnable save
+    ) {
         // Server-generated key: the client's filename is never used
         String key = prefix + "/" + UUID.randomUUID() + ".webp";
         r2.putObject(put -> put
@@ -360,7 +388,7 @@ public class UploadService {
         String newUrl = publicBaseUrl + "/" + key;
         setUrl.accept(newUrl);
         try {
-            users.save(user);
+            save.run();
         } catch (RuntimeException e) {
             deleteQuietly(r2, bucket, key);
             throw e;
