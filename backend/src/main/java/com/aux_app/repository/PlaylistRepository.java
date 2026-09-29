@@ -14,6 +14,8 @@ import java.util.List;
 
 public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String> {
 
+    PlaylistEntity findPlaylistEntityByPlaylistId(String playlistId);
+
     // Null if playlist doesn't exist. Guard before use.
     default PlaylistPage findPlaylistWithTracks(String playlistId, String userId) {
         List<PlaylistWithTracksRow> rows = findPlaylistPage(playlistId, userId);
