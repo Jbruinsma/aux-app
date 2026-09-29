@@ -27,11 +27,16 @@ public class MusicPieceEntity {
     @Column(name = "artist_id", nullable = false)
     private String artistId;
 
+    // R2 key in the private audio bucket, not a URL; see UploadService.signedAudioUrl
     @Column(name = "mp3_file_url", nullable = false)
     private String mp3FileUrl;
 
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
+
+    // Counts toward the uploader's storage quota
+    @Column(name = "size_bytes", nullable = false)
+    private Integer sizeBytes;
 
     @Column(name = "created_at")
     private Instant createdAt;
@@ -41,11 +46,14 @@ public class MusicPieceEntity {
 
     protected MusicPieceEntity() {}
 
-    public MusicPieceEntity(String musicPieceId, String uploaderUserId, String artistId, String mp3FileUrl) {
+    public MusicPieceEntity(String musicPieceId, String uploaderUserId, String artistId, String mp3FileUrl,
+                            int durationSeconds, int sizeBytes) {
         this.musicPieceId = musicPieceId;
         this.uploaderUserId = uploaderUserId;
         this.artistId = artistId;
         this.mp3FileUrl = mp3FileUrl;
+        this.durationSeconds = durationSeconds;
+        this.sizeBytes = sizeBytes;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
@@ -57,6 +65,7 @@ public class MusicPieceEntity {
     public String getArtistId() { return artistId; }
     public String getMp3FileUrl() { return mp3FileUrl; }
     public Integer getDurationSeconds() { return durationSeconds; }
+    public Integer getSizeBytes() { return sizeBytes; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
