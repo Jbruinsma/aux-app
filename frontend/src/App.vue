@@ -2,6 +2,7 @@
   <div id="app">
     <router-view></router-view>
     <BottomPlayer v-if="!hideBottomPlayerOnThisRoute" />
+    <ExternalLinkDialog />
   </div>
 </template>
 
@@ -9,6 +10,7 @@
 import { computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import BottomPlayer from '@/components/BottomPlayer.vue'
+import ExternalLinkDialog from '@/components/ExternalLinkDialog.vue'
 import { useUserStore } from '@/stores/user.js'
 import { useMusicStore } from '@/stores/music.js'
 import { fetchAPI } from '@/utils/api.js'

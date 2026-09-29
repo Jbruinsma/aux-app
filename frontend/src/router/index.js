@@ -48,7 +48,7 @@ const routes = [
   },
   { path: '/dashboard', name: 'Dashboard', component: Dashboard},
   // Placeholders until these sections are built; listed before /:username so they aren't read as profiles
-  ...['Music', 'Friends', 'Explore'].map((title) => ({
+  ...['Music', 'Charts', 'Friends', 'Explore'].map((title) => ({
     path: `/${title.toLowerCase()}`,
     name: title,
     component: ComingSoon,

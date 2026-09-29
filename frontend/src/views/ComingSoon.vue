@@ -14,7 +14,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
-// Stand-in for top bar sections that don't have their own page yet (Music, Friends, Explore)
+// Stand-in for top bar sections that don't have their own page yet (Music, Charts, Friends, Explore)
 defineProps({
   title: { type: String, required: true },
 })

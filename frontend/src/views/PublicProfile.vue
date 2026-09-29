@@ -27,7 +27,7 @@
             :banner-url="bannerUrl"
             :country="countryName"
             :about="profile.profileDetails?.about ?? ''"
-            :website="websiteLabel"
+            :website="profile.profileDetails?.website ?? ''"
           >
             <p v-if="profile.followingMe && !profile.isMe" class="badge">Follows you</p>
             <dl class="stats">
@@ -125,7 +125,6 @@ const status = ref('loading') // loading | ready | missing | error
 const pictureUrl = computed(() => (profile.value?.pfpUrl ? resolveCoverURL(profile.value.pfpUrl) : ''))
 const bannerUrl = computed(() => (profile.value?.bannerUrl ? resolveCoverURL(profile.value.bannerUrl) : ''))
 const countryName = computed(() => COUNTRIES.find((c) => c.code === profile.value?.profileDetails?.country)?.name ?? '')
-const websiteLabel = computed(() => (profile.value?.profileDetails?.website ?? '').replace(/^https?:\/\//, ''))
 
 // Playlists here are already filtered by the backend: other people only see public ones
 async function loadProfile() {
