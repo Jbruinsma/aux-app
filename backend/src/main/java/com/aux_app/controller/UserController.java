@@ -45,11 +45,11 @@ public class UserController {
     @GetMapping("/check-username/{username}")
     @Operation(
             summary = "Check if a username is taken",
-            description = "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists). Does not check the username format."
+            description = "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists), or when the username is reserved (e.g. `admin`, `settings`). Does not check the username format."
     )
     @ApiResponse(responseCode = "200", description = "OK")
     public UserExistance checkUsernameExists(@PathVariable String username) {
-        return new UserExistance(users.existsByUsernameIgnoreCase(username));
+        return new UserExistance(OnboardingService.isReserved(username) || users.existsByUsernameIgnoreCase(username));
     }
 
     @GetMapping("/onboarding/status")
