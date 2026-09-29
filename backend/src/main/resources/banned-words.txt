@@ -1,0 +1,212 @@
+# Terms masked with '*' in user-written profile text (see ProfanityFilter).
+# One term per line, case-insensitive, whole-word match. A plural "s"/"es" is matched automatically.
+# Multi-word phrases match any run of whitespace between words.
+# Skipped on purpose (too many false positives): hell, damn, crap, ho, hoe, anal, queer, cracker, nazi, pissed.
+
+# --- profanity ---
+fuck
+fucker
+fucked
+fucking
+fuckin
+fuckboy
+fuckface
+fuckhead
+fuckwit
+fuckup
+fck
+fuk
+fuq
+fking
+motherfucker
+motherfucking
+mofo
+stfu
+gtfo
+shit
+shitty
+shitter
+shithead
+shitface
+shithole
+shitting
+bullshit
+horseshit
+dipshit
+bitch
+bitchy
+bitching
+sonofabitch
+son of a bitch
+ass
+asshole
+asshat
+asswipe
+assclown
+jackass
+dumbass
+smartass
+arse
+arsehole
+bastard
+dick
+dickhead
+dickwad
+cock
+cocksucker
+prick
+twat
+cunt
+wanker
+wank
+bollocks
+bellend
+knobhead
+tosser
+douche
+douchebag
+piss
+piss off
+
+# --- sexual ---
+porn
+porno
+pornhub
+xxx
+nude
+nudes
+blowjob
+handjob
+rimjob
+cum
+cumshot
+jizz
+dildo
+pussy
+tits
+titties
+horny
+milf
+dilf
+gilf
+onlyfans
+bdsm
+bukkake
+gangbang
+deepthroat
+creampie
+hentai
+camgirl
+sexting
+jerk off
+jack off
+jerking off
+masturbate
+masturbating
+fap
+fapping
+cameltoe
+whore
+slut
+skank
+hooker
+thot
+incest
+bestiality
+zoophilia
+rape
+raped
+rapist
+molest
+molester
+pedo
+pedophile
+paedophile
+loli
+lolicon
+shota
+
+# --- racial / ethnic slurs ---
+nigger
+nigga
+niga
+nigguh
+niglet
+negro
+sand nigger
+coon
+jigaboo
+porch monkey
+darkie
+sambo
+chink
+ching chong
+gook
+jap
+slant eye
+zipperhead
+chinaman
+spic
+spick
+wetback
+beaner
+kike
+heeb
+hymie
+towelhead
+raghead
+camel jockey
+paki
+wog
+gyppo
+pikey
+redskin
+injun
+squaw
+honky
+wop
+dago
+polack
+kraut
+abo
+abbo
+boong
+coolie
+half breed
+
+# --- homophobic / transphobic slurs ---
+fag
+faggot
+fagot
+dyke
+homo
+lesbo
+tranny
+trannies
+shemale
+poof
+poofter
+batty boy
+battyboy
+
+# --- ableist slurs ---
+retard
+retarded
+tard
+libtard
+spaz
+spastic
+mong
+mongoloid
+
+# --- hate / harassment ---
+heil hitler
+sieg heil
+white power
+white pride
+1488
+kkk
+gas the jews
+race war
+kill yourself
+kys

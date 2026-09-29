@@ -1,6 +1,7 @@
 package com.aux_app.dto.users;
 
 import com.aux_app.dto.base.Country;
+import com.aux_app.services.ProfanityFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -28,7 +29,7 @@ public record ProfileDetailsUpdate(
     public ProfileDetailsUpdate {
         displayName = blankToNull(displayName);
         website = blankToNull(website);
-        about = blankToNull(about);
+        about = ProfanityFilter.mask(blankToNull(about));
     }
 
     private static String blankToNull(String s) {
