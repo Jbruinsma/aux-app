@@ -47,15 +47,16 @@ public class OpenApiConfig {
 
             if (required) {
                 operation.addSecurityItem(new SecurityRequirement().addList(BEARER));
-                operation.getResponses().addApiResponse("401", new ApiResponse()
+                operation.getResponses().putIfAbsent("401", new ApiResponse()
                         .description("Missing or invalid token (code INVALID_TOKEN)"));
             } else if (optional) {
                 // empty requirement = anonymous access also allowed
                 operation.addSecurityItem(new SecurityRequirement().addList(BEARER));
                 operation.addSecurityItem(new SecurityRequirement());
             }
+            // putIfAbsent: a method's own 400/401 lists more specific codes, so it wins
             if (operation.getRequestBody() != null) {
-                operation.getResponses().addApiResponse("400", new ApiResponse()
+                operation.getResponses().putIfAbsent("400", new ApiResponse()
                         .description("Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)"));
             }
             operation.getResponses().addApiResponse("500", new ApiResponse()

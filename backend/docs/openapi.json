@@ -43,17 +43,7 @@
             }
           },
           "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "description" : "Missing, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -74,6 +64,16 @@
           },
           "415" : {
             "description" : "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -126,7 +126,7 @@
             }
           },
           "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "description" : "A field is too long or too short, `website` is not an http(s) URL, or `country` is unknown (codes INVALID_FIELD, MALFORMED_BODY)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -228,17 +228,7 @@
             }
           },
           "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "description" : "Missing, unreadable or too small image, or missing or bad crop (codes INVALID_IMAGE, IMAGE_TOO_SMALL, INVALID_CROP, REQUEST_FAILED)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -267,6 +257,16 @@
               }
             }
           },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Unexpected server error (code INTERNAL_ERROR)",
             "content" : {
@@ -286,6 +286,8 @@
     "/api/playlists/{playlistId}" : {
       "put" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Edit a playlist's details",
+        "description" : "Partial update of a playlist the caller owns. Every multipart field is optional; a missing or\nblank field leaves that value unchanged.\n- `playlistName`: at most 36 chars, trimmed.\n- `isPublic`: `true` or `false`.\n- `playlistCover`: same rules as on create. Replaces the old cover.\nReturns the playlist's id, name and cover URL after the update.\n",
         "operationId" : "editPlaylist",
         "parameters" : [ {
           "name" : "playlistId",
@@ -315,8 +317,8 @@
               }
             }
           },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+          "400" : {
+            "description" : "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -325,8 +327,38 @@
               }
             }
           },
-          "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+          "404" : {
+            "description" : "Playlist not found, or not yours (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -355,7 +387,7 @@
       "post" : {
         "tags" : [ "user-controller" ],
         "summary" : "Complete an onboarding step",
-        "description" : "Steps must be completed in order (USERNAME, PFP). Send the step the user is currently on.\n- `step=USERNAME`: also send form field `username` (3-16 chars: letters, numbers, underscore).\n- `step=PFP`: also send multipart field `file` (same rules as PUT /me/profile-picture).\nReturns the updated user; `onboardingStep` is the next step, or `DONE` when finished.\n",
+        "description" : "Steps must be completed in order (USERNAME, PFP). Send the step the user is currently on.\n- `step=USERNAME`: also send form field `username` (3-16 chars: letters, numbers, underscore). Kept as typed, but\n  unique ignoring case: `MO` is taken if `mo` exists.\n- `step=PFP`: also send multipart field `file` (same rules as PUT /me/profile-picture).\nReturns the updated user; `onboardingStep` is the next step, or `DONE` when finished.\n",
         "operationId" : "completeOnboardingStep",
         "parameters" : [ {
           "name" : "step",
@@ -400,7 +432,7 @@
             }
           },
           "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "description" : "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -411,6 +443,26 @@
           },
           "409" : {
             "description" : "Username taken (code USERNAME_TAKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Image is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -448,6 +500,8 @@
     "/api/playlists" : {
       "post" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Create a playlist",
+        "description" : "Multipart fields:\n- `playlistName` (required): 1-36 chars, trimmed.\n- `isPublic`: `true` or `false`, defaults to `false`.\n- `playlistCover` (required): a JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256.\n  Send the original image; do NOT crop it on the frontend. The server applies EXIF rotation,\n  center-crops to a square, resizes to at most 1024x1024, and stores it as WebP.\nThe caller owns the new playlist. Returns it with no tracks.\n",
         "operationId" : "createPlaylist",
         "requestBody" : {
           "content" : {
@@ -460,7 +514,7 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "Playlist created; body is the new, empty playlist",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -469,8 +523,8 @@
               }
             }
           },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+          "400" : {
+            "description" : "Missing or bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -479,8 +533,28 @@
               }
             }
           },
-          "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+          "413" : {
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -508,6 +582,8 @@
     "/api/auth/register" : {
       "post" : {
         "tags" : [ "auth-controller" ],
+        "summary" : "Register a new account",
+        "description" : "JSON body: `email` (3-254 chars) and `password` (8-32 chars, at most 72 bytes in UTF-8).\nCreates the account and logs it in. Returns a session token and the new user, whose\n`onboardingStep` is `USERNAME`; send the user through POST /api/users/onboarding/step next.\n",
         "operationId" : "register",
         "requestBody" : {
           "content" : {
@@ -520,18 +596,8 @@
           "required" : true
         },
         "responses" : {
-          "409" : {
-            "description" : "Username already exists (code USERNAME_TAKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
           "201" : {
-            "description" : "Created",
+            "description" : "Account created; body holds the session token and the new user",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -541,7 +607,17 @@
             }
           },
           "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "description" : "Missing, too short or too long email or password (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Email already registered (code EMAIL_TAKEN), or the account could not be created (code USERNAME_TAKEN)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -566,6 +642,8 @@
     "/api/auth/login" : {
       "post" : {
         "tags" : [ "auth-controller" ],
+        "summary" : "Log in",
+        "description" : "JSON body: `email` and `password`. Returns a session token and the user.\nSend the token as `Authorization: Bearer <token>` on authenticated endpoints.\nA wrong email and a wrong password give the same error.\n",
         "operationId" : "login",
         "requestBody" : {
           "content" : {
@@ -578,18 +656,8 @@
           "required" : true
         },
         "responses" : {
-          "401" : {
-            "description" : "Wrong username or password (code INVALID_CREDENTIALS)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
           "200" : {
-            "description" : "OK",
+            "description" : "Logged in; body holds the session token and the user",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -599,7 +667,17 @@
             }
           },
           "400" : {
-            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "description" : "Missing or badly sized email or password (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Wrong email or password (code INVALID_CREDENTIALS)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -719,6 +797,8 @@
     "/api/users/check-username/{username}" : {
       "get" : {
         "tags" : [ "user-controller" ],
+        "summary" : "Check if a username is taken",
+        "description" : "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists). Does not check the username format.",
         "operationId" : "checkUsernameExists",
         "parameters" : [ {
           "name" : "username",
@@ -755,6 +835,8 @@
     "/api/playlists/{username}/{playlist_id}" : {
       "get" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Get a playlist with its tracks",
+        "description" : "`username` must be the playlist owner's username. Private playlists are only visible to\ntheir owner; to anyone else they return 404, the same as a missing playlist.\n`isSaved` is true when the caller has saved the playlist.\n",
         "operationId" : "getPlaylist",
         "parameters" : [ {
           "name" : "username",
@@ -821,6 +903,8 @@
     "/api/core/top" : {
       "get" : {
         "tags" : [ "core-controller" ],
+        "summary" : "Get the top music pieces",
+        "description" : "Public. NOT IMPLEMENTED YET: returns one placeholder entry whose fields all read `NOT IMPLEMENTED`.",
         "operationId" : "getTopMusicPieces",
         "responses" : {
           "200" : {

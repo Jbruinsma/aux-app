@@ -17,9 +17,10 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<UserEntity, String> {
 
-    boolean existsByUsername(String username);
+    // Usernames are case-insensitive: "mo" and "MO" are the same user (see uq_users_username_nocase)
+    boolean existsByUsernameIgnoreCase(String username);
 
-    UserEntity findByUsername(String username);
+    UserEntity findByUsernameIgnoreCase(String username);
 
     UserEntity findByEmail(String email);
 
@@ -93,7 +94,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
             LEFT JOIN profile_details pd ON pd.user_id = u.user_id
             LEFT JOIN playlists p ON p.owner_id = u.user_id
                                  AND (p.is_public = true OR u.user_id = CAST(:currentUserId AS varchar))
-            WHERE u.username = :username
+            WHERE u.username = :username COLLATE NOCASE
             """, nativeQuery = true)
     List<ProfileRow> findProfileRows(@Param("username") String username, @Param("currentUserId") String currentUserId);
 

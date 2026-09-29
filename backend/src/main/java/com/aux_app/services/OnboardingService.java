@@ -80,7 +80,7 @@ public class OnboardingService {
             throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_USERNAME",
                     "Username must be 3-16 characters: letters, numbers, underscore", "username");
         }
-        if (users.existsByUsername(username)) {
+        if (users.existsByUsernameIgnoreCase(username)) {
             throw new AuxException(HttpStatus.CONFLICT, "USERNAME_TAKEN", "Username already exists", "username");
         }
         user.setUsername(username);

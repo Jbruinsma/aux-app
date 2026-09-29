@@ -121,6 +121,9 @@ CREATE TABLE play_events (
     context_playlist_id VARCHAR REFERENCES playlists(playlist_id)
 );
 
+-- Usernames are unique ignoring case ("mo" blocks "MO"). The column keeps the case the user typed.
+-- Existing DBs: run this statement once; it fails if two usernames already differ only by case
+CREATE UNIQUE INDEX uq_users_username_nocase ON users(username COLLATE NOCASE);
 CREATE INDEX idx_play_events_user_played_at ON play_events(user_id, played_at);
 CREATE INDEX idx_play_events_music_piece_played_at ON play_events(music_piece_id, played_at);
 

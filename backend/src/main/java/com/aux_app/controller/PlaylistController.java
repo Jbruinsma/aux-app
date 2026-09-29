@@ -6,6 +6,7 @@ import com.aux_app.dto.playlist.PlaylistDetailsUpdate;
 import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.services.UploadService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.dto.playlist.CorePlaylist;
 import com.aux_app.dto.playlist.PlaylistOverview;
@@ -39,6 +40,13 @@ public class PlaylistController {
     }
 
     @GetMapping("/{username}/{playlist_id}")
+    @Operation(
+            summary = "Get a playlist with its tracks",
+            description = """
+                    `username` must be the playlist owner's username. Private playlists are only visible to
+                    their owner; to anyone else they return 404, the same as a missing playlist.
+                    `isSaved` is true when the caller has saved the playlist.
+                    """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "404", description = "Playlist not found, or private and not yours (code PLAYLIST_NOT_FOUND)")
     public PlaylistOverview getPlaylist(
@@ -58,7 +66,7 @@ public class PlaylistController {
             );
         }
 
-        if (!username.equals(playlist.owner().username())) {
+        if (!username.equalsIgnoreCase(playlist.owner().username())) {
             throw new AuxException(
                     HttpStatus.NOT_FOUND,
                     "PLAYLIST_NOT_FOUND",
@@ -90,6 +98,21 @@ public class PlaylistController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Create a playlist",
+            description = """
+                    Multipart fields:
+                    - `playlistName` (required): 1-36 chars, trimmed.
+                    - `isPublic`: `true` or `false`, defaults to `false`.
+                    - `playlistCover` (required): a JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256.
+                      Send the original image; do NOT crop it on the frontend. The server applies EXIF rotation,
+                      center-crops to a square, resizes to at most 1024x1024, and stores it as WebP.
+                    The caller owns the new playlist. Returns it with no tracks.
+                    """)
+    @ApiResponse(responseCode = "200", description = "Playlist created; body is the new, empty playlist")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "413", description = "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "415", description = "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public PlaylistOverview createPlaylist(
             @CurrentUser UserEntity user,
             @Valid @ModelAttribute PlaylistCreationDetails playlistCreationDetails
@@ -125,6 +148,21 @@ public class PlaylistController {
     }
 
     @PutMapping(value = "/{playlistId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Edit a playlist's details",
+            description = """
+                    Partial update of a playlist the caller owns. Every multipart field is optional; a missing or
+                    blank field leaves that value unchanged.
+                    - `playlistName`: at most 36 chars, trimmed.
+                    - `isPublic`: `true` or `false`.
+                    - `playlistCover`: same rules as on create. Replaces the old cover.
+                    Returns the playlist's id, name and cover URL after the update.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found, or not yours (code PLAYLIST_NOT_FOUND)")
+    @ApiResponse(responseCode = "413", description = "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "415", description = "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public CorePlaylist editPlaylist(
             @CurrentUser UserEntity user,
             @Valid @ModelAttribute PlaylistDetailsUpdate playlistDetailsUpdate,

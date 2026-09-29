@@ -43,8 +43,13 @@ public class UserController {
     }
 
     @GetMapping("/check-username/{username}")
+    @Operation(
+            summary = "Check if a username is taken",
+            description = "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists). Does not check the username format."
+    )
+    @ApiResponse(responseCode = "200", description = "OK")
     public UserExistance checkUsernameExists(@PathVariable String username) {
-        return new UserExistance(users.existsByUsername(username));
+        return new UserExistance(users.existsByUsernameIgnoreCase(username));
     }
 
     @GetMapping("/onboarding/status")
@@ -52,6 +57,7 @@ public class UserController {
             summary = "Get the current onboarding step",
             description = "Returns the step the user must complete next. `DONE` means onboarding is finished."
     )
+    @ApiResponse(responseCode = "200", description = "OK")
     public OnboardingStep getOnboardingStatus(@CurrentUser UserEntity user) {
         return onboarding.currentStep(user);
     }
@@ -61,14 +67,17 @@ public class UserController {
             summary = "Complete an onboarding step",
             description = """
                     Steps must be completed in order (USERNAME, PFP). Send the step the user is currently on.
-                    - `step=USERNAME`: also send form field `username` (3-16 chars: letters, numbers, underscore).
+                    - `step=USERNAME`: also send form field `username` (3-16 chars: letters, numbers, underscore). Kept as typed, but
+                      unique ignoring case: `MO` is taken if `mo` exists.
                     - `step=PFP`: also send multipart field `file` (same rules as PUT /me/profile-picture).
                     Returns the updated user; `onboardingStep` is the next step, or `DONE` when finished.
                     """
     )
     @ApiResponse(responseCode = "200", description = "Step accepted; body is the updated user")
-    @ApiResponse(responseCode = "400", description = "Wrong step, bad username or bad image (codes WRONG_ONBOARDING_STEP, INVALID_USERNAME, INVALID_IMAGE)")
+    @ApiResponse(responseCode = "400", description = "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)")
     @ApiResponse(responseCode = "409", description = "Username taken (code USERNAME_TAKEN)")
+    @ApiResponse(responseCode = "413", description = "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "415", description = "Image is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public UserSummary completeOnboardingStep(
             @CurrentUser UserEntity user,
             @RequestParam OnboardingStep step,
@@ -123,8 +132,7 @@ public class UserController {
                     Returns the new public URL.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "400", description = "Unreadable or too small image (code INVALID_IMAGE, IMAGE_TOO_SMALL)")
-    @ApiResponse(responseCode = "401", description = "Missing or invalid token (code INVALID_TOKEN)")
+    @ApiResponse(responseCode = "400", description = "Missing, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
     @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
 
@@ -147,8 +155,7 @@ public class UserController {
                     as WebP. Returns the new public URL.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "400", description = "Unreadable or too small image, or bad crop (code INVALID_IMAGE, IMAGE_TOO_SMALL, INVALID_CROP)")
-    @ApiResponse(responseCode = "401", description = "Missing or invalid token (code INVALID_TOKEN)")
+    @ApiResponse(responseCode = "400", description = "Missing, unreadable or too small image, or missing or bad crop (codes INVALID_IMAGE, IMAGE_TOO_SMALL, INVALID_CROP, REQUEST_FAILED)")
     @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public BannerUpdate updateBanner(
@@ -170,8 +177,7 @@ public class UserController {
                     Strings are trimmed. `website` must be an http(s) URL. Returns the saved details.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "400", description = "Validation failed")
-    @ApiResponse(responseCode = "401", description = "Missing or invalid token (code INVALID_TOKEN)")
+    @ApiResponse(responseCode = "400", description = "A field is too long or too short, `website` is not an http(s) URL, or `country` is unknown (codes INVALID_FIELD, MALFORMED_BODY)")
     public ProfileDetails updateProfileDetails(
             @CurrentUser UserEntity user,
             @Valid @RequestBody ProfileDetailsUpdate update
