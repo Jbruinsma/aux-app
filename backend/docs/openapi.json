@@ -857,7 +857,7 @@
         "properties" : {
           "profilePictureUrl" : {
             "type" : "string",
-            "example" : "https://media.example.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
@@ -917,7 +917,7 @@
         "properties" : {
           "bannerUrl" : {
             "type" : "string",
-            "example" : "https://media.example.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+            "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
@@ -953,7 +953,7 @@
           },
           "playlistCoverUrl" : {
             "type" : "string",
-            "example" : "/uploads/playlists/p_7c2d1.jpg"
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
@@ -970,11 +970,11 @@
           },
           "profilePictureUrl" : {
             "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/pfp/66fa2.webp"
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "bannerUrl" : {
             "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/banner/66fa2.webp"
+            "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "onboardingStep" : {
             "type" : "string",
@@ -1016,7 +1016,7 @@
           },
           "artistPfpUrl" : {
             "type" : "string",
-            "example" : "/uploads/artists/a_8f3k2.jpg"
+            "example" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
@@ -1033,7 +1033,7 @@
           },
           "coverUrl" : {
             "type" : "string",
-            "example" : "/uploads/covers/m_92kd0.jpg"
+            "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistSummary" : {
             "$ref" : "#/components/schemas/ArtistSummary"
@@ -1057,7 +1057,7 @@
           },
           "playlistCoverUrl" : {
             "type" : "string",
-            "example" : "/uploads/playlists/p_7c2d1.jpg"
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "totalPieces" : {
             "type" : "integer",
@@ -1088,7 +1088,7 @@
           },
           "pfpUrl" : {
             "type" : "string",
-            "example" : "/uploads/users/u_41x9.jpg"
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "username" : {
             "type" : "string",
@@ -1162,7 +1162,7 @@
           },
           "playlistCoverUrl" : {
             "type" : "string",
-            "example" : "/uploads/playlists/p_7c2d1.jpg"
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "totalPieces" : {
             "type" : "integer",
@@ -1180,11 +1180,11 @@
           },
           "pfpUrl" : {
             "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/pfp/66fa2.webp"
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "bannerUrl" : {
             "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/banner/66fa2.webp"
+            "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "profileDetails" : {
             "$ref" : "#/components/schemas/ProfileDetails"
@@ -1227,7 +1227,7 @@
           },
           "coverUrl" : {
             "type" : "string",
-            "example" : "/uploads/covers/m_92kd0.jpg"
+            "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistSummary" : {
             "$ref" : "#/components/schemas/ArtistSummary"
