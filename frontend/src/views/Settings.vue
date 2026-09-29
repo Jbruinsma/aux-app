@@ -146,10 +146,12 @@
 
               <div class="field">
                 <label class="row-label" for="country">Country</label>
-                <select id="country" v-model="details.country" class="input">
-                  <option value="">None</option>
-                  <option v-for="country in COUNTRIES" :key="country.code" :value="country.code">{{ country.name }}</option>
-                </select>
+                <div class="select-wrap">
+                  <select id="country" v-model="details.country" class="input select">
+                    <option value="">None</option>
+                    <option v-for="country in COUNTRIES" :key="country.code" :value="country.code">{{ country.name }}</option>
+                  </select>
+                </div>
               </div>
 
               <div class="field">
@@ -224,22 +226,14 @@
         <section class="main-col" aria-labelledby="apps-heading">
           <div>
             <h2 id="apps-heading">Connect your music apps</h2>
-            <p class="intro">Connect the apps you listen on so Aux can learn your taste from what you actually play.</p>
+            <p class="intro">Connect Spotify so Aux can learn your taste from what you actually play.</p>
           </div>
           <ul class="apps">
             <li v-for="app in APPS" :key="app.id" class="app">
               <svg class="app-icon" viewBox="0 0 40 40" aria-hidden="true">
-                <template v-if="app.id === 'spotify'">
-                  <circle class="spotify" cx="20" cy="20" r="20" />
-                  <path d="M10 15.5c6.5-2 14-1.4 20 1.8M11 21c5.4-1.6 11.4-1 16.2 1.6M12 26.2c4.2-1.1 8.8-.7 12.5 1.2"
-                        fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" />
-                </template>
-                <template v-else>
-                  <rect class="apple-music" width="40" height="40" rx="9" />
-                  <path d="M16 27.5V13.2l11-2.2v13.8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" />
-                  <circle cx="13.6" cy="27.5" r="3" fill="#fff" />
-                  <circle cx="24.6" cy="24.8" r="3" fill="#fff" />
-                </template>
+                <circle class="spotify" cx="20" cy="20" r="20" />
+                <path d="M10 15.5c6.5-2 14-1.4 20 1.8M11 21c5.4-1.6 11.4-1 16.2 1.6M12 26.2c4.2-1.1 8.8-.7 12.5 1.2"
+                      fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" />
               </svg>
               <div class="app-text">
                 <p class="app-name">{{ app.name }}</p>
@@ -250,7 +244,7 @@
               <p :id="`${app.id}-soon`" class="visually-hidden">Connecting {{ app.name }} is coming soon.</p>
             </li>
           </ul>
-          <p class="hint">Connecting apps is coming soon.</p>
+          <p class="hint">Spotify connectivity coming soon.</p>
         </section>
       </div>
     </main>
@@ -284,17 +278,12 @@ const TABS = [
   { id: 'applications', label: 'Applications' },
 ]
 
-// The two listening services Aux supports; connecting needs backend sign-in flows that don't exist yet
+// Spotify is the one listening service Aux supports; connecting needs a backend sign-in flow that doesn't exist yet
 const APPS = [
   {
     id: 'spotify',
     name: 'Spotify',
     description: 'Bring in what you play on Spotify, from desktop, mobile or any other device.',
-  },
-  {
-    id: 'apple-music',
-    name: 'Apple Music',
-    description: 'Bring in what you play on Apple Music, on your iPhone, Mac or any other device.',
   },
 ]
 
@@ -654,9 +643,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .apps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .app { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
 .app-icon { width: 40px; height: 40px; }
-/* Brand colors belong to Spotify and Apple, so they're the one place raw hex is allowed */
+/* Spotify's brand color belongs to Spotify, so it's the one place raw hex is allowed */
 .spotify { fill: #1db954; }
-.apple-music { fill: #fa2d48; }
 .app-text { min-width: 0; }
 .app-name { margin: 0; font: 600 16px/24px var(--font-sans); }
 .app-desc { margin: 0; font: 400 14px/20px var(--font-sans); }
@@ -675,6 +663,11 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 
 .check { display: flex; align-items: center; gap: var(--space-2); font: 600 14px/20px var(--font-sans); cursor: pointer; margin-bottom: var(--space-1); }
 .check input { width: 16px; height: 16px; accent-color: var(--primary); }
+
+/* The browser's own arrow sits tight to the edge, so draw one 1rem further in */
+.select-wrap { position: relative; }
+.select { appearance: none; -webkit-appearance: none; padding-right: calc(var(--space-4) + 28px); cursor: pointer; }
+.select-wrap::after { content: ''; position: absolute; top: 50%; right: calc(var(--space-4) + 8px); width: 12px; height: 12px; transform: translateY(-50%); pointer-events: none; background: var(--ink-muted); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 /* Preview */
 /* Stays in view below the sticky header while you scroll through the fields it previews */

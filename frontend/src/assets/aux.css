@@ -286,3 +286,9 @@ html:has(.aux-page) #app {
     animation: none !important;
   }
 }
+
+/* Set while a dialog is open: the page behind can't scroll, and the scrollbar's space is kept so nothing shifts */
+html.scroll-locked {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
