@@ -10,7 +10,7 @@
       <p class="meta">@{{ username }}<template v-if="country"> · {{ country }}</template></p>
       <!-- Plain text only: rendered with {{ }}, so markup shows as typed; pre-line keeps the user's line breaks -->
       <p v-if="about" class="about">{{ about }}</p>
-      <p v-if="website" class="site">{{ website }}</p>
+      <p v-if="website" class="site"><ExternalLink :href="website">{{ websiteLabel }}</ExternalLink></p>
       <slot />
     </div>
   </article>
@@ -18,6 +18,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import ExternalLink from '@/components/ExternalLink.vue'
 
 // The profile's left column: banner on top, picture half over its bottom edge, then the details.
 // Settings uses it as a live preview, so every field is optional except the username.
@@ -30,12 +31,14 @@ const props = defineProps({
   bannerStyle: { type: Object, default: null },
   country: { type: String, default: '' },
   about: { type: String, default: '' },
+  // The full link (https://…); it's shown without the https:// and asks before leaving Aux
   website: { type: String, default: '' },
   // Flat drops the card box so it blends into the page, as in the profile's left column
   flat: { type: Boolean, default: false },
 })
 
 const initial = computed(() => props.username.charAt(0).toUpperCase())
+const websiteLabel = computed(() => props.website.replace(/^https?:\/\//, '').replace(/\/$/, ''))
 </script>
 
 <style scoped>
@@ -56,4 +59,6 @@ const initial = computed(() => props.username.charAt(0).toUpperCase())
 .meta { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--ink-muted); }
 .about { margin: var(--space-3) 0 0; font: 400 15px/22px var(--font-sans); white-space: pre-line; overflow-wrap: anywhere; }
 .site { margin: var(--space-1) 0 0; font: 500 14px/20px var(--font-sans); color: var(--link); overflow-wrap: anywhere; }
+.site a { color: inherit; text-decoration: none; }
+.site a:hover { text-decoration: underline; }
 </style>

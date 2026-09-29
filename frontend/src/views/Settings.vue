@@ -23,15 +23,13 @@
         <div class="main-col">
           <section aria-labelledby="picture-heading">
             <h2 id="picture-heading">Your picture</h2>
-            <div class="picture">
-              <div class="avatar-col">
-                <img v-if="shownPicture" class="avatar" :src="shownPicture" alt="" />
-                <div v-else class="avatar avatar-empty" aria-hidden="true">{{ initial }}</div>
-                <p v-if="newPhoto" class="preview-tag">Preview</p>
-                <button v-if="newPhoto" type="button" class="btn text revert" @click="revertPhoto">Revert</button>
-              </div>
+            <!-- Same 3:1 box as the banner preview, so the controls below line up with the banner's -->
+            <div class="avatar-area">
+              <img v-if="shownPicture" class="avatar" :src="shownPicture" alt="" />
+              <div v-else class="avatar avatar-empty" aria-hidden="true">{{ initial }}</div>
+            </div>
 
-              <div class="picture-controls">
+            <div class="picture-controls">
                 <div class="file-row">
                   <input
                     id="photo-input"
@@ -44,6 +42,7 @@
                   />
                   <label for="photo-input" class="btn secondary">Choose file</label>
                   <span class="file-name">{{ newPhoto ? newPhoto.name : 'No file chosen' }}</span>
+                  <button v-if="newPhoto" type="button" class="btn text revert" @click="revertPhoto">Revert</button>
                 </div>
                 <p id="photo-hint" class="hint">
                   A JPEG or PNG, at least 256 × 256 pixels and under 5MB. It's cropped to a square and shown in a circle,
@@ -54,7 +53,6 @@
                 <button type="button" class="btn primary" :disabled="!newPhoto || uploading" @click="uploadPhoto">
                   {{ uploading ? 'Uploading…' : 'Upload picture' }}
                 </button>
-              </div>
             </div>
           </section>
 
@@ -194,6 +192,17 @@
               </div>
             </form>
           </section>
+
+          <section aria-labelledby="links-heading">
+            <h2 id="links-heading">Links to other sites</h2>
+            <label class="check">
+              <input v-model="warnBeforeLeaving" type="checkbox" aria-describedby="links-hint" />
+              Warn me before opening a link to another site
+            </label>
+            <p id="links-hint" class="hint">
+              Turn this back on if you chose "Save my option" by mistake. This setting is saved on this browser.
+            </p>
+          </section>
         </div>
 
         <aside class="side" aria-labelledby="preview-heading">
@@ -206,7 +215,7 @@
             :banner-style="bannerPreviewUrl ? bannerStyle : null"
             :country="countryName"
             :about="details.about"
-            :website="websiteLabel"
+            :website="websiteUrl"
           />
         </aside>
       </div>
@@ -263,6 +272,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { BANNER_ERRORS, PHOTO_ERRORS, bannerProblem, photoProblem } from '@/utils/photo.js'
 import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerCropRect, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
 import { COUNTRIES } from '@/utils/countries.js'
+import { setSkipExternalWarning, skipExternalWarning } from '@/utils/externalLinks.js'
 
 const ABOUT_LIMIT = 200
 // Same limits as the backend's ProfileDetailsUpdate
@@ -586,9 +596,13 @@ const websiteInvalid = computed(() => {
 })
 
 const countryName = computed(() => COUNTRIES.find((c) => c.code === details.country)?.name ?? '')
-const websiteLabel = computed(() =>
-  details.website.trim() && !websiteInvalid.value ? details.website.trim().replace(/^https?:\/\//, '') : '',
-)
+const websiteUrl = computed(() => (websiteInvalid.value ? '' : details.website.trim()))
+
+/* Links to other sites: undo "Save my option" from the leaving-Aux dialog */
+const warnBeforeLeaving = computed({
+  get: () => !skipExternalWarning.value,
+  set: (warn) => setSkipExternalWarning(!warn),
+})
 </script>
 
 <style scoped>
@@ -611,11 +625,9 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .success { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--success); }
 
 /* Picture */
-.picture { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--space-6); align-items: start; }
-.avatar-col { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
-.avatar { width: 160px; height: 160px; border-radius: var(--radius-pill); object-fit: cover; background: var(--surface-alt); }
+.avatar-area { aspect-ratio: 3 / 1; max-height: 200px; display: flex; align-items: center; margin-bottom: var(--space-4); }
+.avatar { height: 100%; aspect-ratio: 1; border-radius: var(--radius-pill); object-fit: cover; background: var(--surface-alt); }
 .avatar-empty { display: grid; place-items: center; background: var(--primary); color: var(--on-primary); font: 700 56px/1 var(--font-sans); }
-.preview-tag { margin: var(--space-2) 0 0; font: 600 12px/16px var(--font-sans); color: var(--ink-muted); }
 .revert { font-size: 14px; }
 .picture-controls { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); max-width: 480px; }
 .file-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -627,9 +639,9 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 
 /* Get creative */
 /* Name, country and website share a row; "About you" lines up under the first two, the save button gets its own row */
-.details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4) var(--space-6); align-items: start; }
+/* One field per row: display name, then country, then website, then about */
+.details { display: grid; grid-template-columns: minmax(0, 560px); gap: var(--space-4); align-items: start; }
 .field { display: flex; flex-direction: column; gap: var(--space-2); }
-.about-field { grid-column: span 2; }
 .row-label { font: 600 14px/20px var(--font-sans); }
 .input { width: 100%; font: 400 16px/24px var(--font-sans); padding: 8px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); }
 .input[aria-invalid='true'] { border-color: var(--danger); }
@@ -661,6 +673,9 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .banner-saved { width: 100%; height: 100%; object-fit: cover; }
 .banner-empty { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--ink-muted); }
 
+.check { display: flex; align-items: center; gap: var(--space-2); font: 600 14px/20px var(--font-sans); cursor: pointer; margin-bottom: var(--space-1); }
+.check input { width: 16px; height: 16px; accent-color: var(--primary); }
+
 /* Preview */
 /* Stays in view below the sticky header while you scroll through the fields it previews */
 .side { position: sticky; top: calc(88px + env(safe-area-inset-top, 0px)); align-self: start; display: flex; flex-direction: column; gap: var(--space-3); }
@@ -670,17 +685,11 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 @media (max-width: 1400px) {
   .main-col { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 1200px) {
-  .details { grid-template-columns: minmax(0, 1fr); }
-  .about-field { grid-column: auto; }
-}
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .side { position: static; }
 }
 @media (max-width: 600px) {
-  .picture { grid-template-columns: 1fr; }
-  .avatar-col { align-items: flex-start; }
   .app { grid-template-columns: 40px minmax(0, 1fr); }
   .app .btn { grid-column: 2; justify-self: start; }
 }

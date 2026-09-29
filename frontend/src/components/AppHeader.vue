@@ -64,7 +64,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { rerouteToPublicProfile, rerouteToSettings } from '@/utils/reroutes.js'
 
 const GUEST_NAV = ['Music', 'Charts', 'Friends', 'Explore']
-const MEMBER_NAV = ['Music', 'Friends', 'Explore']
+const MEMBER_NAV = ['Music', 'Charts', 'Friends', 'Explore']
 
 const route = useRoute()
 const router = useRouter()
