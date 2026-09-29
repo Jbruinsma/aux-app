@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.aux_app.dto.users.OnboardingStep;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.dto.auth.LoginCredentials;
 import com.aux_app.services.SessionService;
@@ -41,7 +42,16 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @ApiResponse(responseCode = "409", description = "Username already exists (code USERNAME_TAKEN)")
+    @Operation(
+            summary = "Register a new account",
+            description = """
+                    JSON body: `email` (3-254 chars) and `password` (8-32 chars, at most 72 bytes in UTF-8).
+                    Creates the account and logs it in. Returns a session token and the new user, whose
+                    `onboardingStep` is `USERNAME`; send the user through POST /api/users/onboarding/step next.
+                    """)
+    @ApiResponse(responseCode = "201", description = "Account created; body holds the session token and the new user")
+    @ApiResponse(responseCode = "400", description = "Missing, too short or too long email or password (codes INVALID_FIELD, MALFORMED_BODY)")
+    @ApiResponse(responseCode = "409", description = "Email already registered (code EMAIL_TAKEN), or the account could not be created (code USERNAME_TAKEN)")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegistrationCredentials credentials) {
 
@@ -94,7 +104,16 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @ApiResponse(responseCode = "401", description = "Wrong username or password (code INVALID_CREDENTIALS)")
+    @Operation(
+            summary = "Log in",
+            description = """
+                    JSON body: `email` and `password`. Returns a session token and the user.
+                    Send the token as `Authorization: Bearer <token>` on authenticated endpoints.
+                    A wrong email and a wrong password give the same error.
+                    """)
+    @ApiResponse(responseCode = "200", description = "Logged in; body holds the session token and the user")
+    @ApiResponse(responseCode = "400", description = "Missing or badly sized email or password (codes INVALID_FIELD, MALFORMED_BODY)")
+    @ApiResponse(responseCode = "401", description = "Wrong email or password (code INVALID_CREDENTIALS)")
     @ResponseStatus(HttpStatus.OK)
     public AuthResponse login(@Valid @RequestBody LoginCredentials credentials) {
         UserEntity user = users.findByEmail(credentials.email());
