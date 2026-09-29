@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { openExternal, pendingExternalLink, setSkipExternalWarning } from '@/utils/externalLinks.js'
 
 // Mounted once in App.vue; any ExternalLink can open it by setting pendingExternalLink
@@ -39,6 +39,8 @@ watch(pendingExternalLink, (url) => {
   if (url && !dialogEl.value.open) {
     saveOption.value = false
     dialogEl.value.showModal()
+    // The page behind can't scroll while the dialog is up (see .scroll-locked in aux.css)
+    document.documentElement.classList.add('scroll-locked')
   }
 }, { flush: 'post' })
 
@@ -55,11 +57,14 @@ function continueToSite() {
 // Esc also closes the dialog, which counts as Go back
 function onClose() {
   pendingExternalLink.value = null
+  document.documentElement.classList.remove('scroll-locked')
 }
+
+onBeforeUnmount(() => document.documentElement.classList.remove('scroll-locked'))
 </script>
 
 <style scoped>
-.leave { width: min(440px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: 400 16px/24px var(--font-sans); }
+.leave { overscroll-behavior: contain; width: min(440px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: 400 16px/24px var(--font-sans); }
 .leave::backdrop { background: rgb(0 0 0 / 0.45); }
 .body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
 h2 { margin: 0; font: 700 20px/28px var(--font-sans); }
