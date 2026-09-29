@@ -798,7 +798,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Check if a username is taken",
-        "description" : "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists). Does not check the username format.",
+        "description" : "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists), or when the username is reserved (e.g. `admin`, `settings`). Does not check the username format.",
         "operationId" : "checkUsernameExists",
         "parameters" : [ {
           "name" : "username",
