@@ -1,5 +1,6 @@
 package com.aux_app.dto.playlist;
 
+import com.aux_app.services.ProfanityFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -10,4 +11,8 @@ public record PlaylistCreationDetails(
         @Schema(example = "Chill Beats") @NotBlank @Size(max = 36) String playlistName,
         @Schema(example = "true") boolean isPublic,
         @NotNull MultipartFile playlistCover
-) {}
+) {
+    public PlaylistCreationDetails {
+        playlistName = ProfanityFilter.mask(playlistName);
+    }
+}

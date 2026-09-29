@@ -1,4 +1,4 @@
-# Terms masked with '*' in user-written profile text (see ProfanityFilter).
+# Terms masked with '#' in user-written profile text (see ProfanityFilter).
 # One term per line, case-insensitive, whole-word match. A plural "s"/"es" is matched automatically.
 # Multi-word phrases match any run of whitespace between words.
 # Skipped on purpose (too many false positives): hell, damn, crap, ho, hoe, anal, queer, cracker, nazi, pissed.
