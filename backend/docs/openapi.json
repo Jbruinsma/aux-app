@@ -283,6 +283,74 @@
         } ]
       }
     },
+    "/api/playlists/{playlistId}" : {
+      "put" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "editPlaylist",
+        "parameters" : [ {
+          "name" : "playlistId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistDetailsUpdate"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CorePlaylist"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/onboarding/step" : {
       "post" : {
         "tags" : [ "user-controller" ],
@@ -353,6 +421,66 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists" : {
+      "post" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "createPlaylist",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistCreationDetails"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistOverview"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -793,6 +921,42 @@
           }
         }
       },
+      "PlaylistDetailsUpdate" : {
+        "type" : "object",
+        "properties" : {
+          "playlistName" : {
+            "type" : "string",
+            "example" : "My Playlist",
+            "maxLength" : 36,
+            "minLength" : 0
+          },
+          "isPublic" : {
+            "type" : "boolean",
+            "example" : true
+          },
+          "playlistCover" : {
+            "type" : "string",
+            "format" : "binary"
+          }
+        }
+      },
+      "CorePlaylist" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "example" : "p_7c2d1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/playlists/p_7c2d1.jpg"
+          }
+        }
+      },
       "UserSummary" : {
         "type" : "object",
         "properties" : {
@@ -816,6 +980,119 @@
             "type" : "string",
             "enum" : [ "USERNAME", "PFP", "DONE" ],
             "example" : "USERNAME (1) | PFP (2) | DONE (3)"
+          }
+        }
+      },
+      "PlaylistCreationDetails" : {
+        "type" : "object",
+        "properties" : {
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Chill Beats",
+            "maxLength" : 36,
+            "minLength" : 0
+          },
+          "isPublic" : {
+            "type" : "boolean",
+            "example" : true
+          },
+          "playlistCover" : {
+            "type" : "string",
+            "format" : "binary"
+          }
+        },
+        "required" : [ "playlistCover", "playlistName" ]
+      },
+      "ArtistSummary" : {
+        "type" : "object",
+        "properties" : {
+          "artistId" : {
+            "type" : "string",
+            "example" : "a_8f3k2"
+          },
+          "artistName" : {
+            "type" : "string",
+            "example" : "Tame Impala"
+          },
+          "artistPfpUrl" : {
+            "type" : "string",
+            "example" : "/uploads/artists/a_8f3k2.jpg"
+          }
+        }
+      },
+      "MusicPieceOverview" : {
+        "type" : "object",
+        "properties" : {
+          "musicPieceId" : {
+            "type" : "string",
+            "example" : "m_92kd0"
+          },
+          "name" : {
+            "type" : "string",
+            "example" : "Let It Happen"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/covers/m_92kd0.jpg"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary"
+          },
+          "isFavorite" : {
+            "type" : "boolean",
+            "example" : true
+          }
+        }
+      },
+      "PlaylistOverview" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "example" : "p_7c2d1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "example" : "/uploads/playlists/p_7c2d1.jpg"
+          },
+          "totalPieces" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 12
+          },
+          "playlistOwner" : {
+            "$ref" : "#/components/schemas/PlaylistOwner"
+          },
+          "isSaved" : {
+            "type" : "boolean",
+            "example" : false
+          },
+          "musicPieces" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MusicPieceOverview"
+            }
+          }
+        }
+      },
+      "PlaylistOwner" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "example" : "u_41x9"
+          },
+          "pfpUrl" : {
+            "type" : "string",
+            "example" : "/uploads/users/u_41x9.jpg"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
           }
         }
       },
@@ -938,99 +1215,6 @@
           "exists" : {
             "type" : "boolean",
             "example" : true
-          }
-        }
-      },
-      "ArtistSummary" : {
-        "type" : "object",
-        "properties" : {
-          "artistId" : {
-            "type" : "string",
-            "example" : "a_8f3k2"
-          },
-          "artistName" : {
-            "type" : "string",
-            "example" : "Tame Impala"
-          },
-          "artistPfpUrl" : {
-            "type" : "string",
-            "example" : "/uploads/artists/a_8f3k2.jpg"
-          }
-        }
-      },
-      "MusicPieceOverview" : {
-        "type" : "object",
-        "properties" : {
-          "musicPieceId" : {
-            "type" : "string",
-            "example" : "m_92kd0"
-          },
-          "name" : {
-            "type" : "string",
-            "example" : "Let It Happen"
-          },
-          "coverUrl" : {
-            "type" : "string",
-            "example" : "/uploads/covers/m_92kd0.jpg"
-          },
-          "artistSummary" : {
-            "$ref" : "#/components/schemas/ArtistSummary"
-          },
-          "isFavorite" : {
-            "type" : "boolean",
-            "example" : true
-          }
-        }
-      },
-      "PlaylistOverview" : {
-        "type" : "object",
-        "properties" : {
-          "playlistId" : {
-            "type" : "string",
-            "example" : "p_7c2d1"
-          },
-          "playlistName" : {
-            "type" : "string",
-            "example" : "Late Night Drive"
-          },
-          "playlistCoverUrl" : {
-            "type" : "string",
-            "example" : "/uploads/playlists/p_7c2d1.jpg"
-          },
-          "totalPieces" : {
-            "type" : "integer",
-            "format" : "int32",
-            "example" : 12
-          },
-          "playlistOwner" : {
-            "$ref" : "#/components/schemas/PlaylistOwner"
-          },
-          "isSaved" : {
-            "type" : "boolean",
-            "example" : false
-          },
-          "musicPieces" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MusicPieceOverview"
-            }
-          }
-        }
-      },
-      "PlaylistOwner" : {
-        "type" : "object",
-        "properties" : {
-          "userId" : {
-            "type" : "string",
-            "example" : "u_41x9"
-          },
-          "pfpUrl" : {
-            "type" : "string",
-            "example" : "/uploads/users/u_41x9.jpg"
-          },
-          "username" : {
-            "type" : "string",
-            "example" : "justin"
           }
         }
       },
