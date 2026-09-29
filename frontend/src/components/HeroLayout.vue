@@ -10,6 +10,8 @@
         </div>
       </section>
 
+      <slot name="below" />
+
       <section v-if="showJoin" class="band">
         <div class="wrap join">
           <div>
