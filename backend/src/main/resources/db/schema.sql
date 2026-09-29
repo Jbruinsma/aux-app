@@ -67,6 +67,7 @@ CREATE TABLE music_pieces (
     artist_id VARCHAR NOT NULL REFERENCES artists(artist_id),
     mp3_file_url VARCHAR NOT NULL,
     duration_seconds INTEGER,
+    size_bytes INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );

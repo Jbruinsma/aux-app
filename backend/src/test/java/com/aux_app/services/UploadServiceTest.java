@@ -1,5 +1,6 @@
 package com.aux_app.services;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -157,6 +158,65 @@ class UploadServiceTest {
         g.fillRect(0, 0, width, height);
         g.dispose();
         return image;
+    }
+
+    @Test
+    void mp3KeepsOnlyFramesAndMeasuresDuration() {
+        byte[] frames = mp3Frames(MPEG1_128K, 30);
+        byte[] id3v2 = new byte[110];
+        System.arraycopy(new byte[] {'I', 'D', '3', 4, 0, 0, 0, 0, 0, 100}, 0, id3v2, 0, 10);
+        byte[] halfFrame = Arrays.copyOf(mp3Frames(MPEG1_128K, 1), 200);
+        byte[] id3v1 = Arrays.copyOf("TAG".getBytes(StandardCharsets.US_ASCII), 128);
+
+        UploadService.Mp3 mp3 = UploadService.parseMp3(concat(id3v2, frames, halfFrame, id3v1));
+        assertArrayEquals(frames, mp3.frames());
+        assertEquals(30, mp3.durationSeconds());
+    }
+
+    @Test
+    void mp3DurationLimitsAreEnforced() {
+        assertEquals(600, UploadService.parseMp3(mp3Frames(MPEG1_128K, 600)).durationSeconds());
+        assertMp3Rejected(mp3Frames(MPEG1_128K, 601), HttpStatus.BAD_REQUEST, "AUDIO_TOO_LONG");
+        assertMp3Rejected(mp3Frames(MPEG1_128K, 4), HttpStatus.BAD_REQUEST, "AUDIO_TOO_SHORT");
+    }
+
+    @Test
+    void nonMp3IsRejected() {
+        assertMp3Rejected("<html></html>".getBytes(StandardCharsets.UTF_8), HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_AUDIO_TYPE");
+        assertMp3Rejected(new byte[0], HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_AUDIO_TYPE");
+        // MPEG-1 Layer II (.mp2): valid MPEG audio, but not an MP3
+        assertMp3Rejected(mp3Frames(0xFFFD9000, 30), HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_AUDIO_TYPE");
+    }
+
+    @Test
+    void mp3WithBrokenFrameChainIsRejected() {
+        byte[] frames = mp3Frames(MPEG1_128K, 30);
+        assertMp3Rejected(concat(frames, new byte[300], frames), HttpStatus.BAD_REQUEST, "INVALID_AUDIO");
+    }
+
+    // MPEG-1 Layer III, 128kbps, 44.1kHz, no CRC, no padding: 417-byte frames of 1152 samples
+    private static final int MPEG1_128K = 0xFFFB9000;
+
+    // Frames with silent (zeroed) bodies; the parser only reads headers
+    private static byte[] mp3Frames(int header, int seconds) {
+        int count = seconds * 44100 / 1152;
+        ByteBuffer out = ByteBuffer.allocate(count * 417);
+        for (int i = 0; i < count; i++) {
+            out.putInt(i * 417, header);
+        }
+        return out.array();
+    }
+
+    private static byte[] concat(byte[]... parts) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (byte[] part : parts) out.writeBytes(part);
+        return out.toByteArray();
+    }
+
+    private static void assertMp3Rejected(byte[] bytes, HttpStatus status, String code) {
+        AuxException e = assertThrows(AuxException.class, () -> UploadService.parseMp3(bytes));
+        assertEquals(status, e.getStatus());
+        assertEquals(code, e.getDetails().code());
     }
 
     private static byte[] encode(BufferedImage image, String format) throws IOException {
