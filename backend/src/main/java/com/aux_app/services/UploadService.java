@@ -9,12 +9,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -31,12 +37,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
+import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserRepository;
 import com.luciad.imageio.webp.CompressionType;
+
+import jakarta.persistence.EntityManager;
 import com.luciad.imageio.webp.WebPWriteParam;
 
 import net.coobird.thumbnailator.Thumbnails;
@@ -52,11 +64,15 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
-// Validates user image uploads and stores them in R2.
+// Validates user image and MP3 uploads and stores them in R2.
 // Nothing the client sends is stored as-is: the image is decoded, normalized to sRGB, rotated per EXIF,
 // center-cropped, and re-encoded as WebP. That strips metadata (GPS etc.) and any non-image payload
 // (polyglot files, trailing data), so the bucket only ever holds pixels we produced.
+// MP3s keep their audio untouched, but only the MPEG frames are stored: ID3 tags (embedded pictures,
+// metadata) and anything else around the frames are dropped. They go to a private bucket and are only
+// reachable through short-lived signed URLs, so tracks in private playlists don't leak.
 @Service
 public class UploadService {
 
@@ -73,35 +89,77 @@ public class UploadService {
     static final int BANNER_MAX_HEIGHT = 500;
     private static final Set<String> ALLOWED_FORMATS = Set.of("jpeg", "png");
 
+    static final int MIN_TRACK_SECONDS = 5;
+    static final int MAX_TRACK_SECONDS = 10 * 60;
+    static final long MAX_STORAGE_BYTES = 2L * 1024 * 1024 * 1024;
+    // Room for ID3v1/APE/Lyrics3 tags after the last frame. More than that means the frame chain broke
+    // mid-file, and storing only the frames before the break would silently cut the song short
+    static final int MAX_TRAILING_BYTES = 256 * 1024;
+    // Long enough to play a 10 minute track with pauses; the frontend asks for a new URL when one expires
+    private static final Duration SIGNED_URL_TTL = Duration.ofHours(1);
+    // Layer III bitrates in kbps by bitrate index; 0 (free format) and 15 are invalid
+    private static final int[] MPEG1_KBPS = {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0};
+    private static final int[] MPEG2_KBPS = {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0};
+
     // TODO: caps decode memory at ~4 x 100MB (25MP ARGB); tune with heap size or move to a queue
     private static final Semaphore DECODE_SLOTS = new Semaphore(4);
 
     private final S3Client r2;
+    // Separate token scoped to the audio bucket only
+    private final S3Client audioR2;
+    private final S3Presigner presigner;
     private final String bucket;
+    private final String audioBucket;
     private final String publicBaseUrl;
     private final UserRepository users;
+    private final MusicPieceRepository musicPieces;
+    private final EntityManager entityManager;
+    private final TransactionTemplate transactions;
 
-    // aux.r2.* come from AUX_R2_* in .env (see application.properties)
+    // aux.r2.* come from AUX_R2_* and AUX_PRIVATE_TRACKS_R2_* in .env (see application.properties)
     public UploadService(
             @Value("${aux.r2.account-id}") String accountId,
             @Value("${aux.r2.access-key-id}") String accessKeyId,
             @Value("${aux.r2.secret-access-key}") String secretAccessKey,
             @Value("${aux.r2.bucket}") String bucket,
+            @Value("${aux.r2.audio-access-key-id}") String audioAccessKeyId,
+            @Value("${aux.r2.audio-secret-access-key}") String audioSecretAccessKey,
+            @Value("${aux.r2.audio-bucket}") String audioBucket,
             @Value("${aux.r2.public-base-url}") String publicBaseUrl,
-            UserRepository users
+            UserRepository users,
+            MusicPieceRepository musicPieces,
+            EntityManager entityManager,
+            TransactionTemplate transactions
     ) {
-        this.r2 = S3Client.builder()
-                .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
+        URI endpoint = URI.create("https://" + accountId + ".r2.cloudflarestorage.com");
+        StaticCredentialsProvider audioCredentials = StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(audioAccessKeyId, audioSecretAccessKey));
+        this.r2 = r2Client(endpoint, StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(accessKeyId, secretAccessKey)));
+        this.audioR2 = r2Client(endpoint, audioCredentials);
+        this.presigner = S3Presigner.builder()
+                .endpointOverride(endpoint)
                 .region(Region.of("auto"))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+                .credentialsProvider(audioCredentials)
+                .build();
+        this.bucket = bucket;
+        this.audioBucket = audioBucket;
+        this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
+        this.users = users;
+        this.musicPieces = musicPieces;
+        this.entityManager = entityManager;
+        this.transactions = transactions;
+    }
+
+    private static S3Client r2Client(URI endpoint, StaticCredentialsProvider credentials) {
+        return S3Client.builder()
+                .endpointOverride(endpoint)
+                .region(Region.of("auto"))
+                .credentialsProvider(credentials)
                 // R2 doesn't support every default checksum newer SDKs send
                 .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
                 .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
                 .build();
-        this.bucket = bucket;
-        this.publicBaseUrl = publicBaseUrl.replaceAll("/+$", "");
-        this.users = users;
     }
 
     public String replaceProfilePicture(UserEntity user, MultipartFile file) {
@@ -113,6 +171,163 @@ public class UploadService {
     public String replaceBanner(UserEntity user, MultipartFile file, int x, int y, int width, int height) {
         byte[] webp = bannerToWebp(readUpload(file), x, y, width, height);
         return store(user, "banner", webp, user.getBannerUrl(), user::setBannerUrl);
+    }
+
+    // mp3FileUrl in music_pieces holds this key; turn it into a playable URL with signedAudioUrl.
+    public record StoredTrack(String key, int durationSeconds, int sizeBytes) {}
+
+    record Mp3(byte[] frames, int durationSeconds) {}
+
+    // Stores a batch of MP3s and inserts their music_pieces rows; toPieces builds one row per track, in upload
+    // order. All or nothing: if any file is invalid, the quota is exceeded, or the insert fails, no row is
+    // saved and no object is left in R2. Per-file size is capped by spring.servlet.multipart.
+    public List<MusicPieceEntity> storeTracks(UserEntity user, List<MultipartFile> files,
+                                              Function<List<StoredTrack>, List<MusicPieceEntity>> toPieces) {
+        // SQLite takes its write lock at BEGIN (transaction_mode=IMMEDIATE), so a caller's transaction would
+        // block every other writer in the app for as long as the R2 uploads below take
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("storeTracks must not be called inside a transaction");
+        }
+        // Validate every file before uploading any, so one bad file doesn't leave the others orphaned
+        List<Mp3> tracks = files.stream().map(UploadService::readMp3).toList();
+        long batchBytes = tracks.stream().mapToLong(t -> t.frames().length).sum();
+        // Early check so an over-quota batch fails before uploading; the check that counts is the one below
+        if (musicPieces.totalSizeBytes(user.getUserId()) + batchBytes > MAX_STORAGE_BYTES) {
+            throw quotaExceeded();
+        }
+
+        List<StoredTrack> stored = new ArrayList<>();
+        try {
+            for (Mp3 track : tracks) {
+                String key = "mp3/" + UUID.randomUUID() + ".mp3";
+                audioR2.putObject(put -> put.bucket(audioBucket).key(key).contentType("audio/mpeg"),
+                        RequestBody.fromBytes(track.frames()));
+                stored.add(new StoredTrack(key, track.durationSeconds(), track.frames().length));
+            }
+            // Parallel batches from one user can all pass the early check. Writers are serialized here (the
+            // write lock is held from BEGIN), so each one sees every committed batch before it and the total
+            // can never pass the limit
+            return transactions.execute(status -> {
+                List<MusicPieceEntity> pieces = toPieces.apply(List.copyOf(stored));
+                // persist, not save: save merges, which would overwrite an existing row with a colliding id
+                pieces.forEach(entityManager::persist);
+                entityManager.flush();
+                if (musicPieces.totalSizeBytes(user.getUserId()) > MAX_STORAGE_BYTES) {
+                    throw quotaExceeded();
+                }
+                return pieces;
+            });
+        } catch (RuntimeException e) {
+            stored.forEach(t -> deleteTrack(t.key()));
+            throw e;
+        }
+    }
+
+    private static AuxException quotaExceeded() {
+        return new AuxException(HttpStatus.CONTENT_TOO_LARGE, "STORAGE_QUOTA_EXCEEDED",
+                "Uploads are limited to 2GB per user", "mp3s");
+    }
+
+    public void deleteTrack(String key) {
+        deleteQuietly(audioR2, audioBucket, key);
+    }
+
+    // Only hand these out after checking the user may play the track (owner, or a playlist they can see)
+    public String signedAudioUrl(String key) {
+        return presigner.presignGetObject(p -> p
+                        .signatureDuration(SIGNED_URL_TTL)
+                        .getObjectRequest(get -> get.bucket(audioBucket).key(key)))
+                .url().toString();
+    }
+
+    // Prefixes errors with the file name, so the user knows which file of a batch to fix
+    private static Mp3 readMp3(MultipartFile file) {
+        try {
+            return parseMp3(file.getBytes());
+        } catch (AuxException e) {
+            throw new AuxException(e.getStatus(), e.getDetails().code(),
+                    file.getOriginalFilename() + ": " + e.getMessage(), "mp3s");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    // Walks the MPEG frame chain: checks the format from the bytes (not the filename or Content-Type), sums the
+    // exact duration (correct for VBR too), and returns only the frames. The Xing/LAME info frame is a regular
+    // frame, so it stays and browsers can still seek in VBR files.
+    static Mp3 parseMp3(byte[] bytes) {
+        int pos = 0;
+        // ID3v2 header: "ID3", version (2), flags (1), tag size as a 28-bit syncsafe int (4); flag 0x10 = footer
+        if (bytes.length >= 10 && bytes[0] == 'I' && bytes[1] == 'D' && bytes[2] == '3') {
+            int size = (bytes[6] & 0x7F) << 21 | (bytes[7] & 0x7F) << 14 | (bytes[8] & 0x7F) << 7 | (bytes[9] & 0x7F);
+            pos = 10 + size + ((bytes[5] & 0x10) != 0 ? 10 : 0);
+        }
+        // Some taggers pad after the tag with zeros
+        while (pos < bytes.length && bytes[pos] == 0) pos++;
+
+        int start = pos;
+        int first = 0;
+        int sampleRate = 0;
+        long samples = 0;
+        while (pos + 4 <= bytes.length) {
+            int header = ByteBuffer.wrap(bytes, pos, 4).getInt();
+            // Sync, version, layer and sample rate must match the first frame; a mismatch is corruption or
+            // a random byte pattern that happens to look like a sync word
+            if (samples > 0 && (header & 0xFFFE0C00) != (first & 0xFFFE0C00)) break;
+            int frameLength = frameLength(header);
+            if (frameLength < 0) break;
+            if (samples == 0) {
+                first = header;
+                sampleRate = sampleRate(header);
+            }
+            if (pos + frameLength > bytes.length) break; // truncated last frame, common in real rips: drop it
+            pos += frameLength;
+            samples += isMpeg1(header) ? 1152 : 576;
+            if (samples > (long) MAX_TRACK_SECONDS * sampleRate) {
+                throw new AuxException(HttpStatus.BAD_REQUEST, "AUDIO_TOO_LONG",
+                        "Track must be at most 10 minutes", "mp3s");
+            }
+        }
+
+        if (samples == 0) {
+            throw new AuxException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_AUDIO_TYPE",
+                    "File must be an MP3", "mp3s");
+        }
+        if (bytes.length - pos > MAX_TRAILING_BYTES) {
+            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_AUDIO", "MP3 is damaged and could not be read", "mp3s");
+        }
+        if (samples < (long) MIN_TRACK_SECONDS * sampleRate) {
+            throw new AuxException(HttpStatus.BAD_REQUEST, "AUDIO_TOO_SHORT",
+                    "Track must be at least " + MIN_TRACK_SECONDS + " seconds", "mp3s");
+        }
+        return new Mp3(Arrays.copyOfRange(bytes, start, pos), (int) Math.round((double) samples / sampleRate));
+    }
+
+    // Header bits: 11 sync, 2 version (0 = 2.5, 1 reserved, 2 = MPEG-2, 3 = MPEG-1), 2 layer (1 = Layer III),
+    // 1 CRC flag, 4 bitrate index, 2 sample rate index, 1 padding. Returns -1 if this isn't a Layer III frame.
+    private static int frameLength(int header) {
+        int version = header >>> 19 & 3;
+        int kbps = (isMpeg1(header) ? MPEG1_KBPS : MPEG2_KBPS)[header >>> 12 & 0xF];
+        if ((header >>> 21 & 0x7FF) != 0x7FF || version == 1 || (header >>> 17 & 3) != 1
+                || kbps == 0 || (header >>> 10 & 3) == 3) {
+            return -1;
+        }
+        int bytesPerKbps = isMpeg1(header) ? 144_000 : 72_000;
+        return bytesPerKbps * kbps / sampleRate(header) + (header >>> 9 & 1);
+    }
+
+    private static boolean isMpeg1(int header) {
+        return (header >>> 19 & 3) == 3;
+    }
+
+    // Only valid once frameLength has accepted the header
+    private static int sampleRate(int header) {
+        int base = new int[] {44100, 48000, 32000}[header >>> 10 & 3];
+        return switch (header >>> 19 & 3) {
+            case 3 -> base;      // MPEG-1
+            case 2 -> base / 2;  // MPEG-2
+            default -> base / 4; // MPEG-2.5
+        };
     }
 
     private static byte[] readUpload(MultipartFile file) {
@@ -147,21 +362,21 @@ public class UploadService {
         try {
             users.save(user);
         } catch (RuntimeException e) {
-            deleteQuietly(key);
+            deleteQuietly(r2, bucket, key);
             throw e;
         }
 
         // Only objects we own; skips the bundled default picture
         if (oldUrl != null && oldUrl.startsWith(publicBaseUrl + "/")) {
-            deleteQuietly(oldUrl.substring(publicBaseUrl.length() + 1));
+            deleteQuietly(r2, bucket, oldUrl.substring(publicBaseUrl.length() + 1));
         }
         return newUrl;
     }
 
     // Worst case is an orphaned object, which costs storage, not correctness
-    private void deleteQuietly(String key) {
+    private static void deleteQuietly(S3Client client, String bucket, String key) {
         try {
-            r2.deleteObject(delete -> delete.bucket(bucket).key(key));
+            client.deleteObject(delete -> delete.bucket(bucket).key(key));
         } catch (SdkException e) {
             log.warn("Could not delete R2 object {}", key, e);
         }
