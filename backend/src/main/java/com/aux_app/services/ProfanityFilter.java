@@ -19,7 +19,7 @@ public final class ProfanityFilter {
     /** Replaces every banned term with one '*' per character. */
     public static String mask(String text) {
         if (text == null) return null;
-        return BANNED.matcher(text).replaceAll(m -> "*".repeat(m.group().length()));
+        return BANNED.matcher(text).replaceAll(m -> "#".repeat(m.group().length()));
     }
 
     private static Pattern load() {
