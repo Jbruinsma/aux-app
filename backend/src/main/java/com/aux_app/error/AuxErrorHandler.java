@@ -29,7 +29,7 @@ public class AuxErrorHandler {
         return respond(e.getStatus(), e.getDetails());
     }
 
-    // @Valid on a @RequestBody failed
+    // @Valid on a @RequestBody or @ModelAttribute failed
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<AuxServerError> handleValidation(MethodArgumentNotValidException e) {
         FieldError field = e.getBindingResult().getFieldError();
