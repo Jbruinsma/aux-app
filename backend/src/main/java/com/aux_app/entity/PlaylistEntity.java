@@ -5,6 +5,7 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
@@ -12,28 +13,28 @@ import jakarta.persistence.Table;
 public class PlaylistEntity {
 
     @Id
-    @Column(name = "playlist_id")
+    @Column(name = "playlist_id",  nullable = false, length = 36)
     private String playlistId;
 
     @Column(name = "owner_id", nullable = false)
     private String ownerId;
 
-    @Column(name = "is_public")
+    @Column(name = "is_public", nullable = false)
     private Boolean isPublic;
 
-    @Column(name = "playlist_cover_url")
+    @Column(name = "playlist_cover_url", nullable = false)
     private String playlistCoverUrl;
 
-    @Column(name = "playlist_name")
+    @Column(name = "playlist_name", nullable = false, length = 36)
     private String playlistName;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected PlaylistEntity() {}
+    public PlaylistEntity() {}
 
     public PlaylistEntity(String playlistId, String ownerId, String playlistName, boolean isPublic) {
         this.playlistId = playlistId;
@@ -51,4 +52,12 @@ public class PlaylistEntity {
     public String getPlaylistName() { return playlistName; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    public void setPlaylistCoverUrl(String playlistCoverUrl) { this.playlistCoverUrl = playlistCoverUrl; }
+    public void setPlaylistName(String playlistName) { this.playlistName = playlistName; }
+    public void setIsPublic(Boolean isPublic) { this.isPublic = isPublic; }
+
+    // Only runs when a column actually changed, so a no-op edit leaves it alone
+    @PreUpdate
+    void touch() { updatedAt = Instant.now(); }
 }
