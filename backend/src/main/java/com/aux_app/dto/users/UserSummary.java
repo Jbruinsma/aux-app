@@ -8,8 +8,8 @@ import com.aux_app.entity.UserEntity;
 public record UserSummary(
         @Schema(example = "u_41x9") String userId,
         @Schema(example = "justin") String username,
-        @Schema(example = "https://aux.justinabruinsma.com/pfp/66fa2.webp") String profilePictureUrl,
-        @Schema(example = "https://aux.justinabruinsma.com/banner/66fa2.webp") String bannerUrl,
+        @Schema(example = "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String profilePictureUrl,
+        @Schema(example = "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String bannerUrl,
         @Schema(example = "USERNAME (1) | PFP (2) | DONE (3)") OnboardingStep onboardingStep
 ) {
     public static UserSummary of(UserEntity user) {
