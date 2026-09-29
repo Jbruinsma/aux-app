@@ -16,10 +16,14 @@ public final class ProfanityFilter {
 
     private ProfanityFilter() {}
 
-    /** Replaces every banned term with one '*' per character. */
+    /** Replaces every banned term with one '#' per character. */
     public static String mask(String text) {
         if (text == null) return null;
         return BANNED.matcher(text).replaceAll(m -> "#".repeat(m.group().length()));
+    }
+
+    public static boolean contains(String text) {
+        return text != null && BANNED.matcher(text).find();
     }
 
     private static Pattern load() {

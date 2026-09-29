@@ -1,5 +1,6 @@
 package com.aux_app.dto.playlist;
 
+import com.aux_app.services.ProfanityFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,7 +20,7 @@ public record PlaylistDetailsUpdate(
 ) {
     // Runs before validation, so a blank name counts as unchanged instead of failing @Size
     public PlaylistDetailsUpdate {
-        playlistName = playlistName == null || playlistName.isBlank() ? null : playlistName.strip();
+        playlistName = playlistName == null || playlistName.isBlank() ? null : ProfanityFilter.mask(playlistName.strip());
         playlistCover = playlistCover == null || playlistCover.isEmpty() ? null : playlistCover;
     }
 }

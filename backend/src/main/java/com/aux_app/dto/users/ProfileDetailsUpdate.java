@@ -27,7 +27,7 @@ public record ProfileDetailsUpdate(
         String about
 ) {
     public ProfileDetailsUpdate {
-        displayName = blankToNull(displayName);
+        displayName = ProfanityFilter.mask(blankToNull(displayName));
         website = blankToNull(website);
         about = ProfanityFilter.mask(blankToNull(about));
     }
