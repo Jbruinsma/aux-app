@@ -11,6 +11,10 @@
         <router-link to="/register" class="btn primary">Create your account</router-link>
         <router-link to="/login" class="btn secondary">Log in</router-link>
       </div>
+      <div class="faces">
+        <img v-for="src in PFPS" :key="src" :src="src" alt="" />
+        <span class="faces-note">Join listeners already on Aux.</span>
+      </div>
     </div>
     <template #below>
       <section class="top">
@@ -42,6 +46,16 @@ const topAlbums = [
   { album: 'My Beautiful Dark Twisted Fantasy', artist: 'Kanye West', cover: `${COVER_BASE}/top-mbdtf.webp` },
   { album: 'UP 2 ME', artist: 'Yeat', cover: `${COVER_BASE}/top-up2me.jpg` },
 ]
+
+// Hardcoded to save an API call; picked from real uploads in the R2 bucket
+const PFPS = [
+  '09f810b7-ed4a-4b44-b322-860b80909537',
+  '12bbd883-fc2d-4abe-8f03-4292d60f8234',
+  '1a6af45f-4aad-424b-82fc-9edde6460a0d',
+  '296dcdba-750f-4b8f-92c4-0dba901db3df',
+  '5b828901-e1a7-40e4-b7b7-530ae14b828a',
+  '66acb350-287e-4bb3-8f68-7fd03ce636f2',
+].map((id) => `https://aux.justinabruinsma.com/pfp/${id}.webp`)
 </script>
 
 <style scoped>
@@ -50,6 +64,10 @@ const topAlbums = [
 .tagline { font: 700 20px/28px var(--font-sans); margin: var(--space-4) 0 var(--space-2); }
 .lead { color: var(--ink-muted); max-width: 52ch; margin: 0; }
 .cta { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-6); }
+.faces { align-items: center; display: flex; margin-top: var(--space-8); }
+.faces img { border: 2px solid var(--surface); border-radius: var(--radius-pill); height: 56px; margin-left: -12px; object-fit: cover; width: 56px; }
+.faces img:first-child { margin-left: 0; }
+.faces-note { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin-left: var(--space-3); }
 .top { border-bottom: 1px solid var(--line); padding: var(--space-8) 0; }
 .wrap { padding: 0 var(--page-gutter); }
 .top-in { align-items: start; display: grid; gap: var(--space-8); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

@@ -1,5 +1,5 @@
 <template>
-  <HeroLayout :show-join="false">
+  <HeroLayout>
     <form class="auth-card" @submit.prevent="register">
       <h1>Create your account</h1>
 
