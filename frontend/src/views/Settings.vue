@@ -267,14 +267,7 @@
 
           <section aria-labelledby="email-heading">
             <h2 id="email-heading">Change Email Address</h2>
-            <form class="account-form" @submit.prevent="saveEmail">
-              <p v-if="ACCOUNT_MOCKED" class="notice form-field">
-                yo. this is preview only. the error message for email and password respectively is 'taken@example.com' and 'wrongpassword'.
-                <br>
-                <br>
-                hahaha. yo if ur readin this... shush mate
-              </p>
-
+            <form class="account-form" @submit.prevent="emailCodeSent ? confirmEmail() : sendEmailCode()">
               <label class="form-label" for="current-email">Current Email Address</label>
               <div class="form-field">
                 <input
@@ -293,28 +286,79 @@
                   id="new-email"
                   v-model.trim="newEmail"
                   class="input"
+                  :class="{ readonly: emailCodeSent }"
+                  :readonly="emailCodeSent"
                   type="email"
                   autocomplete="email"
                   spellcheck="false"
                   :maxlength="EMAIL_MAX"
                   required
-                  :aria-invalid="emailStatus === 'taken' || emailStatus === 'invalid' ? 'true' : 'false'"
+                  :aria-invalid="emailStatus === 'invalid' ? 'true' : 'false'"
                   aria-describedby="new-email-status"
                   @input="onEmailInput"
                 />
                 <p id="new-email-status" class="status" :class="emailStatus" aria-live="polite">
-                  <svg v-if="emailStatus === 'available'" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-                  <svg v-else-if="emailStatus === 'taken' || emailStatus === 'invalid'" class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg v-if="emailStatus === 'invalid'" class="icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M18 6 6 18" /><path d="m6 6 12 12" />
                   </svg>
                   {{ emailStatusText }}
                 </p>
               </div>
 
+              <label class="form-label" for="email-password">Current Password</label>
               <div class="form-field">
-                <button type="submit" class="btn primary" :disabled="!canSaveEmail">
-                  {{ emailSaving ? 'Saving…' : 'Change email address' }}
+                <input
+                  id="email-password"
+                  v-model="emailPassword"
+                  class="input"
+                  :class="{ readonly: emailCodeSent }"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  :readonly="emailCodeSent"
+                  :aria-invalid="emailPasswordError ? 'true' : 'false'"
+                  aria-describedby="email-password-error"
+                  @input="emailPasswordError = ''"
+                />
+                <p v-if="emailPasswordError" id="email-password-error" class="error">{{ emailPasswordError }}</p>
+              </div>
+
+              <template v-if="emailCodeSent">
+                <label class="form-label" for="email-code">Code</label>
+                <div class="form-field">
+                  <input
+                    id="email-code"
+                    ref="emailCodeInput"
+                    v-model.trim="emailCode"
+                    class="input"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    required
+                    :aria-invalid="emailCodeError ? 'true' : 'false'"
+                    aria-describedby="email-code-hint"
+                    @input="emailCodeError = ''"
+                  />
+                  <p id="email-code-hint" :class="emailCodeError ? 'error' : 'hint'">
+                    {{ emailCodeError || `We sent a 6-digit code to ${newEmail}. It expires in 10 minutes.` }}
+                  </p>
+                </div>
+              </template>
+
+              <div class="form-field">
+                <button v-if="!emailCodeSent" type="submit" class="btn primary" :disabled="!canSaveEmail">
+                  {{ emailSaving ? 'Sending…' : 'Send code' }}
                 </button>
+                <template v-else>
+                  <button type="submit" class="btn primary" :disabled="!canConfirmEmail">
+                    {{ emailSaving ? 'Saving…' : 'Change email address' }}
+                  </button>
+                  <div class="code-actions">
+                    <button type="button" class="btn text" :disabled="emailSaving" @click="sendEmailCode">Send a new code</button>
+                    <button type="button" class="btn text" :disabled="emailSaving" @click="cancelEmailChange">Cancel</button>
+                  </div>
+                </template>
                 <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
                 <p v-if="emailSaved" class="success" role="status">Your email address is now {{ emailSaved }}.</p>
               </div>
@@ -323,13 +367,15 @@
 
           <section aria-labelledby="password-heading">
             <h2 id="password-heading">Change Password</h2>
-            <form class="account-form" @submit.prevent="savePassword">
+            <form class="account-form" @submit.prevent="passwordCodeSent ? confirmPassword() : sendPasswordCode()">
               <label class="form-label" for="current-password">Current password</label>
               <div class="form-field">
                 <input
                   id="current-password"
                   v-model="password.current"
                   class="input"
+                  :class="{ readonly: passwordCodeSent }"
+                  :readonly="passwordCodeSent"
                   type="password"
                   autocomplete="current-password"
                   required
@@ -346,6 +392,8 @@
                   id="new-password"
                   v-model="password.new"
                   class="input"
+                  :class="{ readonly: passwordCodeSent }"
+                  :readonly="passwordCodeSent"
                   type="password"
                   autocomplete="new-password"
                   :maxlength="PASSWORD_MAX"
@@ -364,6 +412,8 @@
                   id="confirm-password"
                   v-model="password.confirm"
                   class="input"
+                  :class="{ readonly: passwordCodeSent }"
+                  :readonly="passwordCodeSent"
                   type="password"
                   autocomplete="new-password"
                   required
@@ -375,10 +425,42 @@
                 </p>
               </div>
 
+              <template v-if="passwordCodeSent">
+                <label class="form-label" for="password-code">Code</label>
+                <div class="form-field">
+                  <input
+                    id="password-code"
+                    ref="passwordCodeInput"
+                    v-model.trim="passwordCode"
+                    class="input"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    required
+                    :aria-invalid="passwordCodeError ? 'true' : 'false'"
+                    aria-describedby="password-code-hint"
+                    @input="passwordCodeError = ''"
+                  />
+                  <p id="password-code-hint" :class="passwordCodeError ? 'error' : 'hint'">
+                    {{ passwordCodeError || `We sent a 6-digit code to ${currentEmail}. It expires in 10 minutes.` }}
+                  </p>
+                </div>
+              </template>
+
               <div class="form-field">
-                <button type="submit" class="btn primary" :disabled="!canSavePassword">
-                  {{ passwordSaving ? 'Saving…' : 'Change password' }}
+                <button v-if="!passwordCodeSent" type="submit" class="btn primary" :disabled="!canSavePassword">
+                  {{ passwordSaving ? 'Sending…' : 'Send code' }}
                 </button>
+                <template v-else>
+                  <button type="submit" class="btn primary" :disabled="!canConfirmPassword">
+                    {{ passwordSaving ? 'Saving…' : 'Change password' }}
+                  </button>
+                  <div class="code-actions">
+                    <button type="button" class="btn text" :disabled="passwordSaving" @click="sendPasswordCode">Send a new code</button>
+                    <button type="button" class="btn text" :disabled="passwordSaving" @click="cancelPasswordChange">Cancel</button>
+                  </div>
+                </template>
                 <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
                 <p v-if="passwordSaved" class="success" role="status">Your password is changed.</p>
               </div>
@@ -497,13 +579,14 @@ import {
   PASSWORD_MAX,
   PASSWORD_MIN,
   USERNAME_PATTERN,
-  changeEmail,
-  changePassword,
   changeUsername,
-  checkEmail,
   checkUsername,
+  confirmEmailChange,
+  confirmPasswordChange,
   deleteAccount,
   fetchSettings,
+  requestEmailChange,
+  requestPasswordChange,
 } from '@/utils/account.js'
 
 const ABOUT_LIMIT = 200
@@ -909,62 +992,116 @@ async function saveUsername() {
   }
 }
 
+/* Email and password changes are two steps: send a code by email, then type it in */
+
+const CODE_PATTERN = /^\d{6}$/
+const WRONG_CODE = "That code is wrong or has expired. Check your email, or send a new code."
+
+function codeFlowError(err, what) {
+  if (err.status === 429) return 'Wait a minute before asking for another code.'
+  return `We couldn't change your ${what}. Check that the server is running, then try again.`
+}
+
 /* Email: the login response doesn't include it, so it loads with the settings */
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+$/
 const currentEmail = ref('')
 const accountError = ref('')
 
-const {
-  value: newEmail,
-  status: emailStatus,
-  onInput: checkNewEmail,
-  reset: resetEmail,
-} = availabilityField({
-  isValid: (email) => email.length >= EMAIL_MIN && email.length <= EMAIL_MAX && EMAIL_PATTERN.test(email),
-  isCurrent: (email) => email.toLowerCase() === currentEmail.value.toLowerCase(),
-  check: checkEmail,
+// No "available / taken" check: it would tell anyone logged in which emails have accounts
+const newEmail = ref('')
+const emailStatus = computed(() => {
+  const email = newEmail.value
+  if (!email) return 'idle'
+  if (email.length < EMAIL_MIN || email.length > EMAIL_MAX || !EMAIL_PATTERN.test(email)) return 'invalid'
+  if (email.toLowerCase() === currentEmail.value.toLowerCase()) return 'current'
+  return 'idle'
 })
 const emailSaving = ref(false)
 const emailSaved = ref('')
 const emailError = ref('')
+const emailPassword = ref('')
+const emailPasswordError = ref('')
+const emailCodeSent = ref(false)
+const emailCode = ref('')
+const emailCodeError = ref('')
+const emailCodeInput = ref(null)
 
 const emailStatusText = computed(() => ({
   idle: 'The address you log in with.',
-  checking: 'Checking…',
-  available: `${newEmail.value} is available.`,
-  taken: 'That email already has an account. Try another one.',
   invalid: 'Enter a full email address, like name@example.com.',
   current: "That's already your email address.",
 })[emailStatus.value])
 
 const canSaveEmail = computed(
-  () => !emailSaving.value && !!newEmail.value && !['taken', 'invalid', 'current'].includes(emailStatus.value),
+  () =>
+    !emailSaving.value &&
+    !!newEmail.value &&
+    !!emailPassword.value &&
+    emailStatus.value === 'idle',
 )
+const canConfirmEmail = computed(() => !emailSaving.value && CODE_PATTERN.test(emailCode.value))
 
 function onEmailInput() {
   emailError.value = ''
   emailSaved.value = ''
-  checkNewEmail()
 }
 
-async function saveEmail() {
+// Step 1: check the password and email a code to the new address. Also used by "Send a new code"
+async function sendEmailCode() {
   if (!canSaveEmail.value) return
   emailError.value = ''
+  emailSaved.value = ''
   emailSaving.value = true
   try {
-    const { email } = await changeEmail(newEmail.value)
-    currentEmail.value = email
-    resetEmail()
-    emailSaved.value = email
+    await requestEmailChange(newEmail.value, emailPassword.value)
+    emailCode.value = ''
+    emailCodeError.value = ''
+    emailCodeSent.value = true
+    await nextTick()
+    emailCodeInput.value?.focus()
   } catch (err) {
     if (await handleUnauthorized(err)) return
-    if (err.code === 'EMAIL_TAKEN') emailStatus.value = 'taken'
-    else if (err.code === 'INVALID_FIELD') emailStatus.value = 'invalid'
-    else emailError.value = "We couldn't change your email address. Check that the server is running, then try again."
+    if (err.code === 'INVALID_FIELD') emailError.value = 'Enter a full email address, like name@example.com.'
+    else if (err.code === 'WRONG_PASSWORD') emailPasswordError.value = "That isn't your current password. Try again."
+    else emailError.value = codeFlowError(err, 'email address')
   } finally {
     emailSaving.value = false
   }
+}
+
+// Step 2: spend the code
+async function confirmEmail() {
+  if (!canConfirmEmail.value) return
+  emailError.value = ''
+  emailSaving.value = true
+  try {
+    await confirmEmailChange(emailCode.value)
+    const email = newEmail.value
+    currentEmail.value = email
+    cancelEmailChange()
+    emailSaved.value = email
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    if (err.code === 'INVALID_OTP') emailCodeError.value = WRONG_CODE
+    else if (err.code === 'EMAIL_TAKEN') {
+      // Someone registered the address after the code went out; the code is spent, so start over
+      emailCodeSent.value = false
+      emailError.value = 'That email now has an account. Try another one.'
+    } else emailError.value = codeFlowError(err, 'email address')
+  } finally {
+    emailSaving.value = false
+  }
+}
+
+function cancelEmailChange() {
+  newEmail.value = ''
+  emailPassword.value = ''
+  emailPasswordError.value = ''
+  emailCode.value = ''
+  emailCodeError.value = ''
+  emailCodeSent.value = false
+  emailError.value = ''
 }
 
 const password = reactive({ current: '', new: '', confirm: '' })
@@ -972,6 +1109,10 @@ const passwordSaving = ref(false)
 const passwordSaved = ref(false)
 const passwordError = ref('')
 const currentPasswordError = ref('')
+const passwordCodeSent = ref(false)
+const passwordCode = ref('')
+const passwordCodeError = ref('')
+const passwordCodeInput = ref(null)
 
 // Nothing shows until something is typed. bcrypt only reads 72 bytes, so the backend also caps the UTF-8 length
 const newPasswordProblem = computed(() => {
@@ -995,29 +1136,61 @@ const canSavePassword = computed(
     !passwordsDiffer.value,
 )
 
+const canConfirmPassword = computed(() => !passwordSaving.value && CODE_PATTERN.test(passwordCode.value))
+
 watch(password, () => {
   passwordSaved.value = false
   passwordError.value = ''
 })
 
-async function savePassword() {
+// Step 1: check the current password and email a code to the current address. Also used by "Send a new code"
+async function sendPasswordCode() {
   if (!canSavePassword.value) return
   passwordError.value = ''
   currentPasswordError.value = ''
   passwordSaving.value = true
   try {
-    await changePassword(password.current, password.new)
-    Object.assign(password, { current: '', new: '', confirm: '' })
+    await requestPasswordChange(password.current)
+    passwordCode.value = ''
+    passwordCodeError.value = ''
+    passwordCodeSent.value = true
+    await nextTick()
+    passwordCodeInput.value?.focus()
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    if (err.code === 'WRONG_PASSWORD') currentPasswordError.value = "That isn't your current password. Try again."
+    else passwordError.value = codeFlowError(err, 'password')
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
+// Step 2: spend the code
+async function confirmPassword() {
+  if (!canConfirmPassword.value) return
+  passwordError.value = ''
+  passwordSaving.value = true
+  try {
+    await confirmPasswordChange(passwordCode.value, password.new)
+    cancelPasswordChange()
     await nextTick()
     passwordSaved.value = true
   } catch (err) {
     if (await handleUnauthorized(err)) return
-    if (err.code === 'WRONG_PASSWORD') currentPasswordError.value = "That isn't your current password. Try again."
+    if (err.code === 'INVALID_OTP') passwordCodeError.value = WRONG_CODE
     else if (err.code === 'INVALID_FIELD') passwordError.value = `That password isn't allowed. Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
-    else passwordError.value = "We couldn't change your password. Check that the server is running, then try again."
+    else passwordError.value = codeFlowError(err, 'password')
   } finally {
     passwordSaving.value = false
   }
+}
+
+function cancelPasswordChange() {
+  Object.assign(password, { current: '', new: '', confirm: '' })
+  currentPasswordError.value = ''
+  passwordCode.value = ''
+  passwordCodeError.value = ''
+  passwordCodeSent.value = false
 }
 
 const DELETE_WAIT = 6
@@ -1117,6 +1290,7 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .form-label { font: 600 14px/20px var(--font-sans); padding-top: var(--space-3); text-align: right; }
 .form-field { display: flex; flex-direction: column; gap: var(--space-2); grid-column: 2; }
 .form-field .btn { align-self: flex-start; }
+.code-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .readonly { background: var(--surface-alt); border-color: var(--surface-alt); color: var(--ink-muted); }
 .notice { background: var(--purple-soft); border-radius: var(--radius-sm); font: 500 14px/20px var(--font-sans); margin: 0; padding: var(--space-4); }
 .delete-field { gap: var(--space-4); }

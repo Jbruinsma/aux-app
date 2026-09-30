@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -18,9 +19,11 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final Path uploadsDir;
     private final CurrentUserResolver currentUserResolver;
+    private final RateLimiter rateLimiter;
 
-    public WebConfig(@Value("${aux.uploads-dir}") String uploadsDir, CurrentUserResolver currentUserResolver) throws Exception {
+    public WebConfig(@Value("${aux.uploads-dir}") String uploadsDir, CurrentUserResolver currentUserResolver, RateLimiter rateLimiter) throws Exception {
         this.currentUserResolver = currentUserResolver;
+        this.rateLimiter = rateLimiter;
         this.uploadsDir = Path.of(uploadsDir).toAbsolutePath().normalize();
         for (String sub : new String[] {"covers", "mp3s", "pfps"}) {
             Files.createDirectories(this.uploadsDir.resolve(sub));
@@ -37,6 +40,12 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**").addResourceLocations(uploadsDir.toUri().toString());
+    }
+
+    // Runs before every handler, including /uploads/**
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(rateLimiter);
     }
 
     // Lets controllers take `@CurrentUser UserEntity user`

@@ -1,12 +1,10 @@
-import { ApiError, fetchAPI, request } from '@/utils/api.js'
+import { fetchAPI, request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// Email, password and account deletion aren't on the backend yet. They're requested in BACKEND_REQUESTS.md and answer
-// from mock data until then; flip this off once they ship, since the real calls below already use the requested shapes
+// Account deletion isn't on the backend yet. It's requested in BACKEND_REQUESTS.md and answers from mock data until
+// then; flip this off once it ships, since the real call below already uses the requested shape
 export const ACCOUNT_MOCKED = true
 
-const MOCK_TAKEN_EMAIL = 'taken@example.com'
-const MOCK_WRONG_PASSWORD = 'wrongpassword'
 const wait = () => new Promise((resolve) => setTimeout(resolve, 400))
 
 export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/
@@ -26,26 +24,9 @@ export function fetchSettings() {
   return fetchAPI(`${API_BASE_URL}/api/users/settings`)
 }
 
-// { exists }; true when another account has this email, ignoring case
-export async function checkEmail(email) {
-  if (!ACCOUNT_MOCKED) return fetchAPI(`${API_BASE_URL}/api/users/me/check-email?${new URLSearchParams({ email })}`)
-  await wait()
-  return { exists: email.toLowerCase() === MOCK_TAKEN_EMAIL }
-}
-
 // Returns the updated UserSummary
 export function changeUsername(username) {
   return request('PUT', `${API_BASE_URL}/api/users/me/username`, { username })
-}
-
-// Returns { email }
-export async function changeEmail(email) {
-  if (!ACCOUNT_MOCKED) return request('PUT', `${API_BASE_URL}/api/users/me/email`, { email })
-  await wait()
-  if (email.toLowerCase() === MOCK_TAKEN_EMAIL) {
-    throw new ApiError(409, { code: 'EMAIL_TAKEN', message: 'Email already registered', parameter: 'email' })
-  }
-  return { email }
 }
 
 // Returns nothing (204). The session token stops working once the account is gone
@@ -55,12 +36,25 @@ export async function deleteAccount() {
   return null
 }
 
+// Email and password changes are two steps: the request call emails a 6-digit code, the confirm call spends it.
+// Errors: 403 WRONG_PASSWORD, 409 EMAIL_TAKEN, 400 INVALID_OTP (wrong, expired or used code), 429 OTP_COOLDOWN
+
+// Returns nothing (204); the code goes to the new address
+export function requestEmailChange(newEmail, currentPassword) {
+  return request('POST', `${API_BASE_URL}/api/auth/email/request`, { newEmail, currentPassword })
+}
+
+// Returns the updated UserSummary
+export function confirmEmailChange(code) {
+  return request('POST', `${API_BASE_URL}/api/auth/email/confirm`, { code })
+}
+
+// Returns nothing (204); the code goes to the current address
+export function requestPasswordChange(currentPassword) {
+  return request('POST', `${API_BASE_URL}/api/auth/password/request`, { currentPassword })
+}
+
 // Returns nothing (204)
-export async function changePassword(currentPassword, newPassword) {
-  if (!ACCOUNT_MOCKED) return request('PUT', `${API_BASE_URL}/api/users/me/password`, { currentPassword, newPassword })
-  await wait()
-  if (currentPassword === MOCK_WRONG_PASSWORD) {
-    throw new ApiError(403, { code: 'WRONG_PASSWORD', message: 'Current password is wrong', parameter: 'currentPassword' })
-  }
-  return null
+export function confirmPasswordChange(code, newPassword) {
+  return request('POST', `${API_BASE_URL}/api/auth/password/confirm`, { code, newPassword })
 }
