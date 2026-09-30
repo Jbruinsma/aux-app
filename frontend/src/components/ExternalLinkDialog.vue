@@ -39,7 +39,7 @@ watch(pendingExternalLink, (url) => {
   if (url && !dialogEl.value.open) {
     saveOption.value = false
     dialogEl.value.showModal()
-    // The page behind can't scroll while the dialog is up (see .scroll-locked in aux.css)
+    // The page behind can't scroll while the dialog is up (see .scroll-locked in aux_styles.css)
     document.documentElement.classList.add('scroll-locked')
   }
 }, { flush: 'post' })
