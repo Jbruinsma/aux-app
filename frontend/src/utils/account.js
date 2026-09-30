@@ -1,11 +1,10 @@
 import { ApiError, fetchAPI, request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// Only check-username exists on the backend. The rest are requested in BACKEND_REQUESTS.md and answer from mock
-// data until then; flip this off once they ship, since the real calls below already use the requested shapes
+// Email, password and account deletion aren't on the backend yet. They're requested in BACKEND_REQUESTS.md and answer
+// from mock data until then; flip this off once they ship, since the real calls below already use the requested shapes
 export const ACCOUNT_MOCKED = true
 
-const mock = { email: 'you@example.com' }
 const MOCK_TAKEN_EMAIL = 'taken@example.com'
 const MOCK_WRONG_PASSWORD = 'wrongpassword'
 const wait = () => new Promise((resolve) => setTimeout(resolve, 400))
@@ -22,11 +21,9 @@ export function checkUsername(username) {
   return fetchAPI(`${API_BASE_URL}/api/users/check-username/${encodeURIComponent(username)}`)
 }
 
-// { email } of the logged-in user
-export async function fetchAccount() {
-  if (!ACCOUNT_MOCKED) return fetchAPI(`${API_BASE_URL}/api/users/me/account`)
-  await wait()
-  return { email: mock.email }
+// { email, username, profilePictureUrl, bannerUrl, profileDetails } of the logged-in user
+export function fetchSettings() {
+  return fetchAPI(`${API_BASE_URL}/api/users/settings`)
 }
 
 // { exists }; true when another account has this email, ignoring case
@@ -37,11 +34,8 @@ export async function checkEmail(email) {
 }
 
 // Returns the updated UserSummary
-export async function changeUsername(username) {
-  if (!ACCOUNT_MOCKED) return request('PUT', `${API_BASE_URL}/api/users/me/username`, { username })
-  const { exists } = await checkUsername(username)
-  if (exists) throw new ApiError(409, { code: 'USERNAME_TAKEN', message: 'Username already exists', parameter: 'username' })
-  return { username }
+export function changeUsername(username) {
+  return request('PUT', `${API_BASE_URL}/api/users/me/username`, { username })
 }
 
 // Returns { email }
@@ -51,7 +45,6 @@ export async function changeEmail(email) {
   if (email.toLowerCase() === MOCK_TAKEN_EMAIL) {
     throw new ApiError(409, { code: 'EMAIL_TAKEN', message: 'Email already registered', parameter: 'email' })
   }
-  mock.email = email
   return { email }
 }
 
