@@ -23,7 +23,6 @@
         <div class="main-col">
           <section aria-labelledby="picture-heading">
             <h2 id="picture-heading">Your picture</h2>
-            <!-- Same 3:1 box as the banner preview, so the controls below line up with the banner's -->
             <div class="avatar-area">
               <img v-if="shownPicture" class="avatar" :src="shownPicture" alt="" />
               <div v-else class="avatar avatar-empty" aria-hidden="true">{{ initial }}</div>
@@ -222,6 +221,229 @@
         </aside>
       </div>
 
+      <div v-else-if="tab === 'account'" class="wrap layout">
+        <div class="account-col">
+          <section aria-labelledby="username-heading">
+            <h2 id="username-heading">Change Username</h2>
+            <form class="account-form" @submit.prevent="saveUsername">
+              <label class="form-label" for="current-username">Current Username</label>
+              <input id="current-username" class="input readonly" type="text" :value="currentUsername" readonly />
+
+              <p v-if="ACCOUNT_MOCKED" class="notice form-field">
+                yo. this is preview only. the error message for email and password respectively is 'taken@example.com' and 'wrongpassword'.
+                <br>
+                <br>
+                hahaha. yo if ur readin this... shush mate
+              </p>
+
+              <label class="form-label" for="new-username">New Username</label>
+              <div class="form-field">
+                <input
+                  id="new-username"
+                  v-model.trim="newUsername"
+                  class="input"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  maxlength="16"
+                  required
+                  :aria-invalid="usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'true' : 'false'"
+                  aria-describedby="new-username-status"
+                  @input="onUsernameInput"
+                />
+                <p id="new-username-status" class="status" :class="usernameStatus" aria-live="polite">
+                  <svg v-if="usernameStatus === 'available'" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                  <svg v-else-if="usernameStatus === 'taken' || usernameStatus === 'invalid'" class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                  </svg>
+                  {{ usernameStatusText }}
+                </p>
+              </div>
+
+              <div class="form-field">
+                <button type="submit" class="btn primary" :disabled="!canSaveUsername">
+                  {{ usernameSaving ? 'Saving…' : 'Change username' }}
+                </button>
+                <p v-if="usernameError" class="error" role="alert">{{ usernameError }}</p>
+                <p v-if="usernameSaved" class="success" role="status">Your username is now {{ usernameSaved }}.</p>
+              </div>
+            </form>
+          </section>
+
+          <section aria-labelledby="email-heading">
+            <h2 id="email-heading">Change Email Address</h2>
+            <form class="account-form" @submit.prevent="saveEmail">
+              <label class="form-label" for="current-email">Current Email Address</label>
+              <div class="form-field">
+                <input
+                  id="current-email"
+                  class="input readonly"
+                  type="text"
+                  :value="currentEmail || (accountError ? 'Not loaded' : 'Loading…')"
+                  readonly
+                />
+                <p v-if="accountError" class="error" role="alert">{{ accountError }}</p>
+              </div>
+
+              <label class="form-label" for="new-email">New Email Address</label>
+              <div class="form-field">
+                <input
+                  id="new-email"
+                  v-model.trim="newEmail"
+                  class="input"
+                  type="email"
+                  autocomplete="email"
+                  spellcheck="false"
+                  :maxlength="EMAIL_MAX"
+                  required
+                  :aria-invalid="emailStatus === 'taken' || emailStatus === 'invalid' ? 'true' : 'false'"
+                  aria-describedby="new-email-status"
+                  @input="onEmailInput"
+                />
+                <p id="new-email-status" class="status" :class="emailStatus" aria-live="polite">
+                  <svg v-if="emailStatus === 'available'" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                  <svg v-else-if="emailStatus === 'taken' || emailStatus === 'invalid'" class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                  </svg>
+                  {{ emailStatusText }}
+                </p>
+              </div>
+
+              <div class="form-field">
+                <button type="submit" class="btn primary" :disabled="!canSaveEmail">
+                  {{ emailSaving ? 'Saving…' : 'Change email address' }}
+                </button>
+                <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
+                <p v-if="emailSaved" class="success" role="status">Your email address is now {{ emailSaved }}.</p>
+              </div>
+            </form>
+          </section>
+
+          <section aria-labelledby="password-heading">
+            <h2 id="password-heading">Change Password</h2>
+            <form class="account-form" @submit.prevent="savePassword">
+              <label class="form-label" for="current-password">Current password</label>
+              <div class="form-field">
+                <input
+                  id="current-password"
+                  v-model="password.current"
+                  class="input"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  :aria-invalid="currentPasswordError ? 'true' : 'false'"
+                  aria-describedby="current-password-error"
+                  @input="currentPasswordError = ''"
+                />
+                <p v-if="currentPasswordError" id="current-password-error" class="error">{{ currentPasswordError }}</p>
+              </div>
+
+              <label class="form-label" for="new-password">New Password</label>
+              <div class="form-field">
+                <input
+                  id="new-password"
+                  v-model="password.new"
+                  class="input"
+                  type="password"
+                  autocomplete="new-password"
+                  :maxlength="PASSWORD_MAX"
+                  required
+                  :aria-invalid="newPasswordProblem ? 'true' : 'false'"
+                  aria-describedby="new-password-hint"
+                />
+                <p id="new-password-hint" :class="newPasswordProblem ? 'error' : 'hint'">
+                  {{ newPasswordProblem || `${PASSWORD_MIN} to ${PASSWORD_MAX} characters.` }}
+                </p>
+              </div>
+
+              <label class="form-label" for="confirm-password">Confirm New Password</label>
+              <div class="form-field">
+                <input
+                  id="confirm-password"
+                  v-model="password.confirm"
+                  class="input"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                  :aria-invalid="passwordsDiffer ? 'true' : 'false'"
+                  aria-describedby="confirm-password-error"
+                />
+                <p v-if="passwordsDiffer" id="confirm-password-error" class="error">
+                  Those passwords don't match. Type the same password in both fields.
+                </p>
+              </div>
+
+              <div class="form-field">
+                <button type="submit" class="btn primary" :disabled="!canSavePassword">
+                  {{ passwordSaving ? 'Saving…' : 'Change password' }}
+                </button>
+                <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
+                <p v-if="passwordSaved" class="success" role="status">Your password is changed.</p>
+              </div>
+            </form>
+          </section>
+
+          <section aria-labelledby="delete-heading">
+            <h2 id="delete-heading">Delete Account</h2>
+            <div class="account-form">
+              <p class="form-label">Delete Your Account</p>
+              <div class="form-field delete-field">
+                <p class="notice warning">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />
+                  </svg>
+                  <span><strong>Deleting your account completely wipes your data.</strong> Download or save anything you want to
+                  keep first.
+                  </span>
+                </p>
+                <button type="button" class="btn primary" @click="openDeleteDialog">Delete account</button>
+                <p v-if="deleteNotice" class="success" role="status">{{ deleteNotice }}</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <dialog
+          ref="deleteDialog"
+          class="confirm"
+          aria-labelledby="delete-title"
+          aria-describedby="delete-text"
+          @cancel="deleting && $event.preventDefault()"
+          @close="onDeleteDialogClose"
+        >
+          <div class="confirm-body">
+            <h2 id="delete-title">Are you sure you want to delete your account?</h2>
+            <p id="delete-text" class="confirm-text">
+              Your profile, playlists, uploaded songs and listening history will be wiped. You can't undo this.
+            </p>
+            <div
+              class="countdown"
+              role="progressbar"
+              aria-label="Time before you can delete"
+              aria-valuemin="0"
+              :aria-valuemax="DELETE_WAIT"
+              :aria-valuenow="deleteElapsed"
+              :style="{ '--progress': deleteElapsed / DELETE_WAIT }"
+            >
+              <div :key="deleteRun" class="countdown-fill"></div>
+            </div>
+            <p class="hint">
+              {{ deleteReady ? 'You can delete your account now.' : `Take a moment to read this. Delete unlocks in ${DELETE_WAIT - deleteElapsed}s.` }}
+            </p>
+            <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
+            <div class="confirm-actions">
+              <button type="button" class="btn secondary" autofocus :disabled="deleting" @click="deleteDialog.close()">
+                Keep my account
+              </button>
+              <button type="button" class="btn primary" :disabled="!deleteReady || deleting" @click="confirmDelete">
+                {{ deleting ? 'Deleting…' : 'Delete account' }}
+              </button>
+            </div>
+          </div>
+        </dialog>
+      </div>
+
       <div v-else class="wrap layout">
         <section class="main-col" aria-labelledby="apps-heading">
           <div>
@@ -254,7 +476,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -267,6 +489,21 @@ import { BANNER_ERRORS, PHOTO_ERRORS, bannerProblem, photoProblem } from '@/util
 import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerCropRect, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
 import { COUNTRIES } from '@/utils/countries.js'
 import { setSkipExternalWarning, skipExternalWarning } from '@/utils/externalLinks.js'
+import {
+  ACCOUNT_MOCKED,
+  EMAIL_MAX,
+  EMAIL_MIN,
+  PASSWORD_MAX,
+  PASSWORD_MIN,
+  USERNAME_PATTERN,
+  changeEmail,
+  changePassword,
+  changeUsername,
+  checkEmail,
+  checkUsername,
+  deleteAccount,
+  fetchAccount,
+} from '@/utils/account.js'
 
 const ABOUT_LIMIT = 200
 // Same limits as the backend's ProfileDetailsUpdate
@@ -275,6 +512,7 @@ const NAME_MAX = 15
 
 const TABS = [
   { id: 'profile', label: 'Profile' },
+  { id: 'account', label: 'Account' },
   { id: 'applications', label: 'Applications' },
 ]
 
@@ -292,7 +530,6 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const username = computed(() => userStore.userData?.username ?? '')
-// Anything other than a known tab shows Profile
 const tab = computed(() => (TABS.some((t) => t.id === route.params.tab) ? route.params.tab : 'profile'))
 const initial = computed(() => username.value.charAt(0).toUpperCase())
 
@@ -302,6 +539,7 @@ onMounted(() => {
     return
   }
   loadSavedProfile()
+  loadAccount()
 })
 
 // A 401 means the session ended: log out and go to the login page
@@ -311,8 +549,6 @@ async function handleUnauthorized(err) {
   await router.replace({ name: 'Login' })
   return true
 }
-
-/* Picture: choosing a file only previews it; nothing is sent until "Upload picture" */
 
 const fileInput = ref(null)
 const newPhoto = ref(null)
@@ -352,11 +588,9 @@ function clearChoice() {
   URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = ''
   newPhoto.value = null
-  // Reset the input so picking the same file again still fires `change`
   if (fileInput.value) fileInput.value.value = ''
 }
 
-// Brings the current picture back without touching the server
 function revertPhoto() {
   photoError.value = ''
   clearChoice()
@@ -381,9 +615,6 @@ async function uploadPhoto() {
   }
 }
 
-/* Banner: choosing a file only previews it; nothing is sent until "Upload banner". The crop lives here and
-   drives both the editor frame and the profile card, so they always show the same framing */
-
 const bannerInput = ref(null)
 const bannerFrame = ref(null)
 const newBanner = ref(null)
@@ -391,9 +622,9 @@ const bannerPreviewUrl = ref('')
 const bannerError = ref('')
 const bannerSaved = ref(false)
 const bannerUploading = ref(false)
-const bannerSize = ref(null) // { width, height } of the original image
+const bannerSize = ref(null)
 const bannerCrop = ref({ ...DEFAULT_CROP })
-const bannerDrag = ref(null) // { pointerId, x, y, crop } while dragging
+const bannerDrag = ref(null)
 
 const bannerStyle = computed(() =>
   bannerSize.value ? bannerImageStyle(bannerCrop.value, bannerSize.value.width, bannerSize.value.height) : null,
@@ -420,7 +651,6 @@ function startBannerDrag(event) {
 function moveBannerDrag(event) {
   const drag = bannerDrag.value
   if (!drag || drag.pointerId !== event.pointerId) return
-  // The crop math works in frame widths, so convert the pixel distance using the frame's width on screen
   const frameWidth = bannerFrame.value.clientWidth
   const { width, height } = bannerSize.value
   bannerCrop.value = panCrop(drag.crop, (event.clientX - drag.x) / frameWidth, (event.clientY - drag.y) / frameWidth, width, height)
@@ -430,10 +660,9 @@ function endBannerDrag() {
   bannerDrag.value = null
 }
 
-const NUDGE = 0.02 // a frame width per 50 key presses
+const NUDGE = 0.02
 const KEY_MOVES = { ArrowLeft: [NUDGE, 0], ArrowRight: [-NUDGE, 0], ArrowUp: [0, NUDGE], ArrowDown: [0, -NUDGE] }
 
-// Arrow keys move the image the way dragging would; + and − zoom
 function nudgeBanner(event) {
   const move = KEY_MOVES[event.key]
   const { width, height } = bannerSize.value
@@ -476,7 +705,6 @@ function revertBanner() {
   bannerSize.value = null
   bannerDrag.value = null
   bannerError.value = ''
-  // Reset the input so picking the same file again still fires `change`
   if (bannerInput.value) bannerInput.value.value = ''
 }
 
@@ -516,8 +744,6 @@ async function uploadBanner() {
     bannerUploading.value = false
   }
 }
-
-/* Get creative: the saved details load when the page opens, and "Save changes" replaces them on the server */
 
 const details = reactive({ displayName: '', country: '', website: '', about: '' })
 const detailsSaving = ref(false)
@@ -587,11 +813,277 @@ const websiteInvalid = computed(() => {
 const countryName = computed(() => COUNTRIES.find((c) => c.code === details.country)?.name ?? '')
 const websiteUrl = computed(() => (websiteInvalid.value ? '' : details.website.trim()))
 
-/* Links to other sites: undo "Save my option" from the leaving-Aux dialog */
 const warnBeforeLeaving = computed({
   get: () => !skipExternalWarning.value,
   set: (warn) => setSkipExternalWarning(!warn),
 })
+
+function availabilityField({ isValid, isCurrent, isOwn = () => false, check }) {
+  const value = ref('')
+  const status = ref('idle')
+  let timer = null
+
+  function onInput() {
+    clearTimeout(timer)
+    const candidate = value.value
+    if (!candidate) return (status.value = 'idle')
+    if (!isValid(candidate)) return (status.value = 'invalid')
+    if (isCurrent(candidate)) return (status.value = 'current')
+    if (isOwn(candidate)) return (status.value = 'available')
+
+    status.value = 'checking'
+    timer = setTimeout(async () => {
+      try {
+        const { exists } = await check(candidate)
+        if (candidate === value.value) status.value = exists ? 'taken' : 'available'
+      } catch {
+        if (candidate === value.value) status.value = 'idle' // the save still checks
+      }
+    }, 300)
+  }
+
+  function reset() {
+    clearTimeout(timer)
+    value.value = ''
+    status.value = 'idle'
+  }
+
+  return { value, status, onInput, reset }
+}
+
+// Mocked changes stay on this page: the backend still has the old name, so the store and URL keep it
+const mockedUsername = ref('')
+const currentUsername = computed(() => mockedUsername.value || username.value)
+
+const {
+  value: newUsername,
+  status: usernameStatus,
+  onInput: checkNewUsername,
+  reset: resetUsername,
+} = availabilityField({
+  isValid: (name) => USERNAME_PATTERN.test(name),
+  isCurrent: (name) => name === currentUsername.value,
+  isOwn: (name) => name.toLowerCase() === currentUsername.value.toLowerCase(),
+  check: checkUsername,
+})
+const usernameSaving = ref(false)
+const usernameSaved = ref('')
+const usernameError = ref('')
+
+const usernameStatusText = computed(() => ({
+  idle: '3 to 16 characters: letters, numbers and underscores.',
+  checking: 'Checking…',
+  available: `${newUsername.value} is available.`,
+  taken: `${newUsername.value} is taken. Try another one.`,
+  invalid: 'Use 3 to 16 letters, numbers or underscores.',
+  current: "That's already your username.",
+})[usernameStatus.value])
+
+const canSaveUsername = computed(
+  () => !usernameSaving.value && !!newUsername.value && !['taken', 'invalid', 'current'].includes(usernameStatus.value),
+)
+
+function onUsernameInput() {
+  usernameError.value = ''
+  usernameSaved.value = ''
+  checkNewUsername()
+}
+
+async function saveUsername() {
+  if (!canSaveUsername.value) return
+  usernameError.value = ''
+  usernameSaving.value = true
+  try {
+    const user = await changeUsername(newUsername.value)
+    if (ACCOUNT_MOCKED) {
+      mockedUsername.value = user.username
+    } else {
+      userStore.updateUser(user)
+      router.replace({ name: 'Settings', params: { username: user.username, tab: 'account' } })
+    }
+    resetUsername()
+    usernameSaved.value = user.username
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    if (err.code === 'USERNAME_TAKEN') usernameStatus.value = 'taken'
+    else if (err.code === 'INVALID_USERNAME') usernameStatus.value = 'invalid'
+    else usernameError.value = "We couldn't change your username. Check that the server is running, then try again."
+  } finally {
+    usernameSaving.value = false
+  }
+}
+
+/* Email: the login response doesn't include it, so it loads separately */
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+$/
+const currentEmail = ref('')
+const accountError = ref('')
+
+async function loadAccount() {
+  try {
+    currentEmail.value = (await fetchAccount()).email
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    accountError.value = "We couldn't load your email address. Check that the server is running, then reload."
+  }
+}
+
+const {
+  value: newEmail,
+  status: emailStatus,
+  onInput: checkNewEmail,
+  reset: resetEmail,
+} = availabilityField({
+  isValid: (email) => email.length >= EMAIL_MIN && email.length <= EMAIL_MAX && EMAIL_PATTERN.test(email),
+  isCurrent: (email) => email.toLowerCase() === currentEmail.value.toLowerCase(),
+  check: checkEmail,
+})
+const emailSaving = ref(false)
+const emailSaved = ref('')
+const emailError = ref('')
+
+const emailStatusText = computed(() => ({
+  idle: 'The address you log in with.',
+  checking: 'Checking…',
+  available: `${newEmail.value} is available.`,
+  taken: 'That email already has an account. Try another one.',
+  invalid: 'Enter a full email address, like name@example.com.',
+  current: "That's already your email address.",
+})[emailStatus.value])
+
+const canSaveEmail = computed(
+  () => !emailSaving.value && !!newEmail.value && !['taken', 'invalid', 'current'].includes(emailStatus.value),
+)
+
+function onEmailInput() {
+  emailError.value = ''
+  emailSaved.value = ''
+  checkNewEmail()
+}
+
+async function saveEmail() {
+  if (!canSaveEmail.value) return
+  emailError.value = ''
+  emailSaving.value = true
+  try {
+    const { email } = await changeEmail(newEmail.value)
+    currentEmail.value = email
+    resetEmail()
+    emailSaved.value = email
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    if (err.code === 'EMAIL_TAKEN') emailStatus.value = 'taken'
+    else if (err.code === 'INVALID_FIELD') emailStatus.value = 'invalid'
+    else emailError.value = "We couldn't change your email address. Check that the server is running, then try again."
+  } finally {
+    emailSaving.value = false
+  }
+}
+
+const password = reactive({ current: '', new: '', confirm: '' })
+const passwordSaving = ref(false)
+const passwordSaved = ref(false)
+const passwordError = ref('')
+const currentPasswordError = ref('')
+
+// Nothing shows until something is typed. bcrypt only reads 72 bytes, so the backend also caps the UTF-8 length
+const newPasswordProblem = computed(() => {
+  const value = password.new
+  if (!value) return ''
+  if (value.length < PASSWORD_MIN || value.length > PASSWORD_MAX || new TextEncoder().encode(value).length > 72) {
+    return `Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
+  }
+  if (value === password.current) return 'Choose a password different from your current one.'
+  return ''
+})
+const passwordsDiffer = computed(() => !!password.confirm && password.confirm !== password.new)
+
+const canSavePassword = computed(
+  () =>
+    !passwordSaving.value &&
+    !!password.current &&
+    !!password.new &&
+    !!password.confirm &&
+    !newPasswordProblem.value &&
+    !passwordsDiffer.value,
+)
+
+watch(password, () => {
+  passwordSaved.value = false
+  passwordError.value = ''
+})
+
+async function savePassword() {
+  if (!canSavePassword.value) return
+  passwordError.value = ''
+  currentPasswordError.value = ''
+  passwordSaving.value = true
+  try {
+    await changePassword(password.current, password.new)
+    Object.assign(password, { current: '', new: '', confirm: '' })
+    await nextTick()
+    passwordSaved.value = true
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    if (err.code === 'WRONG_PASSWORD') currentPasswordError.value = "That isn't your current password. Try again."
+    else if (err.code === 'INVALID_FIELD') passwordError.value = `That password isn't allowed. Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
+    else passwordError.value = "We couldn't change your password. Check that the server is running, then try again."
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
+const DELETE_WAIT = 6
+const deleteDialog = ref(null)
+const deleteElapsed = ref(0)
+const deleteRun = ref(0)
+const deleting = ref(false)
+const deleteError = ref('')
+const deleteNotice = ref('')
+let deleteTimer = null
+
+const deleteReady = computed(() => deleteElapsed.value >= DELETE_WAIT)
+
+function openDeleteDialog() {
+  deleteError.value = ''
+  deleteNotice.value = ''
+  deleteElapsed.value = 0
+  deleteRun.value++
+  deleteDialog.value.showModal()
+  document.documentElement.classList.add('scroll-locked')
+  deleteTimer = setInterval(() => {
+    deleteElapsed.value++
+    if (deleteReady.value) clearInterval(deleteTimer)
+  }, 1000)
+}
+
+function onDeleteDialogClose() {
+  clearInterval(deleteTimer)
+  document.documentElement.classList.remove('scroll-locked')
+}
+
+onBeforeUnmount(onDeleteDialogClose)
+
+async function confirmDelete() {
+  if (!deleteReady.value || deleting.value) return
+  deleteError.value = ''
+  deleting.value = true
+  try {
+    await deleteAccount()
+    deleteDialog.value.close()
+    if (ACCOUNT_MOCKED) {
+      deleteNotice.value = "Preview only: your account wasn't deleted."
+      return
+    }
+    userStore.logout()
+    await router.replace({ name: 'Home' })
+  } catch (err) {
+    if (await handleUnauthorized(err)) return
+    deleteError.value = "We couldn't delete your account. Check that the server is running, then try again."
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -604,8 +1096,6 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-4); }
 .tab.active { color: var(--link); border-bottom-color: var(--primary); }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--space-8); padding-top: var(--space-6); padding-bottom: var(--space-8); }
-/* Wide screens: picture beside banner, then "Get creative" across both, so the fields fill the width up to the preview.
-   Fixed tracks, not auto-fit: a full-row item keeps auto-fit's empty tracks open and leaves a gap on the right */
 .main-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); align-content: start; }
 .wide { grid-column: 1 / -1; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
@@ -613,7 +1103,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .error { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--danger); }
 .success { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--success); }
 
-/* Picture */
 .avatar-area { aspect-ratio: 3 / 1; max-height: 200px; display: flex; align-items: center; margin-bottom: var(--space-4); }
 .avatar { height: 100%; aspect-ratio: 1; border-radius: var(--radius-pill); object-fit: cover; background: var(--surface-alt); }
 .avatar-empty { display: grid; place-items: center; background: var(--primary); color: var(--on-primary); font: 700 56px/1 var(--font-sans); }
@@ -623,12 +1112,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .file-row .btn { font-size: 14px; }
 .file-name { font: 500 14px/20px var(--font-sans); color: var(--ink-muted); overflow-wrap: anywhere; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-/* The label stands in for the hidden file input, so it takes the input's keyboard focus ring */
 .visually-hidden:focus-visible + label { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-/* Get creative */
-/* Name, country and website share a row; "About you" lines up under the first two, the save button gets its own row */
-/* One field per row: display name, then country, then website, then about */
 .details { display: grid; grid-template-columns: minmax(0, 560px); gap: var(--space-4); align-items: start; }
 .field { display: flex; flex-direction: column; gap: var(--space-2); }
 .row-label { font: 600 14px/20px var(--font-sans); }
@@ -638,12 +1123,37 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .details .hint, .details .error { margin-top: var(--space-1); }
 .status-line { margin-top: var(--space-2) !important; }
 
-/* Applications: flat rows split by hairlines, like the track list */
+.account-col { align-content: start; display: grid; gap: var(--space-8); grid-template-columns: minmax(0, 1fr); }
+.account-col section + section { border-top: 1px solid var(--line); padding-top: var(--space-8); }
+.account-form { align-items: start; display: grid; gap: var(--space-4) var(--space-6); grid-template-columns: 200px minmax(0, 560px); }
+
+.form-label { font: 600 14px/20px var(--font-sans); padding-top: var(--space-3); text-align: right; }
+.form-field { display: flex; flex-direction: column; gap: var(--space-2); grid-column: 2; }
+.form-field .btn { align-self: flex-start; }
+.readonly { background: var(--surface-alt); border-color: var(--surface-alt); color: var(--ink-muted); }
+.notice { background: var(--purple-soft); border-radius: var(--radius-sm); font: 500 14px/20px var(--font-sans); margin: 0; padding: var(--space-4); }
+.delete-field { gap: var(--space-4); }
+.warning { align-items: flex-start; border-left: 3px solid var(--primary); display: flex; gap: var(--space-2); }
+.warning .icon { color: var(--link); margin-top: 2px; }
+
+.confirm { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); color: var(--ink); font: 400 16px/24px var(--font-sans); overscroll-behavior: contain; padding: 0; width: min(440px, calc(100% - 32px)); }
+.confirm::backdrop { background: rgb(0 0 0 / 0.45); }
+.confirm-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
+.confirm h2 { margin: 0; }
+.confirm-text { margin: 0; }
+.confirm-actions { display: flex; gap: var(--space-3); margin-top: var(--space-2); }
+.countdown { background: var(--surface-alt); border-radius: var(--radius-pill); height: 8px; overflow: hidden; }
+.countdown-fill { animation: countdown 6s linear forwards; background: var(--primary); height: 100%; transform: scaleX(var(--progress)); transform-origin: left; }
+@keyframes countdown { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.status { align-items: center; color: var(--ink-muted); display: flex; font: 500 14px/20px var(--font-sans); gap: var(--space-1); margin: 0; min-height: 20px; }
+.status.available { color: var(--success); }
+.status.invalid, .status.taken { color: var(--danger); }
+.icon { fill: none; flex: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
+
 .intro { margin: 0; color: var(--ink-muted); }
 .apps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .app { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
 .app-icon { width: 40px; height: 40px; }
-/* Spotify's brand color belongs to Spotify, so it's the one place raw hex is allowed */
 .spotify { fill: #1db954; }
 .app-text { min-width: 0; }
 .app-name { margin: 0; font: 600 16px/24px var(--font-sans); }
@@ -664,23 +1174,25 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .check { display: flex; align-items: center; gap: var(--space-2); font: 600 14px/20px var(--font-sans); cursor: pointer; margin-bottom: var(--space-1); }
 .check input { width: 16px; height: 16px; accent-color: var(--primary); }
 
-/* The browser's own arrow sits tight to the edge, so draw one 1rem further in */
 .select-wrap { position: relative; }
 .select { appearance: none; -webkit-appearance: none; padding-right: calc(var(--space-4) + 28px); cursor: pointer; }
 .select-wrap::after { content: ''; position: absolute; top: 50%; right: calc(var(--space-4) + 8px); width: 12px; height: 12px; transform: translateY(-50%); pointer-events: none; background: var(--ink-muted); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
 
-/* Preview */
-/* Stays in view below the sticky header while you scroll through the fields it previews */
 .side { position: sticky; top: calc(88px + env(safe-area-inset-top, 0px)); align-self: start; display: flex; flex-direction: column; gap: var(--space-3); }
 .side-title { font: 700 16px/24px var(--font-sans); margin: 0; }
 
-/* Too narrow for two sections or three fields side by side */
 @media (max-width: 1400px) {
   .main-col { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
   .side { position: static; }
+}
+@media (max-width: 720px) {
+  .account-form { gap: var(--space-2); grid-template-columns: minmax(0, 1fr); }
+  .form-label { padding-top: 0; text-align: left; }
+  .form-field { grid-column: 1; }
+  .form-field + .form-label { margin-top: var(--space-2); }
 }
 @media (max-width: 600px) {
   .app { grid-template-columns: 40px minmax(0, 1fr); }
