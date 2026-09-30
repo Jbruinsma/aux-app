@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import com.aux_app.entity.UserEntity;
 
-// Public view of a user: never includes the password hash
 public record UserSummary(
         @Schema(example = "u_41x9") String userId,
         @Schema(example = "justin") String username,

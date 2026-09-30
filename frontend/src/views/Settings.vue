@@ -6,7 +6,8 @@
       <div class="page-head">
         <div class="wrap">
           <h1>Settings</h1>
-          <nav class="tabs" aria-label="Settings sections">
+          <!-- Logging out empties the username before the redirect, and a link with no username param throws -->
+          <nav v-if="username" class="tabs" aria-label="Settings sections">
             <router-link
               v-for="item in TABS"
               :key="item.id"
@@ -229,13 +230,6 @@
               <label class="form-label" for="current-username">Current Username</label>
               <input id="current-username" class="input readonly" type="text" :value="currentUsername" readonly />
 
-              <p v-if="ACCOUNT_MOCKED" class="notice form-field">
-                yo. this is preview only. the error message for email and password respectively is 'taken@example.com' and 'wrongpassword'.
-                <br>
-                <br>
-                hahaha. yo if ur readin this... shush mate
-              </p>
-
               <label class="form-label" for="new-username">New Username</label>
               <div class="form-field">
                 <input
@@ -274,6 +268,13 @@
           <section aria-labelledby="email-heading">
             <h2 id="email-heading">Change Email Address</h2>
             <form class="account-form" @submit.prevent="saveEmail">
+              <p v-if="ACCOUNT_MOCKED" class="notice form-field">
+                yo. this is preview only. the error message for email and password respectively is 'taken@example.com' and 'wrongpassword'.
+                <br>
+                <br>
+                hahaha. yo if ur readin this... shush mate
+              </p>
+
               <label class="form-label" for="current-email">Current Email Address</label>
               <div class="form-field">
                 <input
@@ -481,7 +482,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ProfileCard from '@/components/ProfileCard.vue'
-import { fetchAPI, request } from '@/utils/api.js'
+import { request } from '@/utils/api.js'
 import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { resolveCoverURL } from '@/utils/display.js'
@@ -502,7 +503,7 @@ import {
   checkEmail,
   checkUsername,
   deleteAccount,
-  fetchAccount,
+  fetchSettings,
 } from '@/utils/account.js'
 
 const ABOUT_LIMIT = 200
@@ -538,8 +539,7 @@ onMounted(() => {
     router.replace({ name: 'Login' })
     return
   }
-  loadSavedProfile()
-  loadAccount()
+  loadSettings()
 })
 
 // A 401 means the session ended: log out and go to the login page
@@ -758,15 +758,17 @@ function showDetails(saved) {
   details.about = saved?.about ?? ''
 }
 
-// The profile endpoint has both the saved details and the saved banner
-async function loadSavedProfile() {
+// The settings endpoint has the saved details, banner and email
+async function loadSettings() {
   try {
-    const profile = await fetchAPI(`${API_BASE_URL}/api/users/profile/${encodeURIComponent(username.value)}`)
-    showDetails(profile.profileDetails)
-    userStore.updateUser({ bannerUrl: profile.bannerUrl })
+    const settings = await fetchSettings()
+    showDetails(settings.profileDetails)
+    currentEmail.value = settings.email
+    userStore.updateUser({ bannerUrl: settings.bannerUrl })
   } catch (err) {
     if (await handleUnauthorized(err)) return
-    detailsError.value = "We couldn't load your saved details. Check that the server is running, then reload."
+    detailsError.value = "We couldn't load your settings. Check that the server is running, then reload."
+    accountError.value = "We couldn't load your email address. Check that the server is running, then reload."
   }
 }
 
@@ -851,9 +853,7 @@ function availabilityField({ isValid, isCurrent, isOwn = () => false, check }) {
   return { value, status, onInput, reset }
 }
 
-// Mocked changes stay on this page: the backend still has the old name, so the store and URL keep it
-const mockedUsername = ref('')
-const currentUsername = computed(() => mockedUsername.value || username.value)
+const currentUsername = username
 
 const {
   value: newUsername,
@@ -895,12 +895,8 @@ async function saveUsername() {
   usernameSaving.value = true
   try {
     const user = await changeUsername(newUsername.value)
-    if (ACCOUNT_MOCKED) {
-      mockedUsername.value = user.username
-    } else {
-      userStore.updateUser(user)
-      router.replace({ name: 'Settings', params: { username: user.username, tab: 'account' } })
-    }
+    userStore.updateUser(user)
+    router.replace({ name: 'Settings', params: { username: user.username, tab: 'account' } })
     resetUsername()
     usernameSaved.value = user.username
   } catch (err) {
@@ -913,20 +909,11 @@ async function saveUsername() {
   }
 }
 
-/* Email: the login response doesn't include it, so it loads separately */
+/* Email: the login response doesn't include it, so it loads with the settings */
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+$/
 const currentEmail = ref('')
 const accountError = ref('')
-
-async function loadAccount() {
-  try {
-    currentEmail.value = (await fetchAccount()).email
-  } catch (err) {
-    if (await handleUnauthorized(err)) return
-    accountError.value = "We couldn't load your email address. Check that the server is running, then reload."
-  }
-}
 
 const {
   value: newEmail,

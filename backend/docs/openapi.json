@@ -9,6 +9,79 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/users/me/username" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Change the caller's username",
+        "description" : "JSON body: `username`. Same rules as the onboarding `USERNAME` step: 3-16 letters, numbers or\nunderscores, no blocked words, unique ignoring case, and not a reserved name.\nA change of case alone of your own name (`mo` -> `Mo`) is allowed.\nReturns the updated user.\n",
+        "operationId" : "updateUsername",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UsernameUpdateDetails"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Username changed; body is the updated user",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserSummary"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad format, blocked word, or already your exact username (codes INVALID_USERNAME, INAPPROPRIATE_USERNAME, IDENTICAL_USERNAME, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Taken by another account, or reserved (code USERNAME_TAKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/me/profile-picture" : {
       "put" : {
         "tags" : [ "user-controller" ],
@@ -432,7 +505,7 @@
             }
           },
           "400" : {
-            "description" : "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "description" : "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INAPPROPRIATE_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -699,6 +772,49 @@
         }
       }
     },
+    "/api/users/settings" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Get the caller's settings",
+        "description" : "Everything the settings page needs in one call: `email`, `username`, picture and banner URLs,\nand `profileDetails`. Every `profileDetails` field is null until the user fills it in.\n",
+        "operationId" : "retrieveSettings",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/profile/{username}" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -936,6 +1052,41 @@
   },
   "components" : {
     "schemas" : {
+      "UsernameUpdateDetails" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "example" : "new_name"
+          }
+        }
+      },
+      "UserSummary" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "example" : "u_41x9"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          },
+          "profilePictureUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "bannerUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "onboardingStep" : {
+            "type" : "string",
+            "enum" : [ "USERNAME", "PFP", "DONE" ],
+            "example" : "USERNAME (1) | PFP (2) | DONE (3)"
+          }
+        }
+      },
       "ProfilePictureUpdate" : {
         "type" : "object",
         "properties" : {
@@ -1038,32 +1189,6 @@
           "playlistCoverUrl" : {
             "type" : "string",
             "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-          }
-        }
-      },
-      "UserSummary" : {
-        "type" : "object",
-        "properties" : {
-          "userId" : {
-            "type" : "string",
-            "example" : "u_41x9"
-          },
-          "username" : {
-            "type" : "string",
-            "example" : "justin"
-          },
-          "profilePictureUrl" : {
-            "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-          },
-          "bannerUrl" : {
-            "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-          },
-          "onboardingStep" : {
-            "type" : "string",
-            "enum" : [ "USERNAME", "PFP", "DONE" ],
-            "example" : "USERNAME (1) | PFP (2) | DONE (3)"
           }
         }
       },
@@ -1232,6 +1357,30 @@
           }
         },
         "required" : [ "email", "password" ]
+      },
+      "UserSettings" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "example" : "example@domain.com"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          },
+          "profilePictureUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "bannerUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "profileDetails" : {
+            "$ref" : "#/components/schemas/ProfileDetails"
+          }
+        }
       },
       "ProfilePlaylist" : {
         "type" : "object",
