@@ -25,7 +25,6 @@
 
 <script setup>
 defineProps({
-  // Lucide outline icon name: 'music' (default), 'users', 'mic' or 'disc'
   icon: { type: String, default: 'music' },
   title: { type: String, required: true },
   text: { type: String, required: true },

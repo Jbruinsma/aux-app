@@ -13,9 +13,7 @@
 
     <div class="container create-form">
       <h1>New Playlist</h1>
-      <!-- Cover upload -->
       <div class="form-group">
-<!--        <label>Playlist Cover</label>-->
         <div class="cover-upload" @click="triggerFileInput">
           <input type="file" accept="image/*" ref="fileInput" @change="handleFileChange" hidden />
           <div v-if="coverPreview" class="cover-preview">
@@ -27,7 +25,6 @@
         </div>
       </div>
 
-      <!-- Playlist name -->
       <div class="form-group narrow-center">
         <label>Playlist Name <span class="char-count">({{ playlistName.length }}/50)</span></label>
         <input
@@ -38,7 +35,6 @@
         />
       </div>
 
-      <!-- Public toggle -->
       <div class="form-group narrow-center toggle-group">
         <label>Make Public</label>
         <label class="switch">

@@ -36,7 +36,6 @@ export async function bannerProblem(file) {
   return null
 }
 
-// Returns a message explaining why the file can't be used, or null if it's fine
 export async function photoProblem(file) {
   if (!['image/jpeg', 'image/png'].includes(file.type)) return PHOTO_ERRORS.UNSUPPORTED_IMAGE_TYPE
   if (file.size > MAX_PHOTO_BYTES) return PHOTO_ERRORS.IMAGE_TOO_LARGE
