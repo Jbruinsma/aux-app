@@ -28,7 +28,6 @@
   transform-origin: bottom;
   animation: bar-bounce calc(var(--dur-med) * 2) var(--ease-pop) both;
 }
-/* The equalizer plays once whenever the blocks appear */
 .bar:nth-of-type(odd) { animation-delay: 60ms; }
 .bar:nth-of-type(3n) { animation-delay: 120ms; }
 @keyframes bar-bounce {

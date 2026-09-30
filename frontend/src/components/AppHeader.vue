@@ -11,14 +11,12 @@
           :class="{ active: route.name === item }"
         >{{ item }}</router-link>
       </nav>
-      <!-- These sections need an account, so logged-out visitors are sent to log in -->
       <nav v-else-if="!loggedIn" aria-label="Main">
         <router-link v-for="item in GUEST_NAV" :key="item" to="/login">{{ item }}</router-link>
       </nav>
 
       <div class="actions">
         <template v-if="loggedIn && userStore.onboarded">
-          <!-- Settings and Profile are icons to keep the bar light; the title shows the name on hover -->
           <a
             :href="`/settings/${username}`"
             class="icon-link"
@@ -77,7 +75,6 @@ const avatarUrl = computed(() => {
   const url = userStore.userData?.profilePictureUrl
   return url ? resolveCoverURL(url) : ''
 })
-// Someone else's profile isn't "your profile", so only highlight the avatar on your own
 const onOwnProfile = computed(() => route.name === 'Profile' && route.params.username === username.value)
 
 async function logOut() {
@@ -96,7 +93,6 @@ nav { display: flex; gap: var(--space-4); overflow-x: auto; }
 nav a { color: var(--ink-muted); text-decoration: none; font: 600 14px/20px var(--font-sans); white-space: nowrap; padding: var(--space-2) 0; border-bottom: 3px solid transparent; }
 nav a:hover { color: var(--ink); border-bottom-color: var(--primary); }
 nav a.active { color: var(--link); border-bottom-color: var(--primary); }
-/* The divider separates the section links from the account buttons */
 .actions { display: flex; align-items: center; gap: var(--space-2); padding-left: var(--space-4); border-left: 1px solid var(--line); }
 .icon-link { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-pill); color: var(--ink-muted); }
 .icon-link:hover { color: var(--ink); background: var(--surface-alt); }

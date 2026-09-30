@@ -21,7 +21,6 @@ const routes = [
     path: '/',
     name: 'Home',
     component: LandingPage,
-    // Logged-in users get their own home instead of the public landing page
     beforeEnter: () => (useUserStore().loggedIn ? { name: 'Dashboard' } : true),
   },
   {
@@ -47,7 +46,6 @@ const routes = [
     },
   },
   { path: '/dashboard', name: 'Dashboard', component: Dashboard},
-  // Placeholders until these sections are built; listed before /:username so they aren't read as profiles
   ...['Music', 'Charts', 'Friends', 'Explore'].map((title) => ({
     path: `/${title.toLowerCase()}`,
     name: title,
@@ -56,7 +54,6 @@ const routes = [
     beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
   })),
   { path: '/:username', name: 'Profile', component: PublicProfile },
-  // :tab is empty for the Profile tab, or 'applications'
   { path: '/settings/:username/:tab?', name: 'Settings', component: Settings },
   { path: '/create', name: 'Create', component: CreatePlaylist},
   { path: '/playlist/:username/:id', name: 'Playlist', component: PlaylistDetail },
@@ -71,19 +68,16 @@ const router = createRouter({
   routes,
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
-    // Leave room for the sticky header when jumping to a section by its #id
     if (to.hash) return { el: to.hash, top: 72, behavior: 'smooth' }
     return { top: 0 }
   },
 })
 
-// Accounts that haven't picked a username and photo yet can't use the rest of the app
 router.beforeEach((to) => {
   const userStore = useUserStore()
   if (userStore.loggedIn && !userStore.onboarded && to.name !== 'Onboarding') return { name: 'Onboarding' }
 })
 
-// Moving between these pages morphs the shared pieces (auth-card, brand-blocks) instead of swapping the page
 const MORPH_ROUTES = new Set(['Home', 'Login', 'Register', 'Onboarding'])
 let finishNavigation = null
 router.afterEach(() => finishNavigation?.())
@@ -91,7 +85,6 @@ router.afterEach(() => finishNavigation?.())
 router.beforeResolve((to, from) => {
   const morph = document.startViewTransition && MORPH_ROUTES.has(to.name) && MORPH_ROUTES.has(from.name) && to.name !== from.name
   if (!morph) return
-  // Hold the navigation until the browser has captured the old page, then let the transition wait for the new one
   return new Promise((resolve) => {
     document.startViewTransition(async () => {
       const navigated = new Promise((done) => (finishNavigation = done))

@@ -6,9 +6,7 @@ import { shufflePlaylist } from '@/utils/playlist.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
 export const useMusicStore = defineStore('music', () => {
-  // Default values
   const DEFAULT_UUID = ''
-  // Empty means no cover; the player shows a music-note placeholder (there is no default cover file)
   const DEFAULT_COVER = ''
   const DEFAULT_TITLE = 'No song playing'
   const DEFAULT_ARTIST = displayArtist('')
@@ -19,7 +17,6 @@ export const useMusicStore = defineStore('music', () => {
 
   const firstLoad = ref(true)
 
-  // Reactive state
   const showArrow = ref(true)
   const collapsed = ref(true)
   const currentMusicPiece = ref({
@@ -41,7 +38,6 @@ export const useMusicStore = defineStore('music', () => {
 
   let currentPlaylistIndex = null
 
-  // Actions
   async function loadPlaylist(playlistUUID, playlistOwner, startingMusicPieceIndex) {
 
     if ( currentPlaylistUUID.value === playlistUUID && currentPlaylistIndex === startingMusicPieceIndex ) {
@@ -162,7 +158,6 @@ export const useMusicStore = defineStore('music', () => {
     repeatOn.value = wasRepeating
     currentPlaylistUUID.value = playbackData.currentPlaylistUUID
 
-
     orderedPlaylist.value.orderedPlaylist = [...originalOrder]
     orderedPlaylist.value.orderedPlaylistCurrentIndex = savedIndex
 
@@ -223,7 +218,6 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   return {
-    // state
     showArrow,
     collapsed,
     currentMusicPiece,
@@ -236,7 +230,6 @@ export const useMusicStore = defineStore('music', () => {
     volume,
     position,
     forceShowPlayerActive,
-    // actions
     loadPlaylist,
     saveLastPlayback,
     moveForward,
@@ -252,7 +245,6 @@ export const useMusicStore = defineStore('music', () => {
     getCurrentMusicPieceUUID,
     setCurrentPlaylistIndex,
     isEmpty,
-    // reset
     reset,
   }
 })
