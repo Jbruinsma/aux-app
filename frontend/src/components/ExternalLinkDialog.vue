@@ -23,7 +23,6 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { openExternal, pendingExternalLink, setSkipExternalWarning } from '@/utils/externalLinks.js'
 
-// Mounted once in App.vue; any ExternalLink can open it by setting pendingExternalLink
 const dialogEl = ref(null)
 const saveOption = ref(false)
 
@@ -39,7 +38,6 @@ watch(pendingExternalLink, (url) => {
   if (url && !dialogEl.value.open) {
     saveOption.value = false
     dialogEl.value.showModal()
-    // The page behind can't scroll while the dialog is up (see .scroll-locked in aux_styles.css)
     document.documentElement.classList.add('scroll-locked')
   }
 }, { flush: 'post' })
@@ -54,7 +52,6 @@ function continueToSite() {
   dialogEl.value.close()
 }
 
-// Esc also closes the dialog, which counts as Go back
 function onClose() {
   pendingExternalLink.value = null
   document.documentElement.classList.remove('scroll-locked')

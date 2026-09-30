@@ -16,7 +16,6 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-// FormData goes as multipart (the browser sets the boundary), anything else as JSON
 export async function request(method, url, body) {
   const options = { method, headers: authHeaders() }
   if (body instanceof FormData) {

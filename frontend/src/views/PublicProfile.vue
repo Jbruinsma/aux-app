@@ -130,7 +130,7 @@ const username = computed(() => route.params.username)
 const loggedIn = computed(() => userStore.loggedIn)
 
 const profile = ref(null)
-const status = ref('loading') // loading | ready | missing | error
+const status = ref('loading')
 
 // These counts aren't in the profile response yet; they show 0 until the backend sends
 // uploadsCount, followersCount and followingCount
@@ -150,7 +150,6 @@ async function loadProfile() {
   status.value = 'loading'
   try {
     const data = await fetchAPI(`${API_BASE_URL}/api/users/profile/${encodeURIComponent(requested)}`)
-    // Ignore a slow answer for a profile the user has already navigated away from
     if (requested !== username.value) return
     profile.value = data
     status.value = 'ready'
@@ -161,8 +160,6 @@ async function loadProfile() {
   }
 }
 
-// After a refresh, start where the reader was (Vue Router keeps it in history.state) and glide back to the top.
-// Only once per page load, and never when the reader prefers reduced motion.
 let glidePending = performance.getEntriesByType('navigation')[0]?.type === 'reload'
 
 async function glideToTopAfterRefresh() {
@@ -175,13 +172,11 @@ async function glideToTopAfterRefresh() {
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
 }
 
-// Also reloads when moving from one profile straight to another, where the component is reused
 watch(username, loadProfile, { immediate: true })
 </script>
 
 <style scoped>
 .wrap { width: 100%; padding: 0 var(--page-gutter); display: flex; flex-direction: column; }
-/* The profile panel runs to the window's left edge, so the page drops its left gutter once it's showing */
 .wrap:has(.layout) { padding-left: 0; }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-2); }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
@@ -191,12 +186,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
 .page-state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-8) 0; }
 p.page-state { display: block; }
 
-/* The profile fills the left side; a full-height divider separates it from the listening sections */
 .layout { flex: 1; display: grid; grid-template-columns: calc(400px + var(--page-gutter)) minmax(0, 1fr); }
-/* The banner fills the panel edge to edge; the text inside lines up with the Aux logo */
 .side :deep(.body) { padding-left: var(--page-gutter); }
-/* The profile fills the left side from under the top bar to the bottom of the window and stays put while
-   the right side scrolls; the banner sits flush against the top bar and the divider */
 .side { position: sticky; top: calc(var(--header-height) + env(safe-area-inset-top, 0px)); align-self: start; height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
 .main-col { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8) 0 var(--space-8) var(--space-8); border-left: 1px solid var(--line); }
 
@@ -209,7 +200,6 @@ p.page-state { display: block; }
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
-  /* Stacked: the panel spans the full window width, and the sections below keep both gutters */
   .side { position: static; height: auto; overflow: visible; margin-right: calc(-1 * var(--page-gutter)); border-bottom: 1px solid var(--line); }
   .side :deep(.body) { padding-right: var(--page-gutter); }
   .main-col { padding-left: var(--page-gutter); border-left: 0; }

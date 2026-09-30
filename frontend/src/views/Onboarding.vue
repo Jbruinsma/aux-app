@@ -4,10 +4,8 @@
 
     <main class="stage">
       <div v-if="known" class="ob-card" :class="{ split: step === 'PFP' }">
-        <!-- The home page blocks, cropped to a banner. The sign-up page's blocks morph into it (view-transition-name: brand-blocks) -->
         <div ref="banner" class="banner" :class="{ finish: finishing }" aria-hidden="true">
           <span class="blk purple">
-            <!-- Re-keyed per step so the equalizer plays again on every step change -->
             <span :key="`${step}-${finishing}`" class="bars"><i v-for="n in 7" :key="n" /></span>
           </span>
           <span class="blk ink" />
@@ -123,7 +121,6 @@ const router = useRouter()
 const userStore = useUserStore()
 const step = computed(() => userStore.userData.onboardingStep)
 
-// Nothing renders until the step is known (older saved sessions don't have one)
 const known = computed(() => step.value === 'USERNAME' || step.value === 'PFP')
 const finishing = ref(false)
 const banner = ref(null)
@@ -157,10 +154,8 @@ function sendStep(stepName, field, value) {
   return postToAPI(`${API_BASE_URL}/api/users/onboarding/step`, form)
 }
 
-/* Username step */
-
 const username = ref('')
-const nameStatus = ref('idle') // idle | checking | available | taken | invalid
+const nameStatus = ref('idle')
 let checkTimer = null
 
 const statusText = computed(() => ({
@@ -182,7 +177,6 @@ function checkAvailability() {
   checkTimer = setTimeout(async () => {
     try {
       const { exists } = await fetchAPI(`${API_BASE_URL}/api/users/check-username/${encodeURIComponent(candidate)}`)
-      // Ignore answers for a name the user has already typed past
       if (candidate === username.value) nameStatus.value = exists ? 'taken' : 'available'
     } catch {
       if (candidate === username.value) nameStatus.value = 'idle' // the save still checks
@@ -207,7 +201,6 @@ async function submitUsername() {
   }
 }
 
-// FLIP: measure the typed name, swap the step, then slide the saved @name from where the text was
 async function moveToPhotoStep(user) {
   const from = nameEl.value.getBoundingClientRect()
   userStore.updateUser(user)
@@ -218,16 +211,14 @@ async function moveToPhotoStep(user) {
   const handle = nameEl.value
   const to = handle.getBoundingClientRect()
   const styles = getComputedStyle(document.documentElement)
-  const scale = 16 / parseFloat(getComputedStyle(handle).fontSize) // input text is 16px
-  const dx = from.left + 12 - to.left // 12px is the input's left padding
+  const scale = 16 / parseFloat(getComputedStyle(handle).fontSize)
+  const dx = from.left + 12 - to.left
   const dy = from.top + from.height / 2 - (to.top + to.height / 2)
   handle.animate(
     [{ transform: `translate(${dx}px, ${dy}px) scale(${scale})` }, { transform: 'none' }],
     { duration: parseFloat(styles.getPropertyValue('--dur-med')), easing: styles.getPropertyValue('--ease').trim() },
   )
 }
-
-/* Photo step */
 
 const photo = ref(null)
 const previewUrl = ref('')
@@ -268,7 +259,6 @@ async function submitPhoto() {
   submitting.value = true
   try {
     const user = await sendStep('PFP', 'file', photo.value)
-    // Send-off: the banner blocks hop in turn, then on to the dashboard
     finishing.value = true
     await nextTick()
     await Promise.all(banner.value.getAnimations({ subtree: true }).map((a) => a.finished))
@@ -286,8 +276,6 @@ async function submitPhoto() {
 <style scoped>
 .stage { display: flex; flex-direction: column; align-items: center; gap: var(--space-6); padding: 56px var(--space-6) var(--space-8); }
 
-/* Banner: the home page's brand blocks cropped to a strip, bleeding off the top of the card.
-   Sizes shift between steps; flex-grow and height are fine to animate on something this small */
 .banner {
   grid-column: 1 / -1;
   display: flex;
@@ -325,7 +313,6 @@ async function submitPhoto() {
   70% { transform: scaleY(0.85); }
 }
 
-/* Send-off after the photo uploads: each block hops in turn */
 .finish .blk { animation: hop calc(var(--dur-med) * 1.5) var(--ease-pop) both; }
 .finish .ink { animation-delay: 70ms; }
 .finish .soft { animation-delay: 140ms; }
@@ -336,8 +323,6 @@ async function submitPhoto() {
 
 .eyebrow { margin: 0; font: 600 12px/16px var(--font-sans); color: var(--ink-muted); }
 
-
-/* One fixed width for both steps, so only the content moves, never the card */
 .ob-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -351,7 +336,6 @@ async function submitPhoto() {
   view-transition-name: auth-card;
 }
 .ob-card.split { grid-template-columns: 252px minmax(0, 1fr); align-items: center; }
-/* The username step keeps a narrow column centered under the full-width banner */
 .side { width: 100%; max-width: 360px; justify-self: center; }
 .split .side { max-width: none; }
 
@@ -380,7 +364,6 @@ h1:focus { outline: none; }
 .handle .icon { color: var(--success); width: 20px; height: 20px; }
 
 .pfp { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin-top: -88px; }
-/* A surface-colored ring so the photo circle reads cleanly over the banner */
 .ring { display: block; padding: 6px; border-radius: var(--radius-pill); background: var(--surface); }
 .drop {
   display: grid;
@@ -402,7 +385,6 @@ h1:focus { outline: none; }
 .drop-hint .icon { width: 24px; height: 24px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* The photo column arrives while the @name slides over (see moveToPhotoStep) */
 .pfp-in-enter-active { transition: opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease); }
 .pfp-in-enter-from { opacity: 0; transform: scale(0.96); }
 

@@ -22,7 +22,6 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import BrandBlocks from '@/components/BrandBlocks.vue'
 
-// Page frame shared by the homepage, Login and Register: the slot fills the left side, next to the brand blocks
 </script>
 
 <style scoped>

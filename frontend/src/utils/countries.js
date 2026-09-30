@@ -1,4 +1,3 @@
-// ISO 3166-1 alpha-2 codes; the browser supplies the English names, so there's no list of names to keep up to date
 const CODES = (
   'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ ' +
   'CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR ' +
@@ -11,7 +10,6 @@ const CODES = (
 
 const names = new Intl.DisplayNames(['en'], { type: 'region' })
 
-// [{ code: 'US', name: 'United States' }, ...] United States first, the rest sorted by name
 export const COUNTRIES = CODES.map((code) => ({ code, name: names.of(code) })).sort(
   (a, b) => (b.code === 'US') - (a.code === 'US') || a.name.localeCompare(b.name),
 )
