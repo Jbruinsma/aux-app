@@ -8,7 +8,6 @@
       <div v-else class="av av-empty" aria-hidden="true">{{ initial }}</div>
       <p class="name">{{ displayName || username }}</p>
       <p class="meta">@{{ username }}<template v-if="country"> · {{ country }}</template></p>
-      <!-- Plain text only: rendered with {{ }}, so markup shows as typed; pre-line keeps the user's line breaks -->
       <p v-if="about" class="about">{{ about }}</p>
       <p v-if="website" class="site"><ExternalLink :href="website">{{ websiteLabel }}</ExternalLink></p>
       <slot />
@@ -20,20 +19,15 @@
 import { computed } from 'vue'
 import ExternalLink from '@/components/ExternalLink.vue'
 
-// The profile's left column: banner on top, picture half over its bottom edge, then the details.
-// Settings uses it as a live preview, so every field is optional except the username.
 const props = defineProps({
   username: { type: String, required: true },
   displayName: { type: String, default: '' },
   pictureUrl: { type: String, default: '' },
   bannerUrl: { type: String, default: '' },
-  // Where the banner sits in its 3:1 strip (from bannerImageStyle in utils/banner.js); without one it's centered
   bannerStyle: { type: Object, default: null },
   country: { type: String, default: '' },
   about: { type: String, default: '' },
-  // The full link (https://…); it's shown without the https:// and asks before leaving Aux
   website: { type: String, default: '' },
-  // Flat drops the card box so it blends into the page, as in the profile's left column
   flat: { type: Boolean, default: false },
 })
 
@@ -43,7 +37,6 @@ const websiteLabel = computed(() => props.website.replace(/^https?:\/\//, '').re
 
 <style scoped>
 .profile-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
-/* Banners are 3:1; without one the strip stays a soft purple */
 .profile-card.flat { background: none; border: 0; border-radius: 0; overflow: visible; }
 .flat .banner { border-radius: 0; }
 .flat .body { padding: 0 var(--space-8) var(--space-6) 0; }
@@ -52,7 +45,6 @@ const websiteLabel = computed(() => props.website.replace(/^https?:\/\//, '').re
 .banner img { display: block; }
 .banner img.cover { width: 100%; height: 100%; object-fit: cover; }
 .body { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-6) var(--space-6); }
-/* The picture's top half sits over the banner */
 .av { position: relative; width: 112px; height: 112px; margin-top: -56px; margin-bottom: var(--space-2); border-radius: var(--radius-pill); border: 4px solid var(--surface); object-fit: cover; background: var(--surface-alt); }
 .av-empty { display: grid; place-items: center; background: var(--primary); color: var(--on-primary); font: 700 40px/1 var(--font-sans); }
 .name { margin: 0; font: 700 24px/32px var(--font-sans); overflow-wrap: anywhere; }

@@ -138,7 +138,6 @@ watch(volume, v => {
   if (audio) audio.volume = v
 }, { immediate: true })
 
-// How much of each slider is filled, for the purple part of the track
 const progressFill = computed(() => (duration.value ? `${Math.min(100, (progress.value / duration.value) * 100)}%` : '0%'))
 const volumeFill = computed(() => `${volume.value * 100}%`)
 
@@ -258,7 +257,6 @@ function nextTrack() {
 </script>
 
 <style scoped>
-/* Styled to the Aux design system: a light gray bar, purple only on the play button and slider fills */
 .bottom-player,
 .progress-bar-container { position: fixed; left: 0; right: 0; background: var(--surface-alt); color: var(--ink); font-family: var(--font-sans); transition: transform var(--dur-med) var(--ease); }
 .bottom-player { bottom: 32px; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--page-gutter) var(--space-1); border-top: 1px solid var(--line); }
@@ -281,18 +279,15 @@ function nextTrack() {
 .controls { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-4); }
 .icon-btn { position: relative; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--radius-pill); background: none; color: var(--ink-muted); cursor: pointer; }
 .icon-btn:hover { color: var(--ink); background: var(--surface); }
-/* The play button is the one purple fill in the bar, like the play button in a track row */
 .play { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); background: var(--primary); color: var(--on-primary); cursor: pointer; }
 .play:hover { background: var(--purple-hover); }
 
 .right-side { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex: 1; }
-/* On is purple plus a dot underneath, so it doesn't rely on color alone */
 .toggle.active { color: var(--link); }
 .toggle.active::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; border-radius: var(--radius-pill); background: currentColor; }
 .volume { display: flex; align-items: center; gap: var(--space-2); margin-left: var(--space-2); color: var(--ink-muted); }
 .volume .slider { width: 100px; }
 
-/* Sliders: a thin gray track with the played or set part in purple (--fill is set inline) */
 .slider { -webkit-appearance: none; appearance: none; flex: 1; height: 16px; margin: 0; background: transparent; cursor: pointer; }
 .slider::-webkit-slider-runnable-track { height: 4px; border-radius: var(--radius-pill); background: linear-gradient(to right, var(--purple) var(--fill, 0%), var(--line) var(--fill, 0%)); }
 .slider::-moz-range-track { height: 4px; border-radius: var(--radius-pill); background: var(--line); }

@@ -54,7 +54,6 @@ async function handleLogin() {
       password: password.value,
     })
     userStore.login(response.user, response.token)
-    // The router guard sends unfinished accounts to onboarding instead
     await router.push(route.query.redirect || '/dashboard')
   } catch (err) {
     errorMessage.value = err.code === 'INVALID_CREDENTIALS'

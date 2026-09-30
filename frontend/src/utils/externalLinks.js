@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 
-// Links to other sites (like a profile's website) ask before leaving Aux, unless the viewer chose "Save my option".
 // That choice lives in this browser only; there's no account setting for it yet.
 const SKIP_KEY = 'aux-skip-external-warning'
 
@@ -24,10 +23,8 @@ export function setSkipExternalWarning(skip) {
   }
 }
 
-// The link waiting on the "You're leaving Aux" dialog, or null
 export const pendingExternalLink = ref(null)
 
-// Only plain web links are allowed out; anything else (javascript:, data:, typos) returns null
 export function safeExternalUrl(raw) {
   try {
     const url = new URL(String(raw).trim())
