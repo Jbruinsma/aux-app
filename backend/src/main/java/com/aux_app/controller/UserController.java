@@ -257,7 +257,6 @@ public class UserController {
         return UserSummary.of(users.save(user));
     }
 
-    // TODO POST /{username}/update-username/{new_username}
     // TODO POST /{username}/update-password              json: old_password, new_password
     // TODO GET  /{username}/get-last-playback
     // TODO POST /{username}/update-last-playback         json: playback data
