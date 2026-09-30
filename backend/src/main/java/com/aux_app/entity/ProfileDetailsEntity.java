@@ -31,6 +31,22 @@ public class ProfileDetailsEntity {
 
     protected ProfileDetailsEntity() {}
 
+    public String getDisplayName() {
+        return this.displayName;
+    }
+
+    public Country getCountry() {
+        return this.country;
+    }
+
+    public String getWebsite() {
+        return this.website;
+    }
+
+    public String getAbout() {
+        return this.about;
+    }
+
     public ProfileDetailsEntity(String userId) {
         this.userId = userId;
     }

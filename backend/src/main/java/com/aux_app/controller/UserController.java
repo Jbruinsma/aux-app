@@ -20,6 +20,7 @@ import java.util.Optional;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.OnboardingService;
 import com.aux_app.services.UploadService;
+import com.aux_app.services.UsernameService;
 
 @RestController
 @RequestMapping("/api/users")
@@ -29,17 +30,20 @@ public class UserController {
     private final ProfileDetailsRepository profileDetails;
     private final UploadService uploads;
     private final OnboardingService onboarding;
+    private final UsernameService usernames;
 
     public UserController(
             UserRepository users,
             ProfileDetailsRepository profileDetails,
             UploadService uploads,
-            OnboardingService onboarding
+            OnboardingService onboarding,
+            UsernameService usernames
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
         this.uploads = uploads;
         this.onboarding = onboarding;
+        this.usernames = usernames;
     }
 
     @GetMapping("/check-username/{username}")
@@ -49,7 +53,7 @@ public class UserController {
     )
     @ApiResponse(responseCode = "200", description = "OK")
     public UserExistance checkUsernameExists(@PathVariable String username) {
-        return new UserExistance(OnboardingService.isReserved(username) || users.existsByUsernameIgnoreCase(username));
+        return new UserExistance(usernames.isTaken(username));
     }
 
     @GetMapping("/onboarding/status")
@@ -74,7 +78,7 @@ public class UserController {
                     """
     )
     @ApiResponse(responseCode = "200", description = "Step accepted; body is the updated user")
-    @ApiResponse(responseCode = "400", description = "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "400", description = "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INAPPROPRIATE_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)")
     @ApiResponse(responseCode = "409", description = "Username taken (code USERNAME_TAKEN)")
     @ApiResponse(responseCode = "413", description = "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
     @ApiResponse(responseCode = "415", description = "Image is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
@@ -120,6 +124,32 @@ public class UserController {
         }
 
         return userProfile;
+    }
+
+    @GetMapping("/settings")
+    @Operation(
+            summary = "Get the caller's settings",
+            description = """
+                    Everything the settings page needs in one call: `email`, `username`, picture and banner URLs,
+                    and `profileDetails`. Every `profileDetails` field is null until the user fills it in.
+                    """
+    )
+    @ApiResponse(responseCode = "200", description = "OK")
+    public UserSettings retrieveSettings(
+            @CurrentUser UserEntity user
+    ) {
+        ProfileDetailsEntity saved = this.profileDetails.findByUserId(user.getUserId());
+        ProfileDetails details = saved == null
+                ? new ProfileDetails(null, null, null, null)
+                : new ProfileDetails(saved.getDisplayName(), saved.getCountry(), saved.getWebsite(), saved.getAbout());
+
+        return new UserSettings(
+                user.getEmail(),
+                user.getUsername(),
+                user.getProfilePictureUrl(),
+                user.getBannerUrl(),
+                details
+        );
     }
 
     @PutMapping(value = "/me/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -194,6 +224,37 @@ public class UserController {
         profileDetails.save(details);
 
         return new ProfileDetails(update.displayName(), update.country(), update.website(), update.about());
+    };
+
+    @PutMapping("/me/username")
+    @Operation(
+            summary = "Change the caller's username",
+            description = """
+                    JSON body: `username`. Same rules as the onboarding `USERNAME` step: 3-16 letters, numbers or
+                    underscores, no blocked words, unique ignoring case, and not a reserved name.
+                    A change of case alone of your own name (`mo` -> `Mo`) is allowed.
+                    Returns the updated user.
+                    """)
+    @ApiResponse(responseCode = "200", description = "Username changed; body is the updated user")
+    @ApiResponse(responseCode = "400", description = "Bad format, blocked word, or already your exact username (codes INVALID_USERNAME, INAPPROPRIATE_USERNAME, IDENTICAL_USERNAME, MALFORMED_BODY)")
+    @ApiResponse(responseCode = "409", description = "Taken by another account, or reserved (code USERNAME_TAKEN)")
+    public UserSummary updateUsername(
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody UsernameUpdateDetails update
+    ) {
+        String newUsername = update.username();
+
+        if (newUsername != null && newUsername.equals(user.getUsername())) {
+            throw new AuxException(
+                    HttpStatus.BAD_REQUEST,
+                    "IDENTICAL_USERNAME",
+                    "Username already in use",
+                    "username"
+            );
+        }
+
+        usernames.change(user, newUsername);
+        return UserSummary.of(users.save(user));
     }
 
     // TODO POST /{username}/update-username/{new_username}

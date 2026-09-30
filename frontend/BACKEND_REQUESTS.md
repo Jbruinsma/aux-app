@@ -2,41 +2,7 @@
 
 Endpoints the frontend needs that aren't in `backend/docs/openapi.json` yet. The frontend mocks them until they ship.
 
-## Account settings (Settings → Account)
-
-Mocked in `src/utils/account.js`; set `ACCOUNT_MOCKED = false` once these exist. All need `Authorization: Bearer <token>`.
-Errors use the usual `AuxServerError` body.
-
-### GET /api/users/me/account
-
-The logged-in user's email, which `UserSummary` doesn't include.
-
-Response `200`:
-```json
-{ "email": "mo@example.com" }
-```
-
-### GET /api/users/me/check-email?email={email}
-
-Checks while the user types, like `check-username`. Behind auth so it can't be used to test which emails have accounts.
-
-Response `200`: `exists` is true when an account has this email, ignoring case.
-```json
-{ "exists": false }
-```
-
-### PUT /api/users/me/username
-
-Request:
-```json
-{ "username": "new_name" }
-```
-Same rules as the onboarding `USERNAME` step (3-16 letters, numbers, underscores; unique ignoring case; reserved names
-refused). A change of case alone of your own name (`mo` → `Mo`) should be allowed.
-
-Response `200`: the updated `UserSummary`.
-
-Errors: `400 INVALID_USERNAME`, `409 USERNAME_TAKEN` (also for reserved names).
+______________________________________________________
 
 ### PUT /api/users/me/email
 
