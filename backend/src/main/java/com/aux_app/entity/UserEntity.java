@@ -78,6 +78,16 @@ public class UserEntity {
         this.updatedAt = Instant.now();
     }
 
+    public void setEmail(String email) {
+        this.email = email;
+        this.updatedAt = Instant.now();
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.updatedAt = Instant.now();
+    }
+
     public void setOnboardingStep(OnboardingStep onboardingStep) {
         this.onboardingStep = onboardingStep;
         this.updatedAt = Instant.now();

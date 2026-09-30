@@ -1,5 +1,6 @@
 PRAGMA foreign_keys = OFF;
 
+DROP TABLE IF EXISTS otp_codes;
 DROP TABLE IF EXISTS playlist_shared_with;
 DROP TABLE IF EXISTS playlist_saved_by;
 DROP TABLE IF EXISTS user_playlists_added_to;
@@ -132,6 +133,15 @@ CREATE TABLE user_favorite_tracks (
     music_piece_id VARCHAR NOT NULL REFERENCES music_pieces(music_piece_id),
     created_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP),
     PRIMARY KEY (user_id, music_piece_id)
+);
+
+CREATE TABLE otp_codes (
+    user_id VARCHAR NOT NULL PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    code_hash VARCHAR NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    sent_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+    pending_email VARCHAR(320)
 );
 
 PRAGMA foreign_keys = ON;
