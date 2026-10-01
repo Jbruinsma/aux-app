@@ -551,6 +551,444 @@
         } ]
       }
     },
+    "/api/artists/{artistId}/pfp" : {
+      "put" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Replace an artist's profile picture",
+        "description" : "Only the artist's creator. Multipart field `file`: same rules as the user profile picture. Returns the new public URL.",
+        "operationId" : "updateArtistPfp",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfilePictureUpdate"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing `file` part (code REQUEST_FAILED), or empty, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Caller didn't create the artist (code NOT_ARTIST_CREATOR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/artists/{artistId}/favorite" : {
+      "put" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Favorite an artist",
+        "description" : "Does nothing if the caller already favorited the artist.",
+        "operationId" : "favoriteArtist",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Artist is now a favorite"
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Unfavorite an artist",
+        "description" : "Does nothing if the artist wasn't a favorite or doesn't exist.",
+        "operationId" : "unfavoriteArtist",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Artist is no longer a favorite"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/artists/{artistId}/banner" : {
+      "put" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Replace an artist's banner image",
+        "description" : "Only the artist's creator. Multipart fields `file`, `cropX`, `cropY`, `cropWidth`, `cropHeight`:\nsame rules as the user banner. Returns the new public URL.\n",
+        "operationId" : "updateArtistBanner",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "cropX",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "cropY",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "cropWidth",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "cropHeight",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BannerUpdate"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing, unreadable or too small image, or missing or bad crop (codes INVALID_IMAGE, IMAGE_TOO_SMALL, INVALID_CROP, REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Caller didn't create the artist (code NOT_ARTIST_CREATOR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/onboarding/step" : {
       "post" : {
         "tags" : [ "user-controller" ],
@@ -1391,6 +1829,169 @@
         } ]
       }
     },
+    "/api/artists" : {
+      "get" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Search artists by name",
+        "description" : "`q` is matched case-insensitively anywhere in the name. Returns at most 20 artists,\nsorted by name. Use it for the upload form's artist picker.\n",
+        "operationId" : "searchArtists",
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ArtistSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Find or create an artist",
+        "description" : "JSON body: `artistName` (required), at most 100 chars, trimmed. If an artist with the same name\nexists (case-insensitive), returns that artist instead of making a duplicate. The name can't be\nchanged later; the creator can set the pfp and banner.\n",
+        "operationId" : "createArtist",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ArtistCreationDetails"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Artist found or created; body is the artist",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArtistSummary"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or bad field (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Someone created the same artist at the same moment; retry (code CONFLICT)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/settings" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -1746,6 +2347,146 @@
                   "items" : {
                     "$ref" : "#/components/schemas/TopMusicPiece"
                   }
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/artists/{artistId}" : {
+      "get" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "Get an artist",
+        "description" : "Public. `isFavorite` is true when the caller has favorited the artist. `canEdit` is true when the\ncaller created the artist and may change its pfp and banner. Both are false with no token.\n`artistPfpUrl` and `artistBannerUrl` are null until set.\n",
+        "operationId" : "getArtist",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArtistDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      }
+    },
+    "/api/artists/favorites/{username}" : {
+      "get" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "List a user's favorite artists",
+        "description" : "Public. Newest favorite first.",
+        "operationId" : "getFavoriteArtists",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ArtistSummary"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "User not found (code USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -2180,6 +2921,18 @@
         },
         "required" : [ "code" ]
       },
+      "ArtistCreationDetails" : {
+        "type" : "object",
+        "properties" : {
+          "artistName" : {
+            "type" : "string",
+            "example" : "Tame Impala",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "artistName" ]
+      },
       "UserSettings" : {
         "type" : "object",
         "properties" : {
@@ -2286,6 +3039,35 @@
           },
           "artistSummary" : {
             "$ref" : "#/components/schemas/ArtistSummary"
+          }
+        }
+      },
+      "ArtistDetails" : {
+        "type" : "object",
+        "properties" : {
+          "artistId" : {
+            "type" : "string",
+            "example" : "a_8f3k2"
+          },
+          "artistName" : {
+            "type" : "string",
+            "example" : "Tame Impala"
+          },
+          "artistPfpUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "artistBannerUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/artist-banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "isFavorite" : {
+            "type" : "boolean",
+            "example" : true
+          },
+          "canEdit" : {
+            "type" : "boolean",
+            "example" : false
           }
         }
       },
