@@ -192,6 +192,19 @@ public class UploadService {
                 () -> playlists.save(playlist));
     }
 
+    // The piece must already be saved: storeTracks persists it, and save here would merge
+    public String replaceMusicPieceCover(MusicPieceEntity piece, MultipartFile file) {
+        byte[] webp;
+        try {
+            webp = toWebp(readUpload(file));
+        } catch (AuxException e) {
+            // The image checks report the pfp/banner field name
+            throw new AuxException(e.getStatus(), e.getDetails().code(), e.getMessage(), "coverImage");
+        }
+        return store("music-piece-cover", webp, piece.getCoverUrl(), piece::setCoverUrl,
+                () -> musicPieces.save(piece));
+    }
+
     // mp3FileUrl in music_pieces holds this key; turn it into a playable URL with signedAudioUrl.
     public record StoredTrack(String key, int durationSeconds, int sizeBytes) {}
 
@@ -247,18 +260,21 @@ public class UploadService {
 
     private static AuxException quotaExceeded() {
         return new AuxException(HttpStatus.CONTENT_TOO_LARGE, "STORAGE_QUOTA_EXCEEDED",
-                "Uploads are limited to 2GB per user", "mp3s");
+                "Uploads are limited to 2GB per user", "mp3File");
     }
 
     public void deleteTrack(String key) {
         deleteQuietly(audioR2, audioBucket, key);
     }
 
-    // Only hand these out after checking the user may play the track (owner, or a playlist they can see)
-    public String signedAudioUrl(String key) {
+    // 404, not 403, so a private piece looks the same as a missing one (same as private playlists)
+    public String signedAudioUrl(MusicPieceEntity piece, String userId) {
+        if (!piece.isPlayableBy(userId)) {
+            throw new AuxException(HttpStatus.NOT_FOUND, "MUSIC_PIECE_NOT_FOUND", "Music piece not found", "musicPieceId");
+        }
         return presigner.presignGetObject(p -> p
                         .signatureDuration(SIGNED_URL_TTL)
-                        .getObjectRequest(get -> get.bucket(audioBucket).key(key)))
+                        .getObjectRequest(get -> get.bucket(audioBucket).key(piece.getMp3FileUrl())))
                 .url().toString();
     }
 
@@ -268,7 +284,7 @@ public class UploadService {
             return parseMp3(file.getBytes());
         } catch (AuxException e) {
             throw new AuxException(e.getStatus(), e.getDetails().code(),
-                    file.getOriginalFilename() + ": " + e.getMessage(), "mp3s");
+                    file.getOriginalFilename() + ": " + e.getMessage(), "mp3File");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -307,20 +323,20 @@ public class UploadService {
             samples += isMpeg1(header) ? 1152 : 576;
             if (samples > (long) MAX_TRACK_SECONDS * sampleRate) {
                 throw new AuxException(HttpStatus.BAD_REQUEST, "AUDIO_TOO_LONG",
-                        "Track must be at most 10 minutes", "mp3s");
+                        "Track must be at most 10 minutes", "mp3File");
             }
         }
 
         if (samples == 0) {
             throw new AuxException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_AUDIO_TYPE",
-                    "File must be an MP3", "mp3s");
+                    "File must be an MP3", "mp3File");
         }
         if (bytes.length - pos > MAX_TRAILING_BYTES) {
-            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_AUDIO", "MP3 is damaged and could not be read", "mp3s");
+            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_AUDIO", "MP3 is damaged and could not be read", "mp3File");
         }
         if (samples < (long) MIN_TRACK_SECONDS * sampleRate) {
             throw new AuxException(HttpStatus.BAD_REQUEST, "AUDIO_TOO_SHORT",
-                    "Track must be at least " + MIN_TRACK_SECONDS + " seconds", "mp3s");
+                    "Track must be at least " + MIN_TRACK_SECONDS + " seconds", "mp3File");
         }
         return new Mp3(Arrays.copyOfRange(bytes, start, pos), (int) Math.round((double) samples / sampleRate));
     }
