@@ -100,14 +100,14 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
 
     // 6 random users with a custom pfp (new users get /default_profile_picture.svg, never NULL)
     @Query(value = """
-            SELECT u.user_id
+            SELECT u.profile_picture_url
             FROM users u
             WHERE u.profile_picture_url IS NOT NULL
               AND u.profile_picture_url <> '/default_profile_picture.svg'
             ORDER BY RANDOM()
             LIMIT 6
             """, nativeQuery = true)
-    List<String> findUserIds();
+    List<String> findRandomProfilePictureUrls();
 
     interface ProfileRow {
         String getUserId();

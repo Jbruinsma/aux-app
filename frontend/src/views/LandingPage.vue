@@ -11,8 +11,8 @@
         <router-link to="/register" class="btn primary">Create your account</router-link>
         <router-link to="/login" class="btn secondary">Log in</router-link>
       </div>
-      <div class="faces">
-        <img v-for="src in PFPS" :key="src" :src="src" alt="" />
+      <div v-if="pfps.length" class="faces">
+        <img v-for="src in pfps" :key="src" :src="src" alt="" />
         <span class="faces-note">Join listeners already on Aux.</span>
       </div>
     </div>
@@ -37,7 +37,11 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue'
 import HeroLayout from '@/components/HeroLayout.vue'
+import { fetchAPI } from '@/utils/api.js'
+import { resolveCoverURL } from '@/utils/display.js'
+import { API_BASE_URL } from '@/utils/variables.js'
 
 // Hardcoded until GET /api/core/top is implemented (analytics)
 const COVER_BASE = 'https://aux.justinabruinsma.com/music-cover'
@@ -51,15 +55,16 @@ const topAlbums = [
   { album: 'UP 2 ME', artist: 'Yeat', cover: `${COVER_BASE}/top-up2me.jpg` },
 ]
 
-// Hardcoded to save an API call; picked from real uploads in the R2 bucket
-const PFPS = [
-  '09f810b7-ed4a-4b44-b322-860b80909537',
-  '12bbd883-fc2d-4abe-8f03-4292d60f8234',
-  '1a6af45f-4aad-424b-82fc-9edde6460a0d',
-  '39880875-01ba-43b8-aacd-69f86991bf62',
-  '5b828901-e1a7-40e4-b7b7-530ae14b828a',
-  '66acb350-287e-4bb3-8f68-7fd03ce636f2',
-].map((id) => `https://aux.justinabruinsma.com/pfp/${id}.webp`)
+// Random users with a custom pfp; the row stays hidden if the call fails
+const pfps = ref([])
+onMounted(async () => {
+  try {
+    const urls = await fetchAPI(`${API_BASE_URL}/api/core/users`)
+    pfps.value = urls.map(resolveCoverURL)
+  } catch {
+    // fetchAPI already logs the error
+  }
+})
 </script>
 
 <style scoped>
