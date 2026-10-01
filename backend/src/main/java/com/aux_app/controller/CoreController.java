@@ -25,13 +25,13 @@ public class CoreController {
 
     @GetMapping("/users")
     @Operation(
-            summary = "Get the list of users",
-            description = "Public. Returns up to 6 random user IDs of users with a custom profile picture."
+            summary = "Get random user profile pictures",
+            description = "Public. Returns up to 6 profile picture URLs of random users with a custom profile picture."
     )
     @ApiResponse(responseCode = "200", description = "OK")
     @ResponseStatus(HttpStatus.OK)
     public List<String> getUsers() {
-        return users.findUserIds();
+        return users.findRandomProfilePictureUrls();
     }
 
     @GetMapping("/top")
