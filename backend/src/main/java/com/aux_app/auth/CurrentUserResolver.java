@@ -1,5 +1,6 @@
 package com.aux_app.auth;
 
+import com.aux_app.dto.users.OnboardingStep;
 import org.jspecify.annotations.NonNull;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +31,7 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
         return (parameter.hasParameterAnnotation(CurrentUser.class)
+                || parameter.hasParameterAnnotation(OnboardingUser.class)
                 || parameter.hasParameterAnnotation(OptionalCurrentUser.class))
                 && parameter.getParameterType() == UserEntity.class;
     }
@@ -41,6 +43,8 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
             NativeWebRequest request,
             WebDataBinderFactory binder
     ) {
+        // @OnboardingUser is the only way in for accounts that have not finished onboarding
+        boolean onboardingAllowed = parameter.hasParameterAnnotation(OnboardingUser.class);
         boolean optional = parameter.hasParameterAnnotation(OptionalCurrentUser.class);
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
@@ -54,6 +58,13 @@ public class CurrentUserResolver implements HandlerMethodArgumentResolver {
             // The account may have been deleted after the token was issued
             UserEntity user = users.findById(userId).orElse(null);
             if (user == null && !optional) throw unauthorized();
+
+            if (user != null && !onboardingAllowed && user.getOnboardingStep() != OnboardingStep.DONE) {
+                // Optional endpoints treat them as anonymous so no user-scoped data leaks
+                if (optional) return null;
+                throw new AuxException(HttpStatus.FORBIDDEN, "ONBOARDING_INCOMPLETE", "Finish onboarding first");
+            }
+
             return user;
         } catch (JwtException | IllegalArgumentException e) {
             if (optional) return null;

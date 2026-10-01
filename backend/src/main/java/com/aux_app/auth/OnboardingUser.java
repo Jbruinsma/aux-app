@@ -1,16 +1,15 @@
 package com.aux_app.auth;
 
 import io.swagger.v3.oas.annotations.Parameter;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-// Put on a UserEntity controller parameter
-// and CurrentUserResolver fills it from the Bearer token, or responds 401.
-// Responds 403 ONBOARDING_INCOMPLETE until onboarding is DONE
+// Like @CurrentUser but also lets in accounts still onboarding. Only for onboarding endpoints
 @Parameter(hidden = true) // injected from the token, not part of the request
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CurrentUser {}
+public @interface OnboardingUser {}
 
