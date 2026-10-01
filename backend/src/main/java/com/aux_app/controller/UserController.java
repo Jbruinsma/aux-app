@@ -66,7 +66,7 @@ public class UserController {
         return onboarding.currentStep(user);
     }
 
-    @PostMapping("/onboarding/step")
+    @PostMapping(value = "/onboarding/step", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Complete an onboarding step",
             description = """
@@ -78,9 +78,9 @@ public class UserController {
                     """
     )
     @ApiResponse(responseCode = "200", description = "Step accepted; body is the updated user")
-    @ApiResponse(responseCode = "400", description = "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INAPPROPRIATE_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "400", description = "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_ONBOARDING_STEP, INVALID_USERNAME, INAPPROPRIATE_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)")
     @ApiResponse(responseCode = "409", description = "Username taken (code USERNAME_TAKEN)")
-    @ApiResponse(responseCode = "413", description = "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "413", description = "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Image is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public UserSummary completeOnboardingStep(
             @CurrentUser UserEntity user,
@@ -162,11 +162,9 @@ public class UserController {
                     Returns the new public URL.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "400", description = "Missing, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
-    @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "400", description = "Missing `file` part (code REQUEST_FAILED), or empty, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
-
-    // TODO: no rate limit yet; each call costs a decode + encode + R2 write
     public ProfilePictureUpdate updateProfilePicture(
             @CurrentUser UserEntity user,
             @RequestParam("file") MultipartFile file
@@ -186,7 +184,7 @@ public class UserController {
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "Missing, unreadable or too small image, or missing or bad crop (codes INVALID_IMAGE, IMAGE_TOO_SMALL, INVALID_CROP, REQUEST_FAILED)")
-    @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)")
+    @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public BannerUpdate updateBanner(
             @CurrentUser UserEntity user,

@@ -16,7 +16,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 // Per-IP token bucket for every request. Each bucket holds `limit` tokens and refills `limit` per minute,
-// so short bursts are fine but the sustained rate is capped. /api/auth/** gets a tighter cap to slow credential stuffing.
+// so short bursts are fine but the sustained rate is capped. /api/auth/** gets a tighter cap to slow credential stuffing,
+// and multipart requests (uploads: image decode/encode, MP3 parsing, R2 writes) get their own tighter cap.
 // Throws AuxException, so a 429 comes back through AuxErrorHandler like every other error.
 // ponytail: in-memory, single instance only; move to Redis/bucket4j if the backend ever runs more than one node
 @Component
@@ -24,6 +25,7 @@ public class RateLimiter implements HandlerInterceptor {
 
     static final int DEFAULT_LIMIT = 120;
     static final int AUTH_LIMIT = 10;
+    static final int UPLOAD_LIMIT = 20;
     private static final long REFILL_NANOS = 60_000_000_000L; // time to refill an empty bucket
 
     private static final class Bucket {
@@ -56,8 +58,10 @@ public class RateLimiter implements HandlerInterceptor {
         sweep(now);
 
         boolean auth = request.getRequestURI().startsWith("/api/auth/");
-        int limit = auth ? AUTH_LIMIT : DEFAULT_LIMIT;
-        String key = (auth ? "auth:" : "all:") + request.getRemoteAddr();
+        String contentType = request.getContentType();
+        boolean upload = contentType != null && contentType.toLowerCase().startsWith("multipart/");
+        int limit = auth ? AUTH_LIMIT : upload ? UPLOAD_LIMIT : DEFAULT_LIMIT;
+        String key = (auth ? "auth:" : upload ? "upload:" : "all:") + request.getRemoteAddr();
 
         Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(limit, now));
         synchronized (bucket) {

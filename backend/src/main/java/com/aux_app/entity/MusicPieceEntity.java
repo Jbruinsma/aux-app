@@ -38,6 +38,9 @@ public class MusicPieceEntity {
     @Column(name = "size_bytes", nullable = false)
     private Integer sizeBytes;
 
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = false;
+
     @Column(name = "created_at")
     private Instant createdAt;
 
@@ -46,14 +49,14 @@ public class MusicPieceEntity {
 
     protected MusicPieceEntity() {}
 
-    public MusicPieceEntity(String musicPieceId, String uploaderUserId, String artistId, String mp3FileUrl,
-                            int durationSeconds, int sizeBytes) {
+    public MusicPieceEntity(
+            String musicPieceId,
+            String uploaderUserId,
+            String artistId
+    ) {
         this.musicPieceId = musicPieceId;
         this.uploaderUserId = uploaderUserId;
         this.artistId = artistId;
-        this.mp3FileUrl = mp3FileUrl;
-        this.durationSeconds = durationSeconds;
-        this.sizeBytes = sizeBytes;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
@@ -68,4 +71,16 @@ public class MusicPieceEntity {
     public Integer getSizeBytes() { return sizeBytes; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public Boolean getIsPublic() { return isPublic; }
+
+    public void setIsPublic(Boolean isPublic) { this.isPublic = isPublic; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    public void setName(String name) { this.name = name; }
+    public void setMp3FileUrl(String mp3FileUrl) { this.mp3FileUrl = mp3FileUrl; }
+    public void setDurationSeconds(Integer durationSeconds) { this.durationSeconds = durationSeconds; }
+    public void setSizeBytes(Integer sizeBytes) { this.sizeBytes = sizeBytes; }
+
+    public boolean isPlayableBy(String userId) {
+        return Boolean.TRUE.equals(isPublic) || uploaderUserId.equals(userId);
+    }
 }
