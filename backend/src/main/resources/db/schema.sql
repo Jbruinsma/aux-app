@@ -69,6 +69,9 @@ CREATE TABLE music_pieces (
     mp3_file_url VARCHAR NOT NULL,
     duration_seconds INTEGER,
     size_bytes INTEGER NOT NULL DEFAULT 0,
+    -- Only the uploader can play a private piece, whatever playlists it sits in
+    -- Existing DBs: ALTER TABLE music_pieces ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT 0;
+    is_public BOOLEAN NOT NULL DEFAULT 0,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );

@@ -64,7 +64,7 @@ public class OnboardingService {
             }
             default -> throw new AuxException(
                     HttpStatus.BAD_REQUEST,
-                    "INVALIDE_ONBOARDING_STEP",
+                    "INVALID_ONBOARDING_STEP",
                     "Unhandled onboarding step: " + step,
                     String.valueOf(step)
             );

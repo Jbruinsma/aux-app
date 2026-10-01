@@ -47,4 +47,20 @@ class RateLimiterTest {
         hit("/api/auth/login", "1.1.1.1");
         assertThrows(AuxException.class, () -> hit("/api/auth/login", "1.1.1.1"));
     }
+
+    @Test
+    void uploadsHaveTheirOwnTighterBucket() {
+        for (int i = 0; i < RateLimiter.UPLOAD_LIMIT; i++) upload("1.1.1.1");
+        assertThrows(AuxException.class, () -> upload("1.1.1.1"));
+
+        // JSON requests from the same IP still go through
+        hit("/api/users/me", "1.1.1.1");
+    }
+
+    private boolean upload(String ip) {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/music-pieces/create");
+        request.setRemoteAddr(ip);
+        request.setContentType("multipart/form-data; boundary=x");
+        return limiter.preHandle(request, new MockHttpServletResponse(), new Object());
+    }
 }

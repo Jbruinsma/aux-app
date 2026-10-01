@@ -129,7 +129,7 @@ public class AuthController {
                     """)
     @ApiResponse(responseCode = "204", description = "Code sent")
     @ApiResponse(responseCode = "403", description = "Wrong current password (code WRONG_PASSWORD)")
-    @ApiResponse(responseCode = "429", description = "A code was sent less than a minute ago (code OTP_COOLDOWN)")
+    @ApiResponse(responseCode = "429", description = "A code was sent less than a minute ago (code OTP_COOLDOWN), or too many requests from this IP (code RATE_LIMITED)")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void requestPasswordChange(@CurrentUser UserEntity user, @Valid @RequestBody PasswordChangeRequest request) {
         checkCurrentPassword(user, request.currentPassword());
@@ -139,7 +139,7 @@ public class AuthController {
     @PostMapping("/password/confirm")
     @Operation(summary = "Finish a password change", description = "JSON body: `code` from the email and `newPassword` (same rules as registration).")
     @ApiResponse(responseCode = "204", description = "Password changed")
-    @ApiResponse(responseCode = "400", description = "Wrong, expired or used code (code INVALID_OTP), or bad password (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "400", description = "Wrong, expired or used code (code INVALID_OTP), badly formatted code or bad password (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void confirmPasswordChange(@CurrentUser UserEntity user, @Valid @RequestBody PasswordChange change) {
         checkPasswordBytes(change.newPassword(), "newPassword");
@@ -160,7 +160,7 @@ public class AuthController {
                     """)
     @ApiResponse(responseCode = "204", description = "Code (or, for a registered address, a notice) sent to the new address")
     @ApiResponse(responseCode = "403", description = "Wrong current password (code WRONG_PASSWORD)")
-    @ApiResponse(responseCode = "429", description = "A code was sent less than a minute ago (code OTP_COOLDOWN)")
+    @ApiResponse(responseCode = "429", description = "A code was sent less than a minute ago (code OTP_COOLDOWN), or too many requests from this IP (code RATE_LIMITED)")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void requestEmailChange(@CurrentUser UserEntity user, @Valid @RequestBody EmailChangeRequest request) {
         // Password stops a stolen session token from moving the account to an attacker's inbox
@@ -175,7 +175,7 @@ public class AuthController {
     @PostMapping("/email/confirm")
     @Operation(summary = "Finish an email change", description = "JSON body: `code` from the email sent to the new address. Returns the updated user.")
     @ApiResponse(responseCode = "200", description = "Email changed")
-    @ApiResponse(responseCode = "400", description = "Wrong, expired or used code (code INVALID_OTP)")
+    @ApiResponse(responseCode = "400", description = "Wrong, expired or used code (code INVALID_OTP), badly formatted code (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)")
     @ApiResponse(responseCode = "409", description = "Email was registered after the code was sent (code EMAIL_TAKEN); only the inbox owner can get here")
     public UserSummary confirmEmailChange(@CurrentUser UserEntity user, @Valid @RequestBody OtpCode otpCode) {
         String newEmail = otps.consume(user.getUserId(), otpCode.code());
