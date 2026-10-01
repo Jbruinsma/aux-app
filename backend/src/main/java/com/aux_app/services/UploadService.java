@@ -41,10 +41,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
+import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.PlaylistRepository;
 import com.aux_app.repository.UserRepository;
@@ -116,6 +118,7 @@ public class UploadService {
     private final UserRepository users;
     private final MusicPieceRepository musicPieces;
     private final PlaylistRepository playlists;
+    private final ArtistRepository artists;
     private final EntityManager entityManager;
     private final TransactionTemplate transactions;
 
@@ -132,6 +135,7 @@ public class UploadService {
             UserRepository users,
             MusicPieceRepository musicPieces,
             PlaylistRepository playlists,
+            ArtistRepository artists,
             EntityManager entityManager,
             TransactionTemplate transactions
     ) {
@@ -152,6 +156,7 @@ public class UploadService {
         this.users = users;
         this.musicPieces = musicPieces;
         this.playlists = playlists;
+        this.artists = artists;
         this.entityManager = entityManager;
         this.transactions = transactions;
     }
@@ -176,6 +181,18 @@ public class UploadService {
     public String replaceBanner(UserEntity user, MultipartFile file, int x, int y, int width, int height) {
         byte[] webp = bannerToWebp(readUpload(file), x, y, width, height);
         return store("banner", webp, user.getBannerUrl(), user::setBannerUrl, () -> users.save(user));
+    }
+
+    public String replaceArtistPfp(ArtistEntity artist, MultipartFile file) {
+        byte[] webp = toWebp(readUpload(file));
+        return store("artist-pfp", webp, artist.getArtistPfpUrl(), artist::setArtistPfpUrl, () -> artists.save(artist));
+    }
+
+    // Same rules as replaceBanner
+    public String replaceArtistBanner(ArtistEntity artist, MultipartFile file, int x, int y, int width, int height) {
+        byte[] webp = bannerToWebp(readUpload(file), x, y, width, height);
+        return store("artist-banner", webp, artist.getArtistBannerUrl(), artist::setArtistBannerUrl,
+                () -> artists.save(artist));
     }
 
     // Also saves the playlist, so a new playlist can be passed in unsaved: its cover column is NOT NULL.

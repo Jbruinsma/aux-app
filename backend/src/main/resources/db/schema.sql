@@ -57,7 +57,12 @@ CREATE TABLE user_saved_playlists (
 CREATE TABLE artists (
     artist_id VARCHAR NOT NULL PRIMARY KEY,
     artist_name VARCHAR NOT NULL,
-    artist_pfp_url VARCHAR
+    artist_pfp_url VARCHAR,
+    -- Existing DBs: ALTER TABLE artists ADD COLUMN artist_banner_url VARCHAR;
+    artist_banner_url VARCHAR,
+    -- Only the creator can change the pfp and banner. Null for artists made before this column existed
+    -- Existing DBs: ALTER TABLE artists ADD COLUMN created_by_user_id VARCHAR REFERENCES users(user_id);
+    created_by_user_id VARCHAR REFERENCES users(user_id)
 );
 
 CREATE TABLE music_pieces (
@@ -128,6 +133,8 @@ CREATE TABLE play_events (
 -- Usernames are unique ignoring case ("mo" blocks "MO"). The column keeps the case the user typed.
 -- Existing DBs: run this statement once; it fails if two usernames already differ only by case
 CREATE UNIQUE INDEX uq_users_username_nocase ON users(username COLLATE NOCASE);
+-- Artist names are unique ignoring case so uploads share one row per artist. Existing DBs: run this once
+CREATE UNIQUE INDEX uq_artists_name_nocase ON artists(artist_name COLLATE NOCASE);
 CREATE INDEX idx_play_events_user_played_at ON play_events(user_id, played_at);
 CREATE INDEX idx_play_events_music_piece_played_at ON play_events(music_piece_id, played_at);
 
