@@ -24,4 +24,4 @@ jobs:
           echo "150.136.105.240 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIZTyee/A4M/HH7r3mCt8xUCiEqyRGaeMnuMV6mzYMTm" > ~/known_hosts
           OPTS="-i $HOME/deploy_key -o UserKnownHostsFile=$HOME/known_hosts"
           scp $OPTS backend/target/aux-backend-*.jar ubuntu@150.136.105.240:/opt/aux/aux.jar.new
-          ssh $OPTS ubuntu@150.136.105.240 'mv /opt/aux/aux.jar.new /opt/aux/aux.jar && sudo systemctl restart aux && sleep 25 && systemctl is-active aux'
+          ssh $OPTS ubuntu@150.136.105.240 'mv /opt/aux/aux.jar.new /opt/aux/aux.jar && echo ${{ github.sha }} > /opt/aux/VERSION && sudo systemctl restart aux && sleep 25 && systemctl is-active aux'
