@@ -5,6 +5,7 @@ import com.aux_app.repository.ProfileDetailsRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.auth.CurrentUser;
+import com.aux_app.auth.OnboardingUser;
 import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.entity.ProfileDetailsEntity;
 import com.aux_app.entity.UserEntity;
@@ -62,7 +63,7 @@ public class UserController {
             description = "Returns the step the user must complete next. `DONE` means onboarding is finished."
     )
     @ApiResponse(responseCode = "200", description = "OK")
-    public OnboardingStep getOnboardingStatus(@CurrentUser UserEntity user) {
+    public OnboardingStep getOnboardingStatus(@OnboardingUser UserEntity user) {
         return onboarding.currentStep(user);
     }
 
@@ -83,7 +84,7 @@ public class UserController {
     @ApiResponse(responseCode = "413", description = "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Image is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public UserSummary completeOnboardingStep(
-            @CurrentUser UserEntity user,
+            @OnboardingUser UserEntity user,
             @RequestParam OnboardingStep step,
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(required = false) String username

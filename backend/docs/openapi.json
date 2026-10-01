@@ -66,6 +66,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -174,6 +184,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -248,6 +268,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -397,6 +427,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -516,6 +556,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -603,7 +653,7 @@
             }
           },
           "403" : {
-            "description" : "Caller didn't create the artist (code NOT_ARTIST_CREATOR)",
+            "description" : "Caller didn't create the artist (code NOT_ARTIST_CREATOR); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -725,6 +775,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -778,6 +838,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -905,7 +975,7 @@
             }
           },
           "403" : {
-            "description" : "Caller didn't create the artist (code NOT_ARTIST_CREATOR)",
+            "description" : "Caller didn't create the artist (code NOT_ARTIST_CREATOR); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1188,6 +1258,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -1291,6 +1371,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1434,7 +1524,7 @@
             "description" : "Code sent"
           },
           "403" : {
-            "description" : "Wrong current password (code WRONG_PASSWORD)",
+            "description" : "Wrong current password (code WRONG_PASSWORD); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1530,6 +1620,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1673,7 +1773,7 @@
             "description" : "Code (or, for a registered address, a notice) sent to the new address"
           },
           "403" : {
-            "description" : "Wrong current password (code WRONG_PASSWORD)",
+            "description" : "Wrong current password (code WRONG_PASSWORD); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1794,6 +1894,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -1859,6 +1969,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1957,6 +2077,16 @@
               }
             }
           },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -2011,6 +2141,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -2288,6 +2428,16 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {

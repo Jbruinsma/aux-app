@@ -3,6 +3,7 @@ package com.aux_app.config;
 import java.util.Arrays;
 
 import com.aux_app.auth.CurrentUser;
+import com.aux_app.auth.OnboardingUser;
 import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.dto.base.AuxServerError;
 import io.swagger.v3.core.converter.ModelConverters;
@@ -45,13 +46,21 @@ public class OpenApiConfig {
     OperationCustomizer errorResponses() {
         return (operation, handlerMethod) -> {
             var params = Arrays.asList(handlerMethod.getMethodParameters());
-            boolean required = params.stream().anyMatch(p -> p.hasParameterAnnotation(CurrentUser.class));
+            boolean onboarded = params.stream().anyMatch(p -> p.hasParameterAnnotation(CurrentUser.class));
+            boolean required = onboarded || params.stream().anyMatch(p -> p.hasParameterAnnotation(OnboardingUser.class));
             boolean optional = params.stream().anyMatch(p -> p.hasParameterAnnotation(OptionalCurrentUser.class));
 
             if (required) {
                 operation.addSecurityItem(new SecurityRequirement().addList(BEARER));
                 operation.getResponses().putIfAbsent("401", new ApiResponse()
                         .description("Missing or invalid token (code INVALID_TOKEN)"));
+                if (onboarded) {
+                    // a method's own 403 keeps its codes; onboarding is appended, not replaced
+                    String incomplete = "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)";
+                    ApiResponse forbidden = operation.getResponses().get("403");
+                    if (forbidden == null) operation.getResponses().addApiResponse("403", new ApiResponse().description(incomplete));
+                    else forbidden.description(forbidden.getDescription() + "; or " + incomplete);
+                }
             } else if (optional) {
                 // empty requirement = anonymous access also allowed
                 operation.addSecurityItem(new SecurityRequirement().addList(BEARER));
