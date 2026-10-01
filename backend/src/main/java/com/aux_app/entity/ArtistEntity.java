@@ -19,14 +19,36 @@ public class ArtistEntity {
     @Column(name = "artist_pfp_url")
     private String artistPfpUrl;
 
+    @Column(name = "artist_banner_url")
+    private String artistBannerUrl;
+
+    // Only the creator can change the pfp and banner. Null for artists made before this column existed
+    @Column(name = "created_by_user_id")
+    private String createdByUserId;
+
     protected ArtistEntity() {}
 
-    public ArtistEntity(String artistId, String artistName) {
+    public ArtistEntity(String artistId, String artistName, String createdByUserId) {
         this.artistId = artistId;
         this.artistName = artistName;
+        this.createdByUserId = createdByUserId;
     }
 
     public String getArtistId() { return artistId; }
     public String getArtistName() { return artistName; }
     public String getArtistPfpUrl() { return artistPfpUrl; }
+    public String getArtistBannerUrl() { return artistBannerUrl; }
+    public String getCreatedByUserId() { return createdByUserId; }
+
+    public boolean isEditableBy(String userId) {
+        return userId != null && userId.equals(createdByUserId);
+    }
+
+    public void setArtistPfpUrl(String artistPfpUrl) {
+        this.artistPfpUrl = artistPfpUrl;
+    }
+
+    public void setArtistBannerUrl(String artistBannerUrl) {
+        this.artistBannerUrl = artistBannerUrl;
+    }
 }
