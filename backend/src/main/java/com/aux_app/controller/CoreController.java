@@ -16,6 +16,15 @@ import java.util.List;
 @RequestMapping("/api/core")
 public class CoreController {
 
+//    @GetMapping("/users")
+//    @Operation(
+//            summary = "Get the list of users",
+//            description = "Public. Returns a list of users."
+//    )
+//    public List<String> getUsers() {
+//
+//    }
+
     @GetMapping("/top")
     @Operation(
             summary = "Get the top music pieces",

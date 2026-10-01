@@ -21,7 +21,6 @@ jobs:
       AUX_PRIVATE_TRACKS_R2_BUCKET: ci
       AUX_R2_PUBLIC_BASE_URL: https://ci.invalid
       SPRING_DATASOURCE_URL: jdbc:sqlite:/tmp/ci.db
-      SPRING_JPA_HIBERNATE_DDL_AUTO: create
     steps:
       - uses: actions/checkout@v4
         with: { ref: '${{ github.head_ref }}' }
