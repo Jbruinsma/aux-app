@@ -2481,6 +2481,58 @@
         } ]
       }
     },
+    "/api/core/users" : {
+      "get" : {
+        "tags" : [ "core-controller" ],
+        "summary" : "Get the list of users",
+        "description" : "Public. Returns up to 6 random user IDs of users with a custom profile picture.",
+        "operationId" : "getUsers",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/core/top" : {
       "get" : {
         "tags" : [ "core-controller" ],

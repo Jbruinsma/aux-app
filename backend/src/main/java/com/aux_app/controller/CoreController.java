@@ -2,6 +2,7 @@ package com.aux_app.controller;
 
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.TopMusicPiece;
+import com.aux_app.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
@@ -16,14 +17,22 @@ import java.util.List;
 @RequestMapping("/api/core")
 public class CoreController {
 
-//    @GetMapping("/users")
-//    @Operation(
-//            summary = "Get the list of users",
-//            description = "Public. Returns a list of users."
-//    )
-//    public List<String> getUsers() {
-//
-//    }
+    private final UserRepository users;
+
+    public CoreController(UserRepository users) {
+        this.users = users;
+    }
+
+    @GetMapping("/users")
+    @Operation(
+            summary = "Get the list of users",
+            description = "Public. Returns up to 6 random user IDs of users with a custom profile picture."
+    )
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ResponseStatus(HttpStatus.OK)
+    public List<String> getUsers() {
+        return users.findUserIds();
+    }
 
     @GetMapping("/top")
     @Operation(
