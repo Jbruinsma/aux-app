@@ -1,0 +1,27 @@
+# On push to main: builds the backend jar, ships it to the Oracle Cloud box, restarts the service.
+# Flyway applies any new db/migration/V*.sql on startup. Server layout: /opt/aux/{aux.jar,.env,aux.db,uploads}
+name: Deploy
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+concurrency: deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 25, cache: maven }
+      - run: ./mvnw -B -q package -DskipTests
+        working-directory: backend
+      - name: Ship and restart
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null ~/deploy_key && echo "$SSH_KEY" > ~/deploy_key
+          echo "150.136.105.240 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIZTyee/A4M/HH7r3mCt8xUCiEqyRGaeMnuMV6mzYMTm" > ~/known_hosts
+          OPTS="-i $HOME/deploy_key -o UserKnownHostsFile=$HOME/known_hosts"
+          scp $OPTS backend/target/aux-backend-*.jar ubuntu@150.136.105.240:/opt/aux/aux.jar.new
+          ssh $OPTS ubuntu@150.136.105.240 'mv /opt/aux/aux.jar.new /opt/aux/aux.jar && sudo systemctl restart aux && sleep 25 && systemctl is-active aux'

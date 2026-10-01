@@ -1,22 +1,3 @@
-PRAGMA foreign_keys = OFF;
-
-DROP TABLE IF EXISTS otp_codes;
-DROP TABLE IF EXISTS playlist_shared_with;
-DROP TABLE IF EXISTS playlist_saved_by;
-DROP TABLE IF EXISTS user_playlists_added_to;
-DROP TABLE IF EXISTS user_saved_playlists;
-DROP TABLE IF EXISTS music_pieces;
-DROP TABLE IF EXISTS playlist_tracks;
-DROP TABLE IF EXISTS playlist_tags;
-DROP TABLE IF EXISTS music_piece_tags;
-DROP TABLE IF EXISTS tags;
-DROP TABLE IF EXISTS user_favorite_artists;
-DROP TABLE IF EXISTS follows;
-DROP TABLE IF EXISTS artists;
-DROP TABLE IF EXISTS playlists;
-DROP TABLE IF EXISTS profile_details;
-DROP TABLE IF EXISTS users;
-
 CREATE TABLE users (
     user_id VARCHAR NOT NULL PRIMARY KEY,
     username VARCHAR(16) NOT NULL UNIQUE,
@@ -154,4 +135,3 @@ CREATE TABLE otp_codes (
     pending_email VARCHAR(320)
 );
 
-PRAGMA foreign_keys = ON;
