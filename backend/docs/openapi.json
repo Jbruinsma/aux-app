@@ -66,6 +66,25 @@
               }
             }
           },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Unexpected server error (code INTERNAL_ERROR)",
             "content" : {
@@ -116,7 +135,7 @@
             }
           },
           "400" : {
-            "description" : "Missing, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "description" : "Missing `file` part (code REQUEST_FAILED), or empty, unreadable or too small image (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -126,7 +145,7 @@
             }
           },
           "413" : {
-            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -147,6 +166,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -210,6 +248,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -311,7 +368,7 @@
             }
           },
           "413" : {
-            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "description" : "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -332,6 +389,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -411,7 +487,7 @@
             }
           },
           "413" : {
-            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -432,6 +508,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -480,7 +575,7 @@
         } ],
         "requestBody" : {
           "content" : {
-            "application/json" : {
+            "multipart/form-data" : {
               "schema" : {
                 "type" : "object",
                 "properties" : {
@@ -505,7 +600,7 @@
             }
           },
           "400" : {
-            "description" : "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_USERNAME, INAPPROPRIATE_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "description" : "Missing or unknown `step`, wrong step, bad username, or unreadable or too small image (codes REQUEST_FAILED, WRONG_ONBOARDING_STEP, INVALID_ONBOARDING_STEP, INVALID_USERNAME, INAPPROPRIATE_USERNAME, INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -525,7 +620,7 @@
             }
           },
           "413" : {
-            "description" : "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "description" : "Image over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -546,6 +641,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -607,7 +721,7 @@
             }
           },
           "413" : {
-            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE)",
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -628,6 +742,136 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/music-pieces/create" : {
+      "post" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Upload a music piece",
+        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. Only the uploader can play a private piece,\n  whatever playlists it is in.\n- `mp3File` (required): an MP3, at most 25MB, 5 seconds to 10 minutes long. Counts toward the\n  caller's 2GB storage quota.\n- `coverImage` (required): same rules as a playlist cover. Send the original image; the server\n  crops it to a square and stores it as WebP.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
+        "operationId" : "createMusicPiece",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MusicPieceCreationDetails"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Music piece created; body is the new piece",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPieceOverview"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or bad field (code INVALID_FIELD), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Upload would pass the 2GB storage quota (code STORAGE_QUOTA_EXCEEDED), cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "File is not an MP3 (code UNSUPPORTED_AUDIO_TYPE), or cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -699,6 +943,25 @@
               }
             }
           },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Unexpected server error (code INTERNAL_ERROR)",
             "content" : {
@@ -743,7 +1006,16 @@
             }
           },
           "429" : {
-            "description" : "A code was sent less than a minute ago (code OTP_COOLDOWN)",
+            "description" : "A code was sent less than a minute ago (code OTP_COOLDOWN), or too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -809,7 +1081,7 @@
             "description" : "Password changed"
           },
           "400" : {
-            "description" : "Wrong, expired or used code (code INVALID_OTP), or bad password (code INVALID_FIELD)",
+            "description" : "Wrong, expired or used code (code INVALID_OTP), badly formatted code or bad password (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -820,6 +1092,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -891,6 +1182,25 @@
               }
             }
           },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Unexpected server error (code INTERNAL_ERROR)",
             "content" : {
@@ -935,7 +1245,16 @@
             }
           },
           "429" : {
-            "description" : "A code was sent less than a minute ago (code OTP_COOLDOWN)",
+            "description" : "A code was sent less than a minute ago (code OTP_COOLDOWN), or too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1008,7 +1327,7 @@
             }
           },
           "400" : {
-            "description" : "Wrong, expired or used code (code INVALID_OTP)",
+            "description" : "Wrong, expired or used code (code INVALID_OTP), badly formatted code (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1029,6 +1348,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1072,6 +1410,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1131,6 +1488,25 @@
               }
             }
           },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Unexpected server error (code INTERNAL_ERROR)",
             "content" : {
@@ -1167,6 +1543,25 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1212,6 +1607,25 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UserExistance"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -1281,6 +1695,25 @@
               }
             }
           },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Unexpected server error (code INTERNAL_ERROR)",
             "content" : {
@@ -1313,6 +1746,25 @@
                   "items" : {
                     "$ref" : "#/components/schemas/TopMusicPiece"
                   }
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -1585,6 +2037,35 @@
             "example" : "justin"
           }
         }
+      },
+      "MusicPieceCreationDetails" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "example" : "Dark Fantasy",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "artistId" : {
+            "type" : "string",
+            "example" : "123e4567-e89b-12d3-a456-426614174000",
+            "minLength" : 1
+          },
+          "isPublic" : {
+            "type" : "boolean",
+            "example" : true
+          },
+          "coverImage" : {
+            "type" : "string",
+            "format" : "binary"
+          },
+          "mp3File" : {
+            "type" : "string",
+            "format" : "binary"
+          }
+        },
+        "required" : [ "artistId", "coverImage", "mp3File", "name" ]
       },
       "RegistrationCredentials" : {
         "type" : "object",
