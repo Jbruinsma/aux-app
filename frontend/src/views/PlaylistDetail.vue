@@ -203,7 +203,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { resolveCoverURL } from '@/utils/display.js'
-import { PLAYLIST_ACTIONS_MOCKED, deletePlaylist, fetchPlaylist, setPlaylistSaved } from '@/utils/playlist.js'
+import { PLAYLIST_DELETE_MOCKED, deletePlaylist, fetchPlaylist, setPlaylistSaved } from '@/utils/playlist.js'
 import { useUserStore } from '@/stores/user.js'
 import { useMusicStore } from '@/stores/music.js'
 
@@ -282,9 +282,7 @@ async function toggleSaved() {
   actionNotice.value = ''
   saving.value = true
   try {
-    await setPlaylistSaved(id.value, saved)
-    playlist.value.isSaved = saved
-    if (PLAYLIST_ACTIONS_MOCKED) actionNotice.value = "Preview only: your library wasn't changed."
+    playlist.value.isSaved = await setPlaylistSaved(id.value, saved)
   } catch (err) {
     if (await handleUnauthorized(err)) return
     actionError.value = saved
@@ -339,7 +337,7 @@ async function confirmDelete() {
   try {
     await deletePlaylist(id.value)
     deleteDialog.value.close()
-    if (PLAYLIST_ACTIONS_MOCKED) {
+    if (PLAYLIST_DELETE_MOCKED) {
       actionNotice.value = "Preview only: the playlist wasn't deleted."
       return
     }
