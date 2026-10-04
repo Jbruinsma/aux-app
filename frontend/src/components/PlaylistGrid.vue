@@ -1,5 +1,6 @@
 <template>
   <ul class="grid">
+    <slot />
     <li v-for="playlist in playlists" :key="playlist.playlistId">
       <router-link
         class="tile"
@@ -32,7 +33,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 
 // Cover grid for playlist items (profile, library or search results). `owner` is the username to link with when an
 // item has no `ownerUsername`; items owned by someone else get a "by <owner>" line, and `isSaved` items
-// get a bookmark on the cover
+// get a bookmark on the cover. The default slot renders extra <li> tiles before the playlists
 const props = defineProps({
   playlists: { type: Array, required: true },
   owner: { type: String, required: true },
