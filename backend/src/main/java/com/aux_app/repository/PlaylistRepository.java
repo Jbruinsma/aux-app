@@ -88,6 +88,14 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             """, nativeQuery = true)
     List<PlaylistWithTracksRow> findPlaylistPage(@Param("playlistId") String playlistId, @Param("userId") String userId);
 
+    interface PlaylistSearchRow {
+        String getPlaylistId();
+        String getPlaylistName();
+        String getPlaylistCoverUrl();
+        String getOwnerUsername();
+        Integer getPieceCount();
+    }
+
     interface PlaylistWithTracksRow {
         String getPlaylistId();
         String getOwnerId();
@@ -116,5 +124,27 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             boolean isSaved,
             List<MusicPieceOverview> pieces
     ) {}
+
+    // Search by name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
+    // Private playlists only show up for their owner (`userId` may be null).
+    @Query(value = """
+            SELECT p.playlist_id AS playlistId, p.playlist_name AS playlistName, p.playlist_cover_url AS playlistCoverUrl,
+                   o.username AS ownerUsername,
+                   (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS pieceCount
+            FROM playlists p
+            JOIN users o ON o.user_id = p.owner_id
+            WHERE (p.is_public = 1 OR p.owner_id = :userId) AND p.playlist_name LIKE :pattern ESCAPE '\\'
+            ORDER BY p.playlist_name COLLATE NOCASE
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<PlaylistSearchRow> searchPlaylists(
+            @Param("pattern") String pattern, @Param("userId") String userId,
+            @Param("limit") int limit, @Param("offset") int offset);
+
+    @Query(value = """
+            SELECT COUNT(*) FROM playlists p
+            WHERE (p.is_public = 1 OR p.owner_id = :userId) AND p.playlist_name LIKE :pattern ESCAPE '\\'
+            """, nativeQuery = true)
+    int countSearchPlaylists(@Param("pattern") String pattern, @Param("userId") String userId);
 
 }
