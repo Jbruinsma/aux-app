@@ -17,3 +17,33 @@ Response `204`, no body.
 - When an account is deleted, what happens to its songs that sit in other people's playlists?
 - Should a password change end the user's other sessions? Tokens are stateless JWTs now, so they'd stay valid until
   they expire.
+
+## Playlist page
+
+Mocked in `src/utils/playlist.js`; set `PLAYLIST_ACTIONS_MOCKED = false` once these exist. All need
+`Authorization: Bearer <token>`.
+
+### PUT /api/playlists/{playlistId}/save and DELETE /api/playlists/{playlistId}/save
+
+Save a playlist to the caller's library, or remove it. Should set `isSaved` on GET /api/playlists/{username}/{playlist_id}.
+Saving your own playlist, or one you can't see, should be a `404 PLAYLIST_NOT_FOUND`. Both do nothing if already in
+that state.
+
+Response `204`, no body.
+
+### DELETE /api/playlists/{playlistId}
+
+Deletes a playlist the caller owns. The songs stay in the uploader's uploads.
+
+Response `204`, no body. Errors: `404 PLAYLIST_NOT_FOUND` (missing, or not the caller's).
+
+### Playback
+
+The player (`src/stores/music.js`) still calls the old UnChained routes, which don't exist:
+`GET /api/playlists/{owner}/{id}/play/{index}?shuffle=` and `GET /api/playlists/{owner}/{id}/play-shuffled/`.
+It needs a way to get a playable (signed) MP3 URL for each song in a playlist. What shape do you want for that?
+
+### Sharing
+
+"Manage access" on the playlist page links to the old Add friends page. Is sharing a playlist with specific people
+(view or edit) still planned? There's nothing for it in the API yet.
