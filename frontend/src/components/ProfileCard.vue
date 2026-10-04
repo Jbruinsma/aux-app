@@ -1,7 +1,8 @@
 <template>
   <article class="profile-card" :class="{ flat }">
-    <div class="banner">
+    <div class="banner" :class="{ empty: !bannerUrl }">
       <img v-if="bannerUrl" :src="bannerUrl" :class="{ cover: !bannerStyle }" :style="bannerStyle" alt="" />
+      <DefaultBanner v-else />
     </div>
     <div class="body">
       <img v-if="pictureUrl" class="av" :src="pictureUrl" alt="" />
@@ -18,6 +19,7 @@
 <script setup>
 import { computed } from 'vue'
 import ExternalLink from '@/components/ExternalLink.vue'
+import DefaultBanner from '@/components/DefaultBanner.vue'
 
 const props = defineProps({
   username: { type: String, required: true },
@@ -43,6 +45,7 @@ const websiteLabel = computed(() => props.website.replace(/^https?:\/\//, '').re
 .flat .av { margin-left: var(--space-4); }
 .banner { position: relative; overflow: hidden; aspect-ratio: 3 / 1; background: var(--purple-soft); }
 .banner img { display: block; }
+.banner.empty { background: none; }
 .banner img.cover { width: 100%; height: 100%; object-fit: cover; }
 .body { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-6) var(--space-6); }
 .av { position: relative; width: 112px; height: 112px; margin-top: -56px; margin-bottom: var(--space-2); border-radius: var(--radius-pill); border: 4px solid var(--surface); object-fit: cover; background: var(--surface-alt); }

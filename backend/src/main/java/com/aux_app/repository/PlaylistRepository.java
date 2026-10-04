@@ -16,6 +16,15 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
 
     PlaylistEntity findPlaylistEntityByPlaylistId(String playlistId);
 
+    // Null if playlist doesn't exist or user hasn't saved it.
+    @Query("""
+            SELECT p FROM PlaylistEntity p
+            WHERE p.playlistId = :playlistId
+              AND EXISTS (SELECT 1 FROM UserSavedPlaylistEntity s
+                          WHERE s.playlistId = :playlistId AND s.userId = :userId)
+            """)
+    PlaylistEntity findSavedPlaylist(@Param("playlistId") String playlistId, @Param("userId") String userId);
+
     // Null if playlist doesn't exist. Guard before use.
     default PlaylistPage findPlaylistWithTracks(String playlistId, String userId) {
         List<PlaylistWithTracksRow> rows = findPlaylistPage(playlistId, userId);
