@@ -4,14 +4,7 @@
 
     <main class="stage">
       <div v-if="known" class="ob-card" :class="{ split: step === 'PFP' }">
-        <div ref="banner" class="banner" :class="{ finish: finishing }" aria-hidden="true">
-          <span class="blk purple">
-            <span :key="`${step}-${finishing}`" class="bars"><i v-for="n in 7" :key="n" /></span>
-          </span>
-          <span class="blk ink" />
-          <span class="blk soft" />
-          <span class="blk gray" />
-        </div>
+        <StepBanner ref="banner" class="banner" :alt="step === 'PFP'" :finishing="finishing" :replay-key="step" />
 
         <Transition name="pfp-in">
           <div v-if="step === 'PFP'" class="pfp">
@@ -109,7 +102,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import StepBanner from '@/components/StepBanner.vue'
 import { fetchAPI, postToAPI } from '@/utils/api.js'
+import { animationsDone, slideFrom } from '@/utils/motion.js'
 import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
@@ -206,18 +201,7 @@ async function moveToPhotoStep(user) {
   userStore.updateUser(user)
   await nextTick()
   heading.value?.focus()
-
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-  const handle = nameEl.value
-  const to = handle.getBoundingClientRect()
-  const styles = getComputedStyle(document.documentElement)
-  const scale = 16 / parseFloat(getComputedStyle(handle).fontSize)
-  const dx = from.left + 12 - to.left
-  const dy = from.top + from.height / 2 - (to.top + to.height / 2)
-  handle.animate(
-    [{ transform: `translate(${dx}px, ${dy}px) scale(${scale})` }, { transform: 'none' }],
-    { duration: parseFloat(styles.getPropertyValue('--dur-med')), easing: styles.getPropertyValue('--ease').trim() },
-  )
+  slideFrom(nameEl.value, from, 16)
 }
 
 const photo = ref(null)
@@ -261,7 +245,7 @@ async function submitPhoto() {
     const user = await sendStep('PFP', 'file', photo.value)
     finishing.value = true
     await nextTick()
-    await Promise.all(banner.value.getAnimations({ subtree: true }).map((a) => a.finished))
+    await animationsDone(banner.value.$el)
     userStore.updateUser(user)
     await router.push({ name: 'Dashboard' })
   } catch (err) {
@@ -276,50 +260,7 @@ async function submitPhoto() {
 <style scoped>
 .stage { display: flex; flex-direction: column; align-items: center; gap: var(--space-6); padding: 56px var(--space-6) var(--space-8); }
 
-.banner {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: var(--space-2);
-  height: 72px;
-  margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-6)) 0;
-  padding: 0 var(--space-4);
-  overflow: hidden;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  view-transition-name: brand-blocks;
-}
-.blk { position: relative; display: block; border-radius: 0 0 var(--radius-md) var(--radius-md); transition: flex-grow var(--dur-med) var(--ease-pop), height var(--dur-med) var(--ease-pop); }
-.purple { flex-grow: 3; height: 100%; background: var(--purple); }
-.ink { flex-grow: 2; height: 45%; background: var(--ink); }
-.soft { flex-grow: 2; height: 100%; background: var(--purple-soft); }
-.gray { flex-grow: 2; height: 60%; align-self: flex-end; border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--line-strong); }
-.split .banner { height: 96px; }
-.split .purple { flex-grow: 2; }
-.split .ink { flex-grow: 3; height: 70%; }
-.split .soft { flex-grow: 1; }
-.split .gray { flex-grow: 3; height: 40%; }
-
-.bars { position: absolute; inset: auto var(--space-3) var(--space-2); display: flex; align-items: flex-end; justify-content: space-between; height: 44px; }
-.bars i { width: 4px; border-radius: 2px; background: var(--white); transform-origin: bottom; animation: bar-bounce calc(var(--dur-med) * 2) var(--ease-pop) both; }
-.bars i:nth-child(1) { height: 35%; }
-.bars i:nth-child(2) { height: 70%; animation-delay: 60ms; }
-.bars i:nth-child(3) { height: 50%; animation-delay: 120ms; }
-.bars i:nth-child(4) { height: 100%; animation-delay: 30ms; }
-.bars i:nth-child(5) { height: 60%; animation-delay: 90ms; }
-.bars i:nth-child(6) { height: 80%; animation-delay: 150ms; }
-.bars i:nth-child(7) { height: 45%; animation-delay: 70ms; }
-@keyframes bar-bounce {
-  0% { transform: scaleY(0.15); }
-  45% { transform: scaleY(1.15); }
-  70% { transform: scaleY(0.85); }
-}
-
-.finish .blk { animation: hop calc(var(--dur-med) * 1.5) var(--ease-pop) both; }
-.finish .ink { animation-delay: 70ms; }
-.finish .soft { animation-delay: 140ms; }
-.finish .gray { animation-delay: 210ms; }
-@keyframes hop {
-  40% { transform: translateY(8px) scaleY(1.08); }
-}
+.banner { grid-column: 1 / -1; margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-6)) 0; view-transition-name: brand-blocks; }
 
 .eyebrow { margin: 0; font: 600 12px/16px var(--font-sans); color: var(--ink-muted); }
 
