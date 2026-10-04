@@ -2505,6 +2505,81 @@
         } ]
       }
     },
+    "/api/users/library" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Get the caller's playlist library",
+        "description" : "Playlists the caller owns (public and private) plus playlists they saved from others (public only).\n`isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.\n",
+        "operationId" : "retrieveLibrary",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/LibraryPlaylist"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/check-username/{username}" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -2761,6 +2836,115 @@
             }
           }
         }
+      }
+    },
+    "/api/core/search" : {
+      "get" : {
+        "tags" : [ "core-controller" ],
+        "summary" : "Search users, music pieces or playlists",
+        "description" : "Public; a token is optional. Query params: `category` (`USERS`, `MUSIC` or `PLAYLISTS`, required),\n`query` (1 to 200 chars, trimmed, matched case-insensitively anywhere in the name; `MUSIC` also matches\nthe artist name), `limit` (1 to 50, default 10) and `offset` (default 0). Results are sorted by name.\n`totalResults` counts all matches, not just this page. Private music pieces and playlists only show\nup for their owner, and users who haven't finished onboarding are hidden.\n",
+        "operationId" : "search",
+        "parameters" : [ {
+          "name" : "query",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/SearchQuery"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK. `results` holds users, music pieces or playlists depending on `category`.",
+            "content" : {
+              "application/json" : {
+                "examples" : {
+                  "USERS" : {
+                    "description" : "USERS",
+                    "value" : {
+                      "totalResults" : 1,
+                      "results" : [ {
+                        "userId" : "u_41x9",
+                        "username" : "justin",
+                        "profilePictureUrl" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+                      } ]
+                    }
+                  },
+                  "MUSIC" : {
+                    "description" : "MUSIC",
+                    "value" : {
+                      "totalResults" : 1,
+                      "results" : [ {
+                        "musicPieceId" : "m_92kd0",
+                        "name" : "Let It Happen",
+                        "coverUrl" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
+                        "artistSummary" : {
+                          "artistId" : "a_8f3k2",
+                          "artistName" : "Tame Impala",
+                          "artistPfpUrl" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+                        }
+                      } ]
+                    }
+                  },
+                  "PLAYLISTS" : {
+                    "description" : "PLAYLISTS",
+                    "value" : {
+                      "totalResults" : 1,
+                      "results" : [ {
+                        "playlistId" : "p_7c2d1",
+                        "playlistName" : "Late Night Drive",
+                        "playlistCoverUrl" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
+                        "ownerUsername" : "justin",
+                        "pieceCount" : 5
+                      } ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing category or query, or limit/offset out of range",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
       }
     },
     "/api/artists/{artistId}" : {
@@ -3409,6 +3593,36 @@
           }
         }
       },
+      "LibraryPlaylist" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "example" : "p_7c2d1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "ownerUsername" : {
+            "type" : "string",
+            "example" : "justin"
+          },
+          "totalPieces" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 12
+          },
+          "isSaved" : {
+            "type" : "boolean",
+            "example" : true
+          }
+        }
+      },
       "UserExistance" : {
         "type" : "object",
         "properties" : {
@@ -3431,6 +3645,30 @@
           },
           "artistSummary" : {
             "$ref" : "#/components/schemas/ArtistSummary"
+          }
+        }
+      },
+      "SearchQuery" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "USERS", "MUSIC", "PLAYLISTS" ]
+          },
+          "query" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 1
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 10
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 0
           }
         }
       },
