@@ -53,7 +53,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     @Query(value = """
             SELECT p.playlist_id AS playlistId,
                    p.owner_id AS ownerId,
-                   p.is_public AS isPublic,
+                   CAST(p.is_public AS INTEGER) AS isPublic,
                    p.playlist_cover_url AS playlistCoverUrl,
                    p.playlist_name AS playlistName,
                    u.username AS ownerUsername,
