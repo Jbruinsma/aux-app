@@ -94,6 +94,7 @@ public class PlaylistController {
                         playlist.playlistCoverUrl()
                 ),
                 playlist.pieces().size(),
+                playlist.isPublic(),
                 playlist.owner(),
                 playlist.isSaved(),
                 playlist.pieces()
@@ -140,6 +141,7 @@ public class PlaylistController {
                         coverUrl
                 ),
                 0,
+                newPlaylist.getIsPublic(),
                 new PlaylistOwner(
                         user.getUserId(),
                         user.getProfilePictureUrl(),

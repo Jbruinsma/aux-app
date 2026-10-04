@@ -11,6 +11,7 @@ import java.util.List;
 public record PlaylistOverview(
         @JsonUnwrapped CorePlaylist playlist,
         @Schema(example = "12") int totalPieces,
+        @Schema(example = "true") boolean isPublic,
         PlaylistOwner playlistOwner,
         @Schema(example = "false") boolean isSaved,
         List<MusicPieceOverview> musicPieces
