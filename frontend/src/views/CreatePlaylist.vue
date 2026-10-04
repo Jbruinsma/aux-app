@@ -1,145 +1,191 @@
 <template>
-  <div class="create-playlist-page">
-    <nav class="navbar">
-      <div class="container nav-content">
-        <router-link to="/" class="site-name">Unchained</router-link>
-        <div class="nav-links">
-          <router-link to="/dashboard" class="nav-link">Playlists</router-link>
-          <router-link to="/testUser" class="nav-link">Profile</router-link>
-          <router-link to="/settings" class="nav-link">Settings</router-link>
+  <div class="aux-page with-player">
+    <AppHeader />
+
+    <main class="wrap">
+      <h1>Create playlist</h1>
+
+      <form class="create" @submit.prevent="createPlaylist">
+        <div class="cover-field">
+          <input
+            id="cover-input"
+            ref="coverInput"
+            class="visually-hidden"
+            type="file"
+            accept="image/jpeg,image/png"
+            aria-describedby="cover-hint"
+            @change="onPickCover($event.target.files[0])"
+          />
+          <label
+            for="cover-input"
+            class="drop"
+            :class="{ over: dragOver, filled: coverPreview }"
+            @dragover.prevent="dragOver = true"
+            @dragleave="dragOver = false"
+            @drop.prevent="onDropCover"
+          >
+            <img v-if="coverPreview" :src="coverPreview" alt="Cover preview" />
+            <span v-else class="drop-text">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
+              </svg>
+              Choose a cover
+            </span>
+          </label>
+          <p id="cover-hint" class="hint">A JPEG or PNG, at least 256 × 256 pixels and under 5MB. It's cropped to a square.</p>
+          <button v-if="coverFile" type="button" class="btn text change" @click="coverInput.click()">Change cover</button>
         </div>
-      </div>
-    </nav>
 
-    <div class="container create-form">
-      <h1>New Playlist</h1>
-      <div class="form-group">
-        <div class="cover-upload" @click="triggerFileInput">
-          <input type="file" accept="image/*" ref="fileInput" @change="handleFileChange" hidden />
-          <div v-if="coverPreview" class="cover-preview">
-            <img :src="coverPreview" alt="Cover preview" />
+        <div class="fields">
+          <div class="field">
+            <label class="row-label" for="playlist-name">Name</label>
+            <input
+              id="playlist-name"
+              v-model="name"
+              class="input"
+              type="text"
+              :maxlength="NAME_MAX"
+              required
+              autocomplete="off"
+              aria-describedby="name-hint"
+            />
+            <p id="name-hint" class="hint">{{ name.length }} / {{ NAME_MAX }} characters</p>
           </div>
-          <div v-else class="cover-placeholder">
-            <p>Click to upload cover image</p>
+
+          <div class="field">
+            <label class="check">
+              <input v-model="isPublic" type="checkbox" aria-describedby="public-hint" />
+              Make this playlist public
+            </label>
+            <p id="public-hint" class="hint">
+              {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you can see it.' }}
+            </p>
+          </div>
+
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary" :disabled="!canCreate">
+              {{ creating ? 'Creating…' : 'Create playlist' }}
+            </button>
+            <router-link to="/dashboard" class="btn text">Cancel</router-link>
           </div>
         </div>
-      </div>
+      </form>
+    </main>
 
-      <div class="form-group narrow-center">
-        <label>Playlist Name <span class="char-count">({{ playlistName.length }}/50)</span></label>
-        <input
-          v-model="playlistName"
-          type="text"
-          maxlength="50"
-          placeholder="Enter playlist name"
-        />
-      </div>
-
-      <div class="form-group narrow-center toggle-group">
-        <label>Make Public</label>
-        <label class="switch">
-          <input type="checkbox" v-model="isPublic">
-          <span class="slider round"></span>
-        </label>
-      </div>
-
-      <div class="form-group narrow-center">
-        <button @click="createPlaylist" class="create-btn">Create Playlist</button>
-      </div>
-    </div>
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
-
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { v4 as uuidv4 } from 'uuid'
-import { useUserStore } from '@/stores/user.js'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
 import { postToAPI } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
+import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
+import { useUserStore } from '@/stores/user.js'
 
-const userStore = useUserStore()
-const currentUser = userStore.userData?.username
+// Same limit as the backend's PlaylistCreationDetails
+const NAME_MAX = 36
 
-const playlistName = ref('')
-const isPublic = ref(false)
-const coverFile = ref(null)
-const coverPreview = ref(null)
-const fileInput = ref(null)
 const router = useRouter()
+const userStore = useUserStore()
 
-function triggerFileInput() {
-  fileInput.value.click()
+const name = ref('')
+const isPublic = ref(false)
+const coverInput = ref(null)
+const coverFile = ref(null)
+const coverPreview = ref('')
+const dragOver = ref(false)
+const creating = ref(false)
+const error = ref('')
+
+const canCreate = computed(() => !creating.value && !!name.value.trim() && !!coverFile.value)
+
+onMounted(() => {
+  if (!userStore.loggedIn) router.replace({ name: 'Login' })
+})
+
+onBeforeUnmount(() => URL.revokeObjectURL(coverPreview.value))
+
+function onDropCover(event) {
+  dragOver.value = false
+  onPickCover(event.dataTransfer.files[0])
 }
 
-function handleFileChange(event) {
-  const file = event.target.files[0]
-  if (file) {
-    coverFile.value = file
-    coverPreview.value = URL.createObjectURL(file)
+async function onPickCover(file) {
+  if (!file) return
+  error.value = ''
+  const problem = await photoProblem(file)
+  if (coverInput.value) coverInput.value.value = ''
+  if (problem) {
+    error.value = problem
+    return
   }
+  URL.revokeObjectURL(coverPreview.value)
+  coverFile.value = file
+  coverPreview.value = URL.createObjectURL(file)
 }
 
+// The server crops and resizes the cover, so the original file is sent
 async function createPlaylist() {
-
+  if (!canCreate.value) return
+  error.value = ''
+  creating.value = true
   try {
-
-    if (!playlistName.value.trim()) {
-      alert("Playlist needs a name.")
+    const form = new FormData()
+    form.append('playlistName', name.value.trim())
+    form.append('isPublic', isPublic.value)
+    form.append('playlistCover', coverFile.value)
+    const playlist = await postToAPI(`${API_BASE_URL}/api/playlists`, form)
+    await router.push({ name: 'Playlist', params: { username: playlist.playlistOwner.username, id: playlist.playlistId } })
+  } catch (err) {
+    // A 401 means the session ended
+    if (err.status === 401) {
+      userStore.logout()
+      await router.replace({ name: 'Login' })
       return
     }
-
-    const playlistUUID = uuidv4()
-    const formData = new FormData()
-    formData.append('owner', currentUser)
-    formData.append('uuid', playlistUUID)
-    formData.append('name', playlistName.value)
-    formData.append('isPublic', isPublic.value)
-    formData.append('cover', coverFile.value)
-
-    const url = `${API_BASE_URL}/api/playlists/${currentUser}/create`
-    const postRequest = await postToAPI(url, formData, false)
-
-    if ('error' in postRequest) {
-      await router.push('/dashboard')
-    } else {
-      await router.push(`/playlist/${currentUser}/${playlistUUID}`)
-    }
-  } catch (error) {
-    console.log(error)
-    alert("Something went wrong. Please try again.")
+    if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
+    else if (err.code === 'INVALID_FIELD') error.value = `Give your playlist a name of 1 to ${NAME_MAX} characters.`
+    else if (err.code === 'RATE_LIMITED') error.value = "You're creating playlists too quickly. Wait a minute, then try again."
+    else error.value = "We couldn't create your playlist. Check that the server is running, then try again."
+  } finally {
+    creating.value = false
   }
 }
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Libertinus+Math&display=swap');
+.wrap { padding: var(--space-8) var(--page-gutter); width: 100%; }
+h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-6); }
+.create { align-items: start; display: grid; gap: var(--space-8); grid-template-columns: 240px minmax(0, 480px); }
+.cover-field { display: flex; flex-direction: column; gap: var(--space-2); }
+.drop { align-items: center; aspect-ratio: 1; background: var(--surface-alt); border: 2px dashed var(--line-strong); border-radius: var(--radius-sm); cursor: pointer; display: grid; overflow: hidden; place-items: center; transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); width: 100%; }
+.drop:hover, .drop.over { background: var(--purple-soft); border-color: var(--primary); }
+.drop.filled { border-color: var(--line); border-style: solid; }
+.drop img { height: 100%; object-fit: cover; width: 100%; }
+.drop-text { align-items: center; color: var(--ink-muted); display: flex; flex-direction: column; font: 600 14px/20px var(--font-sans); gap: var(--space-2); }
+.visually-hidden { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.visually-hidden:focus-visible + .drop { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.change { align-self: flex-start; font-size: 14px; padding-left: 0; }
+.fields { display: flex; flex-direction: column; gap: var(--space-4); }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.row-label { font: 600 14px/20px var(--font-sans); }
+.input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font: 400 16px/24px var(--font-sans); padding: 8px 12px; width: 100%; }
+.hint { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; }
+.error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
+.check { align-items: center; cursor: pointer; display: flex; font: 600 14px/20px var(--font-sans); gap: var(--space-2); }
+.check input { accent-color: var(--primary); height: 16px; width: 16px; }
+.form-actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
+.icon { fill: none; height: 32px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; width: 32px; }
 
-.char-count { color: #aaa; font-size: 0.9rem; }
-.cover-placeholder p { color: #aaa; }
-.cover-preview img { border-radius: 8px; max-width: 100%; }
-.cover-upload { background: none; border: 2px dashed #666; border-radius: 8px; cursor: pointer; padding: 2rem; text-align: center; transition: background 0.3s; }
-.cover-upload:hover { background: rgba(255,255,255,0.1); }
-.create-btn { background: #333; border: none; border-radius: 6px; color: #fff; cursor: pointer; display: block; font-size: 1rem; margin: 0 auto; padding: 0.75rem 2rem; transition: background 0.3s; }
-.create-btn:hover { background: #444; }
-.create-form { background: rgba(255,255,255,0.05); border-radius: 10px; margin: 2rem auto; max-width: 600px; padding: 2rem; }
-.create-form h1 { font-family: 'Libertinus Math', serif; font-size: 2rem; margin-bottom: 1.5rem; text-align: center; }
-.create-playlist-page { background: #1e1e1e; color: #f0f0f0; min-height: 100vh; }
-.form-group { margin-bottom: 1.5rem; }
-.form-group label { display: block; font-size: 1.1rem; margin-bottom: 0.5rem; }
-input[type="text"] { background: #333; border: none; border-radius: 6px; color: #f0f0f0; padding: 0.75rem; width: 100%; }
-.nav-content { align-items: center; display: flex; justify-content: space-between; margin: 0 auto; max-width: 1200px; padding: 0 1rem; }
-.nav-link { color: #fff; font-weight: 500; text-decoration: none; transition: color 0.3s; }
-.nav-link:hover { color: #ccc; }
-.nav-links { display: flex; gap: 2rem; }
-.navbar { background: #000; padding: 1rem 0; }
-.narrow-center { margin: 0 auto; max-width: 400px; text-align: left; }
-.site-name { color: #fff; font-family: 'Libertinus Math', serif; font-size: 1.8rem; text-decoration: none; }
-.slider { background-color: #444; border-radius: 34px; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
-.slider:before { background-color: white; border-radius: 50%; bottom: 3px; content: ""; height: 18px; left: 3px; position: absolute; transition: .4s; width: 18px; }
-.switch { display: inline-block; height: 24px; position: relative; width: 50px; }
-.switch input { height: 0; opacity: 0; width: 0; }
-input:checked + .slider { background-color: #34b233; }
-input:checked + .slider:before { transform: translateX(26px); }
+@media (max-width: 720px) {
+  .wrap { padding-top: var(--space-6); }
+  .create { gap: var(--space-6); grid-template-columns: minmax(0, 1fr); }
+  .cover-field { max-width: 240px; }
+}
 </style>
