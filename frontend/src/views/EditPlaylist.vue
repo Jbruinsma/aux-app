@@ -1,335 +1,253 @@
 <template>
-  <div class="playlist-detail-page">
-    <nav class="navbar">
-      <div class="container nav-content">
-        <router-link to="/" class="site-name">Unchained</router-link>
-        <div class="nav-links">
-          <router-link to="/dashboard" class="nav-link">Playlists</router-link>
-          <router-link to="/settings" class="nav-link">Settings</router-link>
-        </div>
-      </div>
-    </nav>
-    <div class="container playlist-content">
+  <div class="aux-page with-player">
+    <AppHeader />
 
-      <div class="save-row">
-        <div class="back-arrow" @click="attemptCancel">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-          </svg>
-        </div>
-        <button class="save-btn" @click="saveChanges">Save</button>
-      </div>
+    <main class="stage">
+      <p v-if="loadError" class="error" role="alert">{{ loadError }}</p>
+      <p v-else-if="!original" class="meta">Loading playlist…</p>
 
-      <div class="cover-section">
-        <div class="edit-cover" @click="triggerCoverUpload">
-          <div
-            class="playlist-cover"
-            :style="{ backgroundImage: `url(${resolveCoverURL(playlist.cover)})` }"
-          >
-            <div class="cover-overlay">⋯</div>
-          </div>
+      <div v-else class="create-card split">
+        <StepBanner ref="banner" class="banner" alt :finishing="finishing" />
+
+        <div class="cover">
+          <span class="frame">
+            <label
+              for="cover-input"
+              class="drop filled"
+              :class="{ over: dragOver }"
+              @dragover.prevent="dragOver = true"
+              @dragleave="dragOver = false"
+              @drop.prevent="onDropCover"
+            >
+              <img v-if="coverSrc" :key="coverSrc" :src="coverSrc" alt="Playlist cover" />
+              <span v-else class="drop-hint">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
+                </svg>
+                Drop a cover or click to choose
+              </span>
+            </label>
+          </span>
           <input
-            type="file"
+            id="cover-input"
             ref="coverInput"
-            accept="image/*"
-            style="display: none"
-            @change="handleCoverChange"
+            class="visually-hidden"
+            type="file"
+            accept="image/jpeg,image/png"
+            aria-describedby="cover-hint"
+            @change="onPickCover($event.target.files[0])"
           />
+          <button type="button" class="btn text" @click="coverInput.click()">Replace cover</button>
         </div>
-        <div class="title-row">
-          <div class="title-input">
-            <input
-              type="text"
-              v-model="playlistNameInput"
-              placeholder="Playlist name"
-              maxlength="50"
-            />
-          </div>
-        </div>
-      </div>
 
-      <div v-if="isOwner" class="public-toggle">
-        <label class="toggle-label">
+        <form class="step side" @submit.prevent="save">
+          <h1>Edit playlist</h1>
+          <p id="cover-hint" class="lead">
+            A new cover must be a JPEG or PNG, at least 256 × 256 pixels and up to 5MB.
+          </p>
+
+          <label class="label" for="playlist-name">Name</label>
           <input
-            type="checkbox"
-            v-model="playlist.isPublic"
-            @change="togglePublicStatus(playlist.isPublic)"
+            id="playlist-name"
+            v-model="name"
+            class="input"
+            type="text"
+            :maxlength="NAME_MAX"
+            required
+            autocomplete="off"
+            aria-describedby="name-hint"
           />
-          <span class="slider"></span>
-          <span class="toggle-text">{{ playlist.isPublic ? 'Public' : 'Private' }}</span>
-        </label>
-      </div>
+          <p id="name-hint" class="hint">{{ name.length }} / {{ NAME_MAX }} characters</p>
 
-      <div v-if="playlist.musicPieces.length === 0" class="empty-playlist-message">
-          <p>This playlist is empty.</p>
-      </div>
-      <div class="song-list">
-        <div
-          v-for="(musicPiece, index) in playlist.musicPieces"
-          :key="index"
-          class="song-item"
-        >
-          <div
-            class="song-thumbnail"
-            :style="{ backgroundImage: `url(${resolveCoverURL(musicPiece.cover)})` }"
-          ></div>
-          <div class="song-info">
-            <div class="song-title">{{ musicPiece.title }}</div>
-            <div class="song-artist" v-if="displayArtist(musicPiece.artist)">
-              {{ musicPiece.artist }}
-            </div>
-          </div>
-          <div class="song-edit" @click="deleteMusicPiece(index)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
+          <label class="check">
+            <input v-model="isPublic" type="checkbox" aria-describedby="public-hint" />
+            Make this playlist public
+          </label>
+          <p id="public-hint" class="hint">
+            {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you can see it.' }}
+          </p>
 
-    <div v-if="showCancelModal" class="modal-overlay" @click.self="showCancelModal = false">
-      <div class="modal-content exit-modal">
-        <h2>Exit Editing?</h2>
-        <p>If you've made edits, they will not be saved.</p>
-        <div class="modal-actions">
-          <button class="modal-btn cancel" @click="showCancelModal = false">Cancel</button>
-          <button class="modal-btn exit-editing" @click="confirmCancel">Exit</button>
-        </div>
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+          <div class="actions">
+            <button type="submit" class="btn primary" :disabled="!dirty || !name.trim() || saving">
+              {{ saving ? 'Saving…' : 'Save changes' }}
+            </button>
+            <router-link :to="playlistRoute" class="btn text">Cancel</router-link>
+          </div>
+        </form>
       </div>
-    </div>
+    </main>
+
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
-import { fetchAPI, postToAPI } from '@/utils/api.js'
-import { useUserStore } from '@/stores/user.js'
-import router from '@/router/index.js'
-import { useRoute } from 'vue-router'
-import { displayArtist, resolveCoverURL } from '@/utils/display.js'
-import { useMusicStore } from '@/stores/music.js'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
+import StepBanner from '@/components/StepBanner.vue'
+import { request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
+import { resolveCoverURL } from '@/utils/display.js'
+import { fetchPlaylist } from '@/utils/playlist.js'
+import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
+import { animationsDone } from '@/utils/motion.js'
+import { useUserStore } from '@/stores/user.js'
+
+// Same limit as the backend's PlaylistDetailsUpdate
+const NAME_MAX = 36
 
 const route = useRoute()
-const { username, id } = route.params
-
-const playlistNameInput = ref('')
-const coverInput = ref(null)
-const showCancelModal = ref(false)
-
-const isOwner = ref(false)
-
-let oldPreview = ref(null )
-
+const router = useRouter()
 const userStore = useUserStore()
-const musicStore = useMusicStore()
-const currentUser = userStore.userData?.username
+const { username, id } = route.params
+const playlistRoute = { name: 'Playlist', params: { username, id } }
 
-const playlistChanges = ref({
-  cover: null,
-  name: null,
-  isPublic: null,
-  musicDeleted: []
-})
+const original = ref(null)
+const loadError = ref('')
+const banner = ref(null)
+const finishing = ref(false)
 
-const playlist = ref({
-  cover: '',
-  name: '',
-  owner: '',
-  isPublic: false,
-  musicPieces: []
-})
+const name = ref('')
+const isPublic = ref(false)
+const coverInput = ref(null)
+const coverFile = ref(null)
+const coverPreview = ref('')
+const dragOver = ref(false)
+const saving = ref(false)
+const error = ref('')
+
+const coverSrc = computed(() => coverPreview.value
+  || (original.value?.playlistCoverUrl ? resolveCoverURL(original.value.playlistCoverUrl) : ''))
+const nameChanged = computed(() => name.value.trim() !== original.value?.playlistName)
+const publicChanged = computed(() => isPublic.value !== original.value?.isPublic)
+const dirty = computed(() => Boolean(original.value) && (nameChanged.value || publicChanged.value || Boolean(coverFile.value)))
 
 onMounted(async () => {
-  try {
-    if (currentUser === null || currentUser === undefined) {
-      await router.push({ name: 'Login', query: { redirect: route.fullPath } })
-      return
-    }
-
-    const url = `${API_BASE_URL}/api/playlists/${username}/${id}`
-    const playlistInfo = await fetchAPI(url)
-
-    console.log("Playlist Info:", playlistInfo)
-
-    let canAccess = false
-
-    for (const addedUser of playlistInfo.sharedWith){
-      console.log("Added User:", addedUser)
-      if (addedUser.username === currentUser) {
-        if (addedUser.canEdit === true) {
-          canAccess = true
-        }
-        break
-      }
-    }
-
-    if (currentUser === playlistInfo.owner) {
-      canAccess = true
-      isOwner.value = true
-    }
-
-    if (!canAccess) {
-      await router.push('/dashboard')
-      return
-    }
-
-    playlist.value.cover = playlistInfo.cover
-    playlist.value.name = playlistInfo.name
-    playlistNameInput.value = playlistInfo.name
-    playlist.value.owner = playlistInfo.username
-    playlist.value.musicPieces = playlistInfo.musicPieces
-    playlist.value.isPublic = playlistInfo.isPublic
-  } catch (err) { console.error('Error fetching playlist:', err) }
-})
-
-async function saveChanges() {
-  const formData = new FormData()
-
-  formData.append('name', playlistChanges.value.name ?? '')
-
-  if (playlistChanges.value.isPublic === null) { formData.append('isPublic', playlist.value.isPublic) }
-  else { formData.append('isPublic', playlistChanges.value.isPublic) }
-
-  formData.append('isPublic', playlistChanges.value.isPublic)
-  formData.append('musicDeleted', JSON.stringify(playlistChanges.value.musicDeleted))
-  if (playlistChanges.value.cover) {
-    formData.append('cover', playlistChanges.value.cover)
+  if (!userStore.loggedIn) {
+    await router.replace({ name: 'Login', query: { redirect: route.fullPath } })
+    return
   }
   try {
-    const postURL = `${API_BASE_URL}/api/playlists/${username}/${id}/edit`
-    await postToAPI(postURL, formData, false)
-    if (musicStore.getCurrentPlaylistUUID() === id) {
-      const deletedIds = playlistChanges.value.musicDeleted.map(d => d.uuid)
-
-      if (deletedIds.includes(musicStore.getCurrentMusicPieceUUID())) { musicStore.reset() }
-
-      const fetchURL = `${API_BASE_URL}/api/playlists/${username}/${id}/play?shuffle=false`
-      const updated = await fetchAPI(fetchURL)
-      musicStore.playlist = updated.playlist
-      musicStore.orderedPlaylist.orderedPlaylist = updated.orderedPlaylist
-      musicStore.setCurrentPlaylistIndex(updated.startIndex)
-      musicStore.orderedPlaylist.orderedPlaylistCurrentIndex = updated.startIndex
-
-      if (musicStore.getCurrentMusicPieceUUID()) {
-        const track = updated.playlist[updated.startIndex]
-        musicStore.updateCurrentMusicPiece(track)
-      }
-
-      playlistChanges.value.musicDeleted = []
-      await musicStore.saveLastPlayback(userStore.userData?.username)
+    const playlist = await fetchPlaylist(username, id)
+    // Only the owner can edit (the endpoint 404s for anyone else), so send everyone else to the playlist itself
+    if (playlist.playlistOwner.userId !== userStore.userData.userId) {
+      await router.replace(playlistRoute)
+      return
     }
-
-    await router.push({ name: 'Playlist', params: { username, id } })
+    original.value = playlist
+    name.value = playlist.playlistName
+    isPublic.value = playlist.isPublic
   } catch (err) {
-    console.error('Save error:', err)
+    loadError.value = err.code === 'PLAYLIST_NOT_FOUND'
+      ? "This playlist doesn't exist or isn't yours."
+      : "We couldn't load this playlist. Check that the server is running, then refresh the page."
   }
-}
-
-function togglePublicStatus(newStatus) {
-  console.log("Playlist is now public?", newStatus)
-  addUpdate('isPublic', newStatus)
-}
-
-function triggerCoverUpload() {
-  coverInput.value.click()
-}
-
-function handleCoverChange(event) {
-  const file = event.target.files[0]
-  if (file) {
-    if (oldPreview.value) {
-      URL.revokeObjectURL(oldPreview)
-    }
-    oldPreview.value = URL.createObjectURL(file)
-    playlist.value.cover = oldPreview
-    playlistChanges.value.cover = file
-    addUpdate('cover', file)
-  }
-}
-
-function confirmCancel(){
-  router.push({ name: 'Playlist', params: { username: username, id: id } })
-}
-
-function attemptCancel() {
-  showCancelModal.value = true
-}
-
-function deleteMusicPiece(index) {
-  const removedMusicPiece = playlist.value.musicPieces.splice(index, 1)[0]
-
-  playlistChanges.value.musicDeleted.push({
-    index,
-    uuid: removedMusicPiece.uuid,
-    title: removedMusicPiece.title,
-    artist: removedMusicPiece.artist
-  })
-}
-
-function addUpdate(updateKey, update){
-  playlistChanges.value[updateKey] = update
-}
-
-watch(playlistNameInput, (newVal) => {
-  addUpdate('name', newVal)
 })
+
+onBeforeUnmount(() => URL.revokeObjectURL(coverPreview.value))
+
+// ponytail: native confirm; swap for a styled dialog if the browser prompt looks out of place
+onBeforeRouteLeave(() => {
+  if (!dirty.value || finishing.value) return true
+  return window.confirm('Leave without saving? Your changes to this playlist will be lost.')
+})
+
+function onDropCover(event) {
+  dragOver.value = false
+  onPickCover(event.dataTransfer.files[0])
+}
+
+async function onPickCover(file) {
+  if (!file) return
+  error.value = ''
+  const problem = await photoProblem(file)
+  if (coverInput.value) coverInput.value.value = ''
+  if (problem) {
+    error.value = problem
+    return
+  }
+  URL.revokeObjectURL(coverPreview.value)
+  coverFile.value = file
+  coverPreview.value = URL.createObjectURL(file)
+}
+
+// Only changed fields are sent; the backend leaves missing ones as they are
+async function save() {
+  if (!dirty.value || saving.value) return
+  error.value = ''
+  saving.value = true
+  try {
+    const form = new FormData()
+    if (nameChanged.value) form.append('playlistName', name.value.trim())
+    if (publicChanged.value) form.append('isPublic', isPublic.value)
+    if (coverFile.value) form.append('playlistCover', coverFile.value)
+    await request('PUT', `${API_BASE_URL}/api/playlists/${encodeURIComponent(id)}`, form)
+    finishing.value = true
+    await nextTick()
+    await animationsDone(banner.value.$el)
+    await router.push(playlistRoute)
+  } catch (err) {
+    // A 401 means the session ended
+    if (err.status === 401) {
+      userStore.logout()
+      await router.replace({ name: 'Login' })
+      return
+    }
+    if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
+    else if (err.code === 'INVALID_FIELD') error.value = `Give your playlist a name of 1 to ${NAME_MAX} characters.`
+    else if (err.code === 'PLAYLIST_NOT_FOUND') error.value = "This playlist no longer exists or isn't yours."
+    else if (err.code === 'RATE_LIMITED') error.value = "You're saving too quickly. Wait a minute, then try again."
+    else error.value = "We couldn't save your changes. Check that the server is running, then try again."
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <style scoped>
-.back-arrow{align-items:center;color:#fff;cursor:pointer;display:flex;flex-shrink:0;padding:0.5rem;transition:transform 0.2s;}
-.back-arrow:hover{color:#f44336;}
-.back-arrow svg{height:24px;width:24px;}
-.cover-overlay{align-items:center;background:rgba(0,0,0,0.4);border-radius:12px;bottom:0;color:#fff;display:flex;font-size:2rem;justify-content:center;left:0;position:absolute;right:0;top:0;}
-.cover-overlay:hover{background:rgba(0,0,0,0.6);}
-.edit-cover{cursor:pointer;position:relative;}
-.empty-playlist-message{margin-top:2rem;text-align:center;}
-.empty-playlist-message p{font-size:1.2rem;margin-bottom:0.5rem;}
-.exit-modal{border:2px solid #f44336;}
-.modal-actions{display:flex;gap:1rem;justify-content:center;}
-.modal-btn{background:#555;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:1rem;padding:0.75rem 1.5rem;transition:background 0.3s;}
-.modal-btn.cancel:hover{background:#666;}
-.modal-btn.exit-editing{background:#d9534f;}
-.modal-btn.exit-editing:hover{background:#c9302c;}
-.modal-content{background:#2a2a2a;border-radius:8px;max-width:400px;padding:2rem;text-align:center;width:90%;}
-.modal-content h2{font-size:1.5rem;margin-bottom:1rem;}
-.modal-content p{color:#ccc;margin-bottom:2rem;}
-.modal-option svg{display:block;flex:0 0 auto;height:20px;width:20px;}
-.modal-overlay{align-items:center;background:rgba(0,0,0,0.7);display:flex;height:100vh;justify-content:center;left:0;position:fixed;top:0;width:100vw;z-index:1000;}
-.nav-content{align-items:center;display:flex;justify-content:space-between;margin:0 auto;max-width:1200px;padding:0 1rem;}
-.nav-link{color:#fff;font-weight:500;text-decoration:none;transition:color 0.3s;}
-.nav-link:hover{color:#ccc;}
-.nav-links{display:flex;gap:2rem;}
-.navbar{background:#000;padding:1rem 0;}
-.playlist-content{margin:2rem auto;max-width:700px;padding:0 1rem;text-align:center;}
-.playlist-cover{background-color:#777;background-position:center;background-size:cover;border-radius:12px;height:300px;margin:0 auto;position:relative;width:300px;}
-.playlist-detail-page{background:#1e1e1e;color:#f0f0f0;min-height:100vh;}
-.save-row{align-items:center;display:flex;gap:1rem;justify-content:space-between;margin-bottom:1rem;}
-.save-btn{align-items:center;background:#333;border:none;border-radius:6px;color:#fff;cursor:pointer;display:flex;font-size:1rem;justify-content:center;padding:0.75rem 2rem;transition:background 0.3s;}
-.save-btn:hover{background:#444;}
-.site-name{color:#fff;font-family:'Libertinus Math',serif;font-size:1.8rem;text-decoration:none;}
-.song-artist{color:#ccc;font-size:0.9rem;}
-.song-edit{cursor:pointer;}
-.song-edit:hover svg{stroke:#f44336;}
-.song-edit svg{height:24px;stroke:#fff;width:24px;}
-.song-info{flex:1;text-align:left;}
-.song-item{align-items:center;background:#2a2a2a;border-radius:8px;display:flex;gap:1rem;justify-content:space-between;max-width:500px;padding:0.5rem 1rem;position:relative;width:100%;}
-.song-list{align-items:center;display:flex;flex-direction:column;gap:1rem;}
-.song-thumbnail{background:#555 center;background-size:cover;border-radius:6px;height:60px;width:60px;}
-.song-title{font-size:1.1rem;}
-.title-input{margin-top:1.2rem;margin-bottom:1.5rem;text-align:center;}
-.title-input input{background:#2a2a2a;border:1px solid #444;border-radius:8px;box-shadow:inset 0 0 4px rgba(0,0,0,0.6);color:#f0f0f0;font-size:1.4rem;max-width:300px;padding:0.6rem 1rem;transition:border 0.3s,background 0.3s;width:90%;}
-.title-input input:focus{background:#333;border-color:#666;outline:none;}
-.title-row{align-items:center;display:flex;gap:1rem;justify-content:center;margin-top:1rem;}
-.title-row h1{font-family:'Libertinus Math',serif;font-size:2.2rem;margin:0;}
+.stage { align-items: center; display: flex; flex-direction: column; padding: 56px var(--space-6) var(--space-8); }
+.meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
 
-.public-toggle{align-items:center;display:flex;justify-content:center;margin:2rem 0;}
-.toggle-label{align-items:center;cursor:pointer;display:flex;gap:1rem;}
-.toggle-label input{display:none;}
-.slider{background:#555;border-radius:24px;height:24px;position:relative;transition:background 0.3s;width:50px;}
-.slider::before{background:#f0f0f0;border-radius:50%;bottom:3px;content:"";height:18px;left:3px;position:absolute;transition:transform 0.3s;width:18px;}
-input:checked + .slider{background:#4caf50;}
-input:checked + .slider::before{transform:translateX(26px);}
-.toggle-text{color:#f0f0f0;font-size:1rem;}
+.create-card { align-items: center; animation: card-in var(--dur-med) var(--ease-pop) both; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); display: grid; gap: var(--space-8); grid-template-columns: 252px minmax(0, 1fr); max-width: 720px; padding: var(--space-8) var(--space-6); width: 100%; }
+.banner { grid-column: 1 / -1; margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-6)) 0; }
+
+.step { display: flex; flex-direction: column; gap: var(--space-2); }
+h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-2); }
+.lead { color: var(--ink-muted); margin: 0 0 var(--space-4); }
+.label { font: 600 14px/20px var(--font-sans); }
+.input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font: 400 16px/24px var(--font-sans); padding: 8px 12px; }
+.hint { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; }
+.hint + .check { margin-top: var(--space-3); }
+.check { align-items: center; cursor: pointer; display: flex; font: 600 14px/20px var(--font-sans); gap: var(--space-2); }
+.check input { accent-color: var(--primary); height: 16px; margin: 0; width: 16px; }
+.error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
+.actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+.icon { fill: none; flex: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+
+.cover { align-items: center; display: flex; flex-direction: column; gap: var(--space-2); margin-top: -88px; position: relative; z-index: 1; }
+.frame { background: var(--surface); border-radius: var(--radius-md); display: block; padding: 6px; }
+.drop { background: var(--surface-alt); border: 2px dashed var(--line-strong); border-radius: var(--radius-sm); cursor: pointer; display: grid; height: 240px; overflow: hidden; place-items: center; transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); width: 240px; }
+.drop:hover, .drop.over { background: var(--purple-soft); border-color: var(--primary); }
+.drop.filled { border-color: var(--line); border-style: solid; }
+.drop.filled.over { border-color: var(--primary); border-style: dashed; }
+.cover:has(input:focus-visible) .drop { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.drop img { animation: cover-pop var(--dur-med) var(--ease-pop) both; height: 100%; object-fit: cover; width: 100%; }
+.drop-hint { align-items: center; color: var(--ink-muted); display: flex; flex-direction: column; font: 500 14px/20px var(--font-sans); gap: var(--space-2); padding: var(--space-6); text-align: center; }
+.drop-hint .icon { height: 32px; stroke-width: 1.5; width: 32px; }
+.visually-hidden { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+@keyframes cover-pop {
+  from { opacity: 0; transform: scale(1.04); }
+}
+
+@media (max-width: 720px) {
+  .stage { padding: var(--space-6) var(--space-4); }
+  .create-card { grid-template-columns: minmax(0, 1fr); padding: var(--space-6) var(--space-4); }
+  .banner { margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-4)) 0; }
+  .drop { height: 200px; width: 200px; }
+}
 </style>
