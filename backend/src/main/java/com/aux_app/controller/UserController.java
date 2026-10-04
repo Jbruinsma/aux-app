@@ -1,5 +1,6 @@
 package com.aux_app.controller;
 
+import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.users.*;
 import com.aux_app.repository.ProfileDetailsRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.aux_app.repository.UserRepository;
@@ -90,6 +92,18 @@ public class UserController {
             @RequestParam(required = false) String username
     ) {
         return UserSummary.of(onboarding.completeStep(user, step, file, username));
+    }
+
+    @GetMapping("/library")
+    @Operation(
+            summary = "Get the caller's playlist library",
+            description = """
+                    Playlists the caller owns (public and private) plus playlists they saved from others (public only).
+                    `isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    public List<LibraryPlaylist> retrieveLibrary(@CurrentUser UserEntity user) {
+        return users.findLibrary(user.getUserId());
     }
 
     @GetMapping("/profile/{username}")
