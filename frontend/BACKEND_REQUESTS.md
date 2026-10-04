@@ -29,6 +29,20 @@ Deletes a playlist the caller owns. The songs stay in the uploader's uploads.
 
 Response `204`, no body. Errors: `404 PLAYLIST_NOT_FOUND` (missing, or not the caller's).
 
+### DELETE /api/playlists/{playlistId}/pieces/{musicPieceId}
+
+Not mocked yet; the edit playlist page only edits name, cover and visibility until this exists. Needs
+`Authorization: Bearer <token>`.
+
+Removes one music piece from a playlist the caller owns. The piece itself stays in the uploader's uploads and in any
+other playlist.
+
+Response `204`, no body. Errors: `404 PLAYLIST_NOT_FOUND` (missing, or not the caller's), `404 MUSIC_PIECE_NOT_FOUND`
+(not in this playlist).
+
+Open question: should the edit page also reorder songs? If so, something like `PUT /api/playlists/{playlistId}/order`
+with `{ "musicPieceIds": [...] }` in the new order.
+
 ### Playback
 
 The player (`src/stores/music.js`) still calls the old UnChained routes, which don't exist:

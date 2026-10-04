@@ -53,6 +53,13 @@ const routes = [
     props: { title },
     beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
   })),
+  {
+    path: '/upload',
+    name: 'Upload',
+    component: ComingSoon,
+    props: { title: 'Music upload' },
+    beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
+  },
   { path: '/:username', name: 'Profile', component: PublicProfile },
   { path: '/settings/:username/:tab?', name: 'Settings', component: Settings },
   { path: '/create', name: 'Create', component: CreatePlaylist},

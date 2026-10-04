@@ -3323,6 +3323,10 @@
             "format" : "int32",
             "example" : 12
           },
+          "isPublic" : {
+            "type" : "boolean",
+            "example" : true
+          },
           "playlistOwner" : {
             "$ref" : "#/components/schemas/PlaylistOwner"
           },
