@@ -472,6 +472,184 @@
         } ]
       }
     },
+    "/api/playlists/{playlist_id}/save" : {
+      "put" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Save a playlist",
+        "description" : "Adds another user's public playlist to the caller's saved playlists. Saving a playlist\nthat is already saved is a no-op and still returns 200.\nPrivate playlists return 404, the same as a missing playlist.\nReturns the playlist's id, name and cover URL, and `isSaved` (always true).\n",
+        "operationId" : "savePlaylist",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Playlist saved (or already saved)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SavedPlaylistResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Caller owns the playlist (code PLAYLIST_ACTION_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or private (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Unsave a playlist",
+        "description" : "Removes a playlist from the caller's saved playlists. Unsaving a playlist the caller\nhas not saved returns 404, so a repeated call is not idempotent.\nReturns the playlist's id, name and cover URL, and `isSaved` (always false).\n",
+        "operationId" : "unsavePlaylist",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Playlist unsaved",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SavedPlaylistResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Caller owns the playlist (code PLAYLIST_ACTION_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist missing, or not saved by the caller (code SAVED_PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/playlists/{playlistId}" : {
       "put" : {
         "tags" : [ "playlist-controller" ],
@@ -2484,8 +2662,8 @@
     "/api/core/users" : {
       "get" : {
         "tags" : [ "core-controller" ],
-        "summary" : "Get the list of users",
-        "description" : "Public. Returns up to 6 random user IDs of users with a custom profile picture.",
+        "summary" : "Get random user profile pictures",
+        "description" : "Public. Returns up to 6 profile picture URLs of random users with a custom profile picture.",
         "operationId" : "getUsers",
         "responses" : {
           "200" : {
@@ -2832,6 +3010,35 @@
           }
         }
       },
+      "CorePlaylist" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "example" : "p_7c2d1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          }
+        }
+      },
+      "SavedPlaylistResponse" : {
+        "type" : "object",
+        "properties" : {
+          "corePlaylist" : {
+            "$ref" : "#/components/schemas/CorePlaylist"
+          },
+          "isSaved" : {
+            "type" : "boolean",
+            "example" : true
+          }
+        }
+      },
       "PlaylistDetailsUpdate" : {
         "type" : "object",
         "properties" : {
@@ -2848,23 +3055,6 @@
           "playlistCover" : {
             "type" : "string",
             "format" : "binary"
-          }
-        }
-      },
-      "CorePlaylist" : {
-        "type" : "object",
-        "properties" : {
-          "playlistId" : {
-            "type" : "string",
-            "example" : "p_7c2d1"
-          },
-          "playlistName" : {
-            "type" : "string",
-            "example" : "Late Night Drive"
-          },
-          "playlistCoverUrl" : {
-            "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },

@@ -19,9 +19,9 @@ export function shufflePlaylist(playlist, startIndex = 0){
   return [selectedPiece, ...remainingPieces]
 }
 
-// Only GET exists on the backend. Save, unsave and delete are requested in BACKEND_REQUESTS.md and answer from mock
-// data until then; flip this off once they ship, since the real calls below already use the requested shapes
-export const PLAYLIST_ACTIONS_MOCKED = true
+// Delete isn't on the backend yet. It's requested in BACKEND_REQUESTS.md and answers from mock data until then; flip
+// this off once it ships, since the real call below already uses the requested shape
+export const PLAYLIST_DELETE_MOCKED = true
 
 const wait = () => new Promise((resolve) => setTimeout(resolve, 400))
 
@@ -30,18 +30,22 @@ export function fetchPlaylist(username, playlistId) {
   return fetchAPI(`${API_BASE_URL}/api/playlists/${encodeURIComponent(username)}/${encodeURIComponent(playlistId)}`)
 }
 
-// Returns nothing (204)
+// Returns the new isSaved. Unsaving a playlist that isn't saved is a 404 SAVED_PLAYLIST_NOT_FOUND on the backend; that's
+// already the state the caller wants (e.g. unsaved in another tab), so treat it as success
 export async function setPlaylistSaved(playlistId, saved) {
-  if (!PLAYLIST_ACTIONS_MOCKED) {
-    return request(saved ? 'PUT' : 'DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/save`)
+  const url = `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/save`
+  try {
+    const response = await request(saved ? 'PUT' : 'DELETE', url)
+    return response.isSaved
+  } catch (err) {
+    if (!saved && err.code === 'SAVED_PLAYLIST_NOT_FOUND') return false
+    throw err
   }
-  await wait()
-  return null
 }
 
 // Returns nothing (204)
 export async function deletePlaylist(playlistId) {
-  if (!PLAYLIST_ACTIONS_MOCKED) return request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}`)
+  if (!PLAYLIST_DELETE_MOCKED) return request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}`)
   await wait()
   return null
 }

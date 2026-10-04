@@ -1,15 +1,15 @@
 package com.aux_app.controller;
 
 import com.aux_app.dto.music_piece.MusicPieceOverview;
-import com.aux_app.dto.playlist.PlaylistCreationDetails;
-import com.aux_app.dto.playlist.PlaylistDetailsUpdate;
+import com.aux_app.dto.playlist.*;
 import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.PlaylistEntity;
+import com.aux_app.entity.UserSavedPlaylistEntity;
+import com.aux_app.entity.UserSavedPlaylistId;
+import com.aux_app.repository.UserSavedPlaylistRepository;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import com.aux_app.dto.playlist.CorePlaylist;
-import com.aux_app.dto.playlist.PlaylistOverview;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.PlaylistRepository;
 import jakarta.validation.Valid;
@@ -28,14 +28,17 @@ import java.util.UUID;
 @RequestMapping("/api/playlists")
 public class PlaylistController {
 
-    final private PlaylistRepository playlistRepository;
+    final private PlaylistRepository playlists;
+    final private UserSavedPlaylistRepository savedPlaylists;
     final private UploadService uploads;
 
     public PlaylistController(
-            PlaylistRepository playlistRepository,
+            PlaylistRepository playlists,
+            UserSavedPlaylistRepository savedPlaylists,
             UploadService uploadService
     ) {
-        this.playlistRepository = playlistRepository;
+        this.playlists = playlists;
+        this.savedPlaylists = savedPlaylists;
         this.uploads = uploadService;
     }
 
@@ -55,7 +58,7 @@ public class PlaylistController {
             @CurrentUser UserEntity user
     ) {
         String userId = user.getUserId();
-        PlaylistRepository.PlaylistPage playlist = playlistRepository.findPlaylistWithTracks(playlistId, userId);
+        PlaylistRepository.PlaylistPage playlist = playlists.findPlaylistWithTracks(playlistId, userId);
 
         if (playlist == null) {
             throw new AuxException(
@@ -168,7 +171,7 @@ public class PlaylistController {
             @Valid @ModelAttribute PlaylistDetailsUpdate playlistDetailsUpdate,
             @PathVariable String playlistId
     ) {
-        PlaylistEntity playlist = playlistRepository.findPlaylistEntityByPlaylistId(playlistId);
+        PlaylistEntity playlist = playlists.findPlaylistEntityByPlaylistId(playlistId);
 
         if (playlist == null || !playlist.getOwnerId().equals(user.getUserId())) {
             throw new AuxException(
@@ -189,13 +192,126 @@ public class PlaylistController {
         if (playlistDetailsUpdate.playlistCover() != null) {
             uploads.replacePlaylistCover(playlist, playlistDetailsUpdate.playlistCover());
         } else {
-            playlistRepository.save(playlist);
+            playlists.save(playlist);
         }
 
         return new CorePlaylist(
                 playlist.getPlaylistId(),
                 playlist.getPlaylistName(),
                 playlist.getPlaylistCoverUrl()
+        );
+    }
+
+    @PutMapping("/{playlist_id}/save")
+    @Operation(
+            summary = "Save a playlist",
+            description = """
+                    Adds another user's public playlist to the caller's saved playlists. Saving a playlist
+                    that is already saved is a no-op and still returns 200.
+                    Private playlists return 404, the same as a missing playlist.
+                    Returns the playlist's id, name and cover URL, and `isSaved` (always true).
+                    """)
+    @ApiResponse(responseCode = "200", description = "Playlist saved (or already saved)")
+    @ApiResponse(responseCode = "403", description = "Caller owns the playlist (code PLAYLIST_ACTION_FORBIDDEN)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found, or private (code PLAYLIST_NOT_FOUND)")
+    public SavedPlaylistResponse savePlaylist(
+            @CurrentUser UserEntity user,
+            @PathVariable String playlist_id
+    ) {
+
+        PlaylistEntity selectedPlaylist = playlists.findPlaylistEntityByPlaylistId(playlist_id);
+
+        if (selectedPlaylist == null) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "PLAYLIST_NOT_FOUND",
+                    "Playlist not found",
+                    "playlistId"
+            );
+        }
+
+        if (!selectedPlaylist.getIsPublic()) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "PLAYLIST_NOT_FOUND",
+                    "Playlist not found",
+                    "playlistId"
+            );
+        }
+
+        String userId = user.getUserId();
+
+        if (selectedPlaylist.getOwnerId().equals(userId)) {
+            throw new AuxException(
+                    HttpStatus.FORBIDDEN,
+                    "PLAYLIST_ACTION_FORBIDDEN",
+                    "Playlist cannot be saved",
+                    "playlistId"
+            );
+        }
+
+        UserSavedPlaylistId id = new UserSavedPlaylistId(userId, playlist_id);
+        if (!savedPlaylists.existsById(id)) {
+            savedPlaylists.save(new UserSavedPlaylistEntity(userId, playlist_id));
+        }
+
+        return new SavedPlaylistResponse(
+                new CorePlaylist(
+                        selectedPlaylist.getPlaylistId(),
+                        selectedPlaylist.getPlaylistName(),
+                        selectedPlaylist.getPlaylistCoverUrl()
+                ),
+                true
+        );
+    }
+
+    @DeleteMapping("/{playlist_id}/save")
+    @Operation(
+            summary = "Unsave a playlist",
+            description = """
+                    Removes a playlist from the caller's saved playlists. Unsaving a playlist the caller
+                    has not saved returns 404, so a repeated call is not idempotent.
+                    Returns the playlist's id, name and cover URL, and `isSaved` (always false).
+                    """)
+    @ApiResponse(responseCode = "200", description = "Playlist unsaved")
+    @ApiResponse(responseCode = "403", description = "Caller owns the playlist (code PLAYLIST_ACTION_FORBIDDEN)")
+    @ApiResponse(responseCode = "404", description = "Playlist missing, or not saved by the caller (code SAVED_PLAYLIST_NOT_FOUND)")
+    public SavedPlaylistResponse unsavePlaylist(
+            @CurrentUser UserEntity user,
+            @PathVariable String playlist_id
+    ) {
+
+        String userId = user.getUserId();
+
+        PlaylistEntity selectedPlaylist = playlists.findSavedPlaylist(playlist_id, userId);
+
+        if (selectedPlaylist == null) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "SAVED_PLAYLIST_NOT_FOUND",
+                    "You do not have this playlist saved",
+                    "playlistId"
+            );
+        }
+
+        if (selectedPlaylist.getOwnerId().equals(userId)) {
+            throw new AuxException(
+                    HttpStatus.FORBIDDEN,
+                    "PLAYLIST_ACTION_FORBIDDEN",
+                    "You do cannot remove this saved playlist",
+                    "playlistId"
+            );
+        }
+
+        savedPlaylists.deleteSaved(userId, playlist_id);
+
+        return new SavedPlaylistResponse(
+                new CorePlaylist(
+                        selectedPlaylist.getPlaylistId(),
+                        selectedPlaylist.getPlaylistName(),
+                        selectedPlaylist.getPlaylistCoverUrl()
+                ),
+                false
         );
     }
 
