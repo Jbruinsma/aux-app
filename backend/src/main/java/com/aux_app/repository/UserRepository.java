@@ -2,6 +2,7 @@ package com.aux_app.repository;
 
 import com.aux_app.dto.base.Country;
 import com.aux_app.dto.playlist.CorePlaylist;
+import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.playlist.ProfilePlaylist;
 import com.aux_app.dto.users.ProfileDetails;
 import com.aux_app.dto.users.UserProfile;
@@ -109,6 +110,49 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
             """, nativeQuery = true)
     List<String> findRandomProfilePictureUrls();
 
+    default List<LibraryPlaylist> findLibrary(String userId) {
+        return findLibraryRows(userId).stream()
+                .map(r -> new LibraryPlaylist(
+                        new CorePlaylist(r.getPlaylistId(), r.getPlaylistName(), r.getPlaylistCoverUrl()),
+                        r.getOwnerUsername(),
+                        r.getTotalPieces(),
+                        Integer.valueOf(1).equals(r.getIsSaved())))
+                .toList();
+    }
+
+    // Library = playlists the user owns + playlists they saved. Saved ones from others only while still public.
+    // Saved first, most recently saved first; the rest newest created first.
+    @Query(value = """
+            SELECT p.playlist_id AS playlistId,
+                   p.playlist_name AS playlistName,
+                   p.playlist_cover_url AS playlistCoverUrl,
+                   o.username AS ownerUsername,
+                   (usp.user_id IS NOT NULL) AS isSaved,
+                   (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces
+            FROM playlists p
+            JOIN users o ON o.user_id = p.owner_id
+            LEFT JOIN user_saved_playlists usp ON usp.playlist_id = p.playlist_id AND usp.user_id = :userId
+            WHERE p.owner_id = :userId
+               OR (usp.user_id IS NOT NULL AND p.is_public = 1)
+            ORDER BY (usp.user_id IS NOT NULL) DESC, usp.saved_at DESC, p.created_at DESC
+            """, nativeQuery = true)
+    List<LibraryRow> findLibraryRows(@Param("userId") String userId);
+
+    interface LibraryRow {
+        String getPlaylistId();
+        String getPlaylistName();
+        String getPlaylistCoverUrl();
+        String getOwnerUsername();
+        Integer getIsSaved(); // SQLite has no boolean type: 1 or 0
+        int getTotalPieces();
+    }
+
+    interface UserSearchRow {
+        String getUserId();
+        String getUsername();
+        String getProfilePictureUrl();
+    }
+
     interface ProfileRow {
         String getUserId();
         String getUsername();
@@ -125,4 +169,21 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getPlaylistCoverUrl();
         int getTotalPieces();
     }
+
+    // Search: `pattern` is a LIKE pattern (caller escapes %, _ and \\). Users who haven't finished onboarding are hidden.
+    @Query(value = """
+            SELECT u.user_id AS userId, u.username AS username, u.profile_picture_url AS profilePictureUrl
+            FROM users u
+            WHERE u.onboarding_step = 'DONE' AND u.username LIKE :pattern ESCAPE '\\'
+            ORDER BY u.username COLLATE NOCASE
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<UserSearchRow> searchUsers(@Param("pattern") String pattern, @Param("limit") int limit, @Param("offset") int offset);
+
+    @Query(value = """
+            SELECT COUNT(*) FROM users u
+            WHERE u.onboarding_step = 'DONE' AND u.username LIKE :pattern ESCAPE '\\'
+            """, nativeQuery = true)
+    int countSearchUsers(@Param("pattern") String pattern);
+
 }
