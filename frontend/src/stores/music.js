@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchAPI, postToAPI } from '@/utils/api.js'
-import { displayArtist } from '@/utils/display.js'
+import { displayArtist, resolveCoverURL } from '@/utils/display.js'
 import { shufflePlaylist } from '@/utils/playlist.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
@@ -178,10 +178,10 @@ export const useMusicStore = defineStore('music', () => {
 
   function updateCurrentMusicPiece(musicPiece) {
     currentMusicPiece.value.uuid = musicPiece.uuid
-    currentMusicPiece.value.cover = musicPiece.cover
+    currentMusicPiece.value.cover = musicPiece.cover && resolveCoverURL(musicPiece.cover)
     currentMusicPiece.value.title = musicPiece.title
     currentMusicPiece.value.artist = displayArtist(musicPiece.artist)
-    currentMusicPiece.value.mp3File = musicPiece.audio
+    currentMusicPiece.value.mp3File = musicPiece.audio && resolveCoverURL(musicPiece.audio)
   }
 
   function getCurrentPlaylistIndex() { return currentPlaylistIndex }

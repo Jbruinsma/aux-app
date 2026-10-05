@@ -9,3 +9,6 @@ backend/aux.db
 target/
 .env
 *.iml
+
+# Dependencies
+node_modules/
