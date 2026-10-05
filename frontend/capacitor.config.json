@@ -1,0 +1,9 @@
+{
+  "appId": "com.auxapp.aux",
+  "appName": "Aux",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}
