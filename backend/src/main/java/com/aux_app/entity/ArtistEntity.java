@@ -13,6 +13,10 @@ public class ArtistEntity {
     @Column(name = "artist_id")
     private String artistId;
 
+    // What the API shows instead of the UUID; see PublicId
+    @Column(name = "public_id", nullable = false, unique = true, length = 8)
+    private String publicId;
+
     @Column(name = "artist_name", nullable = false)
     private String artistName;
 
@@ -30,11 +34,13 @@ public class ArtistEntity {
 
     public ArtistEntity(String artistId, String artistName, String createdByUserId) {
         this.artistId = artistId;
+        this.publicId = PublicId.generate(PublicId.ARTIST);
         this.artistName = artistName;
         this.createdByUserId = createdByUserId;
     }
 
     public String getArtistId() { return artistId; }
+    public String getPublicId() { return publicId; }
     public String getArtistName() { return artistName; }
     public String getArtistPfpUrl() { return artistPfpUrl; }
     public String getArtistBannerUrl() { return artistBannerUrl; }

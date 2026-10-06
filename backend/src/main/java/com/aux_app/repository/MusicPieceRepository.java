@@ -15,8 +15,8 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
     // Search by piece or artist name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
     // Private pieces only show up for their uploader (`userId` may be null).
     @Query(value = """
-            SELECT mp.music_piece_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
-                   a.artist_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
+            SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
+                   a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
             FROM music_pieces mp
             JOIN artists a ON a.artist_id = mp.artist_id
             WHERE (mp.is_public = 1 OR mp.uploader_user_id = :userId)

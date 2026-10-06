@@ -16,6 +16,10 @@ public class MusicPieceEntity {
     @Column(name = "music_piece_id")
     private String musicPieceId;
 
+    // What the API shows instead of the UUID; see PublicId
+    @Column(name = "public_id", nullable = false, unique = true, length = 8)
+    private String publicId;
+
     @Column(name = "uploader_user_id", nullable = false)
     private String uploaderUserId;
 
@@ -55,6 +59,7 @@ public class MusicPieceEntity {
             String artistId
     ) {
         this.musicPieceId = musicPieceId;
+        this.publicId = PublicId.generate(PublicId.MUSIC_PIECE);
         this.uploaderUserId = uploaderUserId;
         this.artistId = artistId;
         this.createdAt = Instant.now();
@@ -62,6 +67,7 @@ public class MusicPieceEntity {
     }
 
     public String getMusicPieceId() { return musicPieceId; }
+    public String getPublicId() { return publicId; }
     public String getUploaderUserId() { return uploaderUserId; }
     public String getCoverUrl() { return coverUrl; }
     public String getName() { return name; }

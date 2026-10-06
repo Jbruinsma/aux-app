@@ -87,7 +87,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                                     WHERE f1.follower_user_id = CAST(:currentUserId AS varchar) AND f1.following_user_id = u.user_id) AS isFollowing,
                    EXISTS (SELECT 1 FROM follows f2
                            WHERE f2.follower_user_id = u.user_id AND f2.following_user_id = CAST(:currentUserId AS varchar)) AS followingMe,
-                   p.playlist_id AS playlistId,
+                   p.public_id AS playlistId,
                    p.playlist_name AS playlistName,
                    p.playlist_cover_url AS playlistCoverUrl,
                    (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces
@@ -123,7 +123,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
     // Library = playlists the user owns + playlists they saved. Saved ones from others only while still public.
     // Saved first, most recently saved first; the rest newest created first.
     @Query(value = """
-            SELECT p.playlist_id AS playlistId,
+            SELECT p.public_id AS playlistId,
                    p.playlist_name AS playlistName,
                    p.playlist_cover_url AS playlistCoverUrl,
                    o.username AS ownerUsername,
@@ -172,7 +172,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
 
     // Search: `pattern` is a LIKE pattern (caller escapes %, _ and \\). Users who haven't finished onboarding are hidden.
     @Query(value = """
-            SELECT u.user_id AS userId, u.username AS username, u.profile_picture_url AS profilePictureUrl
+            SELECT u.public_id AS userId, u.username AS username, u.profile_picture_url AS profilePictureUrl
             FROM users u
             WHERE u.onboarding_step = 'DONE' AND u.username LIKE :pattern ESCAPE '\\'
             ORDER BY u.username COLLATE NOCASE
