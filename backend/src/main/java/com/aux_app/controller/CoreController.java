@@ -96,7 +96,7 @@ public class CoreController {
                                       "totalResults": 1,
                                       "results": [
                                         {
-                                          "userId": "u_41x9",
+                                          "userId": "u_41x9Rb",
                                           "username": "justin",
                                           "profilePictureUrl": "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
                                         }
@@ -108,11 +108,11 @@ public class CoreController {
                                       "totalResults": 1,
                                       "results": [
                                         {
-                                          "musicPieceId": "m_92kd0",
+                                          "musicPieceId": "m_92kd0Z",
                                           "name": "Let It Happen",
                                           "coverUrl": "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
                                           "artistSummary": {
-                                            "artistId": "a_8f3k2",
+                                            "artistId": "a_8f3k2Q",
                                             "artistName": "Tame Impala",
                                             "artistPfpUrl": "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
                                           }
@@ -125,7 +125,7 @@ public class CoreController {
                                       "totalResults": 1,
                                       "results": [
                                         {
-                                          "playlistId": "p_7c2d1",
+                                          "playlistId": "p_7c2dK1",
                                           "playlistName": "Late Night Drive",
                                           "playlistCoverUrl": "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
                                           "ownerUsername": "justin",

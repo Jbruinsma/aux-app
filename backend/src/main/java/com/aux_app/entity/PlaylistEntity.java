@@ -16,6 +16,10 @@ public class PlaylistEntity {
     @Column(name = "playlist_id",  nullable = false, length = 36)
     private String playlistId;
 
+    // What the API shows instead of the UUID; see PublicId
+    @Column(name = "public_id", nullable = false, unique = true, length = 8)
+    private String publicId;
+
     @Column(name = "owner_id", nullable = false)
     private String ownerId;
 
@@ -38,6 +42,7 @@ public class PlaylistEntity {
 
     public PlaylistEntity(String playlistId, String ownerId, String playlistName, boolean isPublic) {
         this.playlistId = playlistId;
+        this.publicId = PublicId.generate(PublicId.PLAYLIST);
         this.ownerId = ownerId;
         this.playlistName = playlistName;
         this.isPublic = isPublic;
@@ -46,6 +51,7 @@ public class PlaylistEntity {
     }
 
     public String getPlaylistId() { return playlistId; }
+    public String getPublicId() { return publicId; }
     public String getOwnerId() { return ownerId; }
     public Boolean getIsPublic() { return isPublic; }
     public String getPlaylistCoverUrl() { return playlistCoverUrl; }

@@ -9,7 +9,8 @@ import java.util.List;
 
 public interface ArtistRepository extends JpaRepository<ArtistEntity, String> {
 
-    ArtistEntity findByArtistId(String artistId);
+    // Callers pass the public id from the request; the API never sees artist UUIDs
+    ArtistEntity findByPublicId(String publicId);
 
     // Matches the uq_artists_name_nocase index, so pass a stripped name
     ArtistEntity findByArtistNameIgnoreCase(String artistName);

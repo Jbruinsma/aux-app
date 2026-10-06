@@ -78,7 +78,7 @@ public class PlaylistController {
             );
         }
 
-        if (!userId.equals(playlist.owner().userId()) && !playlist.isPublic()) {
+        if (!user.getPublicId().equals(playlist.owner().userId()) && !playlist.isPublic()) {
             throw new AuxException(
                     HttpStatus.NOT_FOUND,
                     "PLAYLIST_NOT_FOUND",
@@ -136,14 +136,14 @@ public class PlaylistController {
 
         return new PlaylistOverview(
                 new CorePlaylist(
-                        newPlaylist.getPlaylistId(),
+                        newPlaylist.getPublicId(),
                         newPlaylist.getPlaylistName(),
                         coverUrl
                 ),
                 0,
                 newPlaylist.getIsPublic(),
                 new PlaylistOwner(
-                        user.getUserId(),
+                        user.getPublicId(),
                         user.getProfilePictureUrl(),
                         user.getUsername()
                 ),
@@ -173,7 +173,7 @@ public class PlaylistController {
             @Valid @ModelAttribute PlaylistDetailsUpdate playlistDetailsUpdate,
             @PathVariable String playlistId
     ) {
-        PlaylistEntity playlist = playlists.findPlaylistEntityByPlaylistId(playlistId);
+        PlaylistEntity playlist = playlists.findByPublicId(playlistId);
 
         if (playlist == null || !playlist.getOwnerId().equals(user.getUserId())) {
             throw new AuxException(
@@ -198,7 +198,7 @@ public class PlaylistController {
         }
 
         return new CorePlaylist(
-                playlist.getPlaylistId(),
+                playlist.getPublicId(),
                 playlist.getPlaylistName(),
                 playlist.getPlaylistCoverUrl()
         );
@@ -221,7 +221,7 @@ public class PlaylistController {
             @PathVariable String playlist_id
     ) {
 
-        PlaylistEntity selectedPlaylist = playlists.findPlaylistEntityByPlaylistId(playlist_id);
+        PlaylistEntity selectedPlaylist = playlists.findByPublicId(playlist_id);
 
         if (selectedPlaylist == null) {
             throw new AuxException(
@@ -252,14 +252,14 @@ public class PlaylistController {
             );
         }
 
-        UserSavedPlaylistId id = new UserSavedPlaylistId(userId, playlist_id);
+        UserSavedPlaylistId id = new UserSavedPlaylistId(userId, selectedPlaylist.getPlaylistId());
         if (!savedPlaylists.existsById(id)) {
-            savedPlaylists.save(new UserSavedPlaylistEntity(userId, playlist_id));
+            savedPlaylists.save(new UserSavedPlaylistEntity(userId, selectedPlaylist.getPlaylistId()));
         }
 
         return new SavedPlaylistResponse(
                 new CorePlaylist(
-                        selectedPlaylist.getPlaylistId(),
+                        selectedPlaylist.getPublicId(),
                         selectedPlaylist.getPlaylistName(),
                         selectedPlaylist.getPlaylistCoverUrl()
                 ),
@@ -305,11 +305,11 @@ public class PlaylistController {
             );
         }
 
-        savedPlaylists.deleteSaved(userId, playlist_id);
+        savedPlaylists.deleteSaved(userId, selectedPlaylist.getPlaylistId());
 
         return new SavedPlaylistResponse(
                 new CorePlaylist(
-                        selectedPlaylist.getPlaylistId(),
+                        selectedPlaylist.getPublicId(),
                         selectedPlaylist.getPlaylistName(),
                         selectedPlaylist.getPlaylistCoverUrl()
                 ),

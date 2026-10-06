@@ -71,7 +71,7 @@ public class MusicPieceController {
             @Valid @ModelAttribute MusicPieceCreationDetails musicPieceCreationDetails
     ) {
 
-        ArtistEntity artist = this.artists.findByArtistId(musicPieceCreationDetails.artistId());
+        ArtistEntity artist = this.artists.findByPublicId(musicPieceCreationDetails.artistId());
 
         if (artist == null) {
             throw new AuxException(
@@ -112,10 +112,10 @@ public class MusicPieceController {
         }
 
         return new MusicPieceOverview(
-                newMusicPiece.getMusicPieceId(),
+                newMusicPiece.getPublicId(),
                 newMusicPiece.getName(),
                 newMusicPiece.getCoverUrl(),
-                new ArtistSummary(artist.getArtistId(), artist.getArtistName(), artist.getArtistPfpUrl()),
+                new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl()),
                 false
         );
     }

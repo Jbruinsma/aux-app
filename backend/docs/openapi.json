@@ -2863,7 +2863,7 @@
                     "value" : {
                       "totalResults" : 1,
                       "results" : [ {
-                        "userId" : "u_41x9",
+                        "userId" : "u_41x9Rb",
                         "username" : "justin",
                         "profilePictureUrl" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
                       } ]
@@ -2874,11 +2874,11 @@
                     "value" : {
                       "totalResults" : 1,
                       "results" : [ {
-                        "musicPieceId" : "m_92kd0",
+                        "musicPieceId" : "m_92kd0Z",
                         "name" : "Let It Happen",
                         "coverUrl" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
                         "artistSummary" : {
-                          "artistId" : "a_8f3k2",
+                          "artistId" : "a_8f3k2Q",
                           "artistName" : "Tame Impala",
                           "artistPfpUrl" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
                         }
@@ -2890,7 +2890,7 @@
                     "value" : {
                       "totalResults" : 1,
                       "results" : [ {
-                        "playlistId" : "p_7c2d1",
+                        "playlistId" : "p_7c2dK1",
                         "playlistName" : "Late Night Drive",
                         "playlistCoverUrl" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
                         "ownerUsername" : "justin",
@@ -3104,7 +3104,7 @@
         "properties" : {
           "userId" : {
             "type" : "string",
-            "example" : "u_41x9"
+            "example" : "u_41x9Rb"
           },
           "username" : {
             "type" : "string",
@@ -3199,7 +3199,7 @@
         "properties" : {
           "playlistId" : {
             "type" : "string",
-            "example" : "p_7c2d1"
+            "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
@@ -3267,7 +3267,7 @@
         "properties" : {
           "artistId" : {
             "type" : "string",
-            "example" : "a_8f3k2"
+            "example" : "a_8f3k2Q"
           },
           "artistName" : {
             "type" : "string",
@@ -3284,7 +3284,7 @@
         "properties" : {
           "musicPieceId" : {
             "type" : "string",
-            "example" : "m_92kd0"
+            "example" : "m_92kd0Z"
           },
           "name" : {
             "type" : "string",
@@ -3308,7 +3308,7 @@
         "properties" : {
           "playlistId" : {
             "type" : "string",
-            "example" : "p_7c2d1"
+            "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
@@ -3347,7 +3347,7 @@
         "properties" : {
           "userId" : {
             "type" : "string",
-            "example" : "u_41x9"
+            "example" : "u_41x9Rb"
           },
           "pfpUrl" : {
             "type" : "string",
@@ -3370,7 +3370,7 @@
           },
           "artistId" : {
             "type" : "string",
-            "example" : "123e4567-e89b-12d3-a456-426614174000",
+            "example" : "a_8f3k2Q",
             "minLength" : 1
           },
           "isPublic" : {
@@ -3542,7 +3542,7 @@
         "properties" : {
           "playlistId" : {
             "type" : "string",
-            "example" : "p_7c2d1"
+            "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
@@ -3602,7 +3602,7 @@
         "properties" : {
           "playlistId" : {
             "type" : "string",
-            "example" : "p_7c2d1"
+            "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
@@ -3681,7 +3681,7 @@
         "properties" : {
           "artistId" : {
             "type" : "string",
-            "example" : "a_8f3k2"
+            "example" : "a_8f3k2Q"
           },
           "artistName" : {
             "type" : "string",

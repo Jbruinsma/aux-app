@@ -115,10 +115,10 @@ public class ArtistController {
         ArtistEntity artist = findArtist(artistId);
         String userId = (user != null) ? user.getUserId() : null;
         boolean isFavorite = userId != null
-                && this.favorites.existsById(new UserFavoriteArtistId(userId, artistId));
+                && this.favorites.existsById(new UserFavoriteArtistId(userId, artist.getArtistId()));
 
         return new ArtistDetails(
-                artist.getArtistId(),
+                artist.getPublicId(),
                 artist.getArtistName(),
                 artist.getArtistPfpUrl(),
                 artist.getArtistBannerUrl(),
@@ -181,12 +181,12 @@ public class ArtistController {
             @PathVariable String artistId,
             @CurrentUser UserEntity user
     ) {
-        findArtist(artistId);
-        UserFavoriteArtistId id = new UserFavoriteArtistId(user.getUserId(), artistId);
+        ArtistEntity artist = findArtist(artistId);
+        UserFavoriteArtistId id = new UserFavoriteArtistId(user.getUserId(), artist.getArtistId());
 
         // Skip the save so a repeat call keeps the original created_at
         if (!this.favorites.existsById(id)) {
-            this.favorites.save(new UserFavoriteArtistEntity(user.getUserId(), artistId));
+            this.favorites.save(new UserFavoriteArtistEntity(user.getUserId(), artist.getArtistId()));
         }
     }
 
@@ -198,7 +198,10 @@ public class ArtistController {
             @PathVariable String artistId,
             @CurrentUser UserEntity user
     ) {
-        this.favorites.deleteById(new UserFavoriteArtistId(user.getUserId(), artistId));
+        ArtistEntity artist = this.artists.findByPublicId(artistId);
+        if (artist != null) {
+            this.favorites.deleteById(new UserFavoriteArtistId(user.getUserId(), artist.getArtistId()));
+        }
     }
 
     @GetMapping("/favorites/{username}")
@@ -223,7 +226,7 @@ public class ArtistController {
     }
 
     private ArtistEntity findArtist(String artistId) {
-        ArtistEntity artist = this.artists.findByArtistId(artistId);
+        ArtistEntity artist = this.artists.findByPublicId(artistId);
 
         if (artist == null) {
             throw new AuxException(
@@ -253,7 +256,7 @@ public class ArtistController {
     }
 
     private static ArtistSummary toSummary(ArtistEntity artist) {
-        return new ArtistSummary(artist.getArtistId(), artist.getArtistName(), artist.getArtistPfpUrl());
+        return new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl());
     }
 
 }

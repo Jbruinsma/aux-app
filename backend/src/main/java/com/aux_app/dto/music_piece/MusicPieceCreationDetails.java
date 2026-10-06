@@ -9,7 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public record MusicPieceCreationDetails(
         @Schema(example = "Dark Fantasy") @NotBlank @Size(max = 200) String name,
-        @Schema(example = "123e4567-e89b-12d3-a456-426614174000") @NotBlank String artistId,
+        @Schema(example = "a_8f3k2Q") @NotBlank String artistId,
         @Schema(example = "true") boolean isPublic,
         @NotNull MultipartFile coverImage,
         @NotNull MultipartFile mp3File

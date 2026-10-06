@@ -134,7 +134,8 @@ onMounted(async () => {
   try {
     const playlist = await fetchPlaylist(username, id)
     // Only the owner can edit (the endpoint 404s for anyone else), so send everyone else to the playlist itself
-    if (playlist.playlistOwner.userId !== userStore.userData.userId) {
+    // Compare usernames, not ids: userData persists in localStorage and may predate the switch to public ids
+    if (playlist.playlistOwner.username?.toLowerCase() !== userStore.userData?.username?.toLowerCase()) {
       await router.replace(playlistRoute)
       return
     }

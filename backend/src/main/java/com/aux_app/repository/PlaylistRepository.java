@@ -14,20 +14,21 @@ import java.util.List;
 
 public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String> {
 
-    PlaylistEntity findPlaylistEntityByPlaylistId(String playlistId);
+    // Callers pass the public id from the URL; the API never sees playlist UUIDs
+    PlaylistEntity findByPublicId(String publicId);
 
     // Null if playlist doesn't exist or user hasn't saved it.
     @Query("""
             SELECT p FROM PlaylistEntity p
-            WHERE p.playlistId = :playlistId
+            WHERE p.publicId = :publicId
               AND EXISTS (SELECT 1 FROM UserSavedPlaylistEntity s
-                          WHERE s.playlistId = :playlistId AND s.userId = :userId)
+                          WHERE s.playlistId = p.playlistId AND s.userId = :userId)
             """)
-    PlaylistEntity findSavedPlaylist(@Param("playlistId") String playlistId, @Param("userId") String userId);
+    PlaylistEntity findSavedPlaylist(@Param("publicId") String publicId, @Param("userId") String userId);
 
-    // Null if playlist doesn't exist. Guard before use.
-    default PlaylistPage findPlaylistWithTracks(String playlistId, String userId) {
-        List<PlaylistWithTracksRow> rows = findPlaylistPage(playlistId, userId);
+    // Null if playlist doesn't exist. Guard before use. Ids in the result are public ids.
+    default PlaylistPage findPlaylistWithTracks(String publicId, String userId) {
+        List<PlaylistWithTracksRow> rows = findPlaylistPage(publicId, userId);
         if (rows.isEmpty()) {
             return null;
         }
@@ -60,19 +61,19 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     }
 
     @Query(value = """
-            SELECT p.playlist_id AS playlistId,
-                   p.owner_id AS ownerId,
+            SELECT p.public_id AS playlistId,
+                   u.public_id AS ownerId,
                    CAST(p.is_public AS INTEGER) AS isPublic,
                    p.playlist_cover_url AS playlistCoverUrl,
                    p.playlist_name AS playlistName,
                    u.username AS ownerUsername,
                    u.profile_picture_url AS ownerPfpUrl,
                    (usp.user_id IS NOT NULL) AS isSaved,
-                   pt.music_piece_id AS musicPieceId,
+                   mp.public_id AS musicPieceId,
                    pt.playlist_position AS playlistPosition,
                    mp.name AS pieceName,
                    mp.cover_url AS pieceCoverUrl,
-                   a.artist_id AS artistId,
+                   a.public_id AS artistId,
                    a.artist_name AS artistName,
                    a.artist_pfp_url AS artistPfpUrl,
                    (uft.user_id IS NOT NULL) AS isFavorite
@@ -83,10 +84,10 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             LEFT JOIN music_pieces mp ON mp.music_piece_id = pt.music_piece_id
             LEFT JOIN artists a ON a.artist_id = mp.artist_id
             LEFT JOIN user_favorite_tracks uft ON uft.music_piece_id = mp.music_piece_id AND uft.user_id = :userId
-            WHERE p.playlist_id = :playlistId
+            WHERE p.public_id = :publicId
             ORDER BY pt.playlist_position
             """, nativeQuery = true)
-    List<PlaylistWithTracksRow> findPlaylistPage(@Param("playlistId") String playlistId, @Param("userId") String userId);
+    List<PlaylistWithTracksRow> findPlaylistPage(@Param("publicId") String publicId, @Param("userId") String userId);
 
     interface PlaylistSearchRow {
         String getPlaylistId();
@@ -128,7 +129,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     // Search by name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
     // Private playlists only show up for their owner (`userId` may be null).
     @Query(value = """
-            SELECT p.playlist_id AS playlistId, p.playlist_name AS playlistName, p.playlist_cover_url AS playlistCoverUrl,
+            SELECT p.public_id AS playlistId, p.playlist_name AS playlistName, p.playlist_cover_url AS playlistCoverUrl,
                    o.username AS ownerUsername,
                    (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS pieceCount
             FROM playlists p

@@ -19,6 +19,10 @@ public class UserEntity {
     @Column(name = "user_id")
     private String userId;
 
+    // What the API shows instead of the UUID; see PublicId
+    @Column(name = "public_id", nullable = false, unique = true, length = 8)
+    private String publicId;
+
     @Column(nullable = false, unique = true, length = 16)
     private String username;
 
@@ -54,6 +58,7 @@ public class UserEntity {
             OnboardingStep onboardingStep
     ) {
         this.userId = userId;
+        this.publicId = PublicId.generate(PublicId.USER);
         this.email = email;
         this.username = generateBaseUsername(userId);
         this.passwordHash = passwordHash;
@@ -64,6 +69,7 @@ public class UserEntity {
     }
 
     public String getUserId() { return userId; }
+    public String getPublicId() { return publicId; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
