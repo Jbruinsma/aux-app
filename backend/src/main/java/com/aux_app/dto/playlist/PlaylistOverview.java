@@ -8,11 +8,14 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 
 import java.util.List;
 
+@Schema(description = "A playlist with its tracks, owner, editors and the caller's access")
 public record PlaylistOverview(
         @JsonUnwrapped CorePlaylist playlist,
-        @Schema(example = "12") int totalPieces,
-        @Schema(example = "true") boolean isPublic,
-        PlaylistOwner playlistOwner,
-        @Schema(example = "false") boolean isSaved,
-        List<MusicPieceOverview> musicPieces
+        @Schema(description = "Number of tracks in the playlist", example = "12") int totalPieces,
+        @Schema(description = "Whether anyone can open the playlist; private ones are only for the owner and accepted members", example = "true") boolean isPublic,
+        @Schema(description = "The playlist's owner") PlaylistOwner playlistOwner,
+        @Schema(description = "Whether the caller has saved the playlist", example = "false") boolean isSaved,
+        @Schema(description = "Tracks in playlist order; empty for a new playlist") List<MusicPieceOverview> musicPieces,
+        @Schema(description = "Accepted members with EDITOR permission; empty for a new playlist") List<PlaylistEditor> editors,
+        @Schema(description = "Caller's access; null when they are only viewing a public playlist", nullable = true) PlaylistAccess access
 ) {}
