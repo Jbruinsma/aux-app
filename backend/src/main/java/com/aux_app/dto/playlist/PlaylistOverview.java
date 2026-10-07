@@ -14,5 +14,6 @@ public record PlaylistOverview(
         @Schema(example = "true") boolean isPublic,
         PlaylistOwner playlistOwner,
         @Schema(example = "false") boolean isSaved,
-        List<MusicPieceOverview> musicPieces
+        List<MusicPieceOverview> musicPieces,
+        @Schema(description = "Accepted members with EDITOR permission; empty for a new playlist") List<PlaylistEditor> editors
 ) {}

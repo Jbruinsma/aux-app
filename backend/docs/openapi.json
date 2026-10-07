@@ -653,6 +653,8 @@
     "/api/playlists/{playlist_id}/members" : {
       "get" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "List a playlist's members",
+        "description" : "Owner only. Returns every membership, PENDING and ACCEPTED, oldest invite first, each with\nits user, permission, status and timestamps.\n",
         "operationId" : "getPlaylistMembers",
         "parameters" : [ {
           "name" : "playlist_id",
@@ -664,7 +666,27 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PlaylistMemberResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found or caller is not its owner (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
@@ -938,6 +960,8 @@
       },
       "delete" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Remove a member from a playlist",
+        "description" : "Owner only. Deletes the membership of the user with the given public id, whether they\naccepted or the invite is still PENDING (which revokes it). Returns the removed user and\nthe status the membership had.\n",
         "operationId" : "deletePlaylistMembers",
         "parameters" : [ {
           "name" : "playlist_id",
@@ -947,9 +971,46 @@
             "type" : "string"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistMemberRemoval"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMemberRemovalResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or bad field (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found or caller is not its owner (PLAYLIST_NOT_FOUND), user not found (USER_NOT_FOUND), or user has no membership (USER_NOT_MEMBER)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
@@ -4071,6 +4132,24 @@
           }
         }
       },
+      "PlaylistEditor" : {
+        "type" : "object",
+        "description" : "An accepted member who can edit the playlist's tracks",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "example" : "u_41x9Rb"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          },
+          "pfpUrl" : {
+            "type" : [ "string", "null" ],
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          }
+        }
+      },
       "PlaylistOverview" : {
         "type" : "object",
         "properties" : {
@@ -4106,6 +4185,13 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/MusicPieceOverview"
+            }
+          },
+          "editors" : {
+            "type" : "array",
+            "description" : "Accepted members with EDITOR permission; empty for a new playlist",
+            "items" : {
+              "$ref" : "#/components/schemas/PlaylistEditor"
             }
           }
         }
@@ -4453,6 +4539,33 @@
           "canEdit" : {
             "type" : "boolean",
             "example" : false
+          }
+        }
+      },
+      "PlaylistMemberRemoval" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "description" : "Public id of the member (or invitee) to remove",
+            "example" : "u_41x9Rb",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "userId" ]
+      },
+      "PlaylistMemberRemovalResponse" : {
+        "type" : "object",
+        "description" : "The membership that was removed",
+        "properties" : {
+          "user" : {
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The removed user"
+          },
+          "previousStatus" : {
+            "type" : "string",
+            "description" : "Status the membership had when removed: PENDING means an invite was revoked",
+            "enum" : [ "PENDING", "ACCEPTED" ]
           }
         }
       },

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import com.aux_app.auth.CurrentUser;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -98,7 +99,8 @@ public class PlaylistController {
                 playlist.isPublic(),
                 playlist.owner(),
                 playlist.isSaved(),
-                playlist.pieces()
+                playlist.pieces(),
+                playlist.editors()
         );
     }
 
@@ -149,7 +151,8 @@ public class PlaylistController {
                         user.getUsername()
                 ),
                 false,
-                new ArrayList<MusicPieceOverview>()
+                new ArrayList<MusicPieceOverview>(),
+                new ArrayList<PlaylistEditor>()
         );
     }
 
@@ -319,11 +322,19 @@ public class PlaylistController {
     }
 
     @GetMapping("/{playlist_id}/members")
-    public void getPlaylistMembers(
+    @Operation(
+            summary = "List a playlist's members",
+            description = """
+                    Owner only. Returns every membership, PENDING and ACCEPTED, oldest invite first, each with
+                    its user, permission, status and timestamps.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or caller is not its owner (code PLAYLIST_NOT_FOUND)")
+    public List<PlaylistMemberResponse> getPlaylistMembers(
             @PathVariable("playlist_id") String playlistId,
             @CurrentUser UserEntity user
     ) {
-
+        return members.list(playlistId, user);
     }
 
     @PostMapping("/{playlist_id}/members")
@@ -364,11 +375,22 @@ public class PlaylistController {
     }
 
     @DeleteMapping("/{playlist_id}/members")
-    public void deletePlaylistMembers(
+    @Operation(
+            summary = "Remove a member from a playlist",
+            description = """
+                    Owner only. Deletes the membership of the user with the given public id, whether they
+                    accepted or the invite is still PENDING (which revokes it). Returns the removed user and
+                    the status the membership had.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or caller is not its owner (PLAYLIST_NOT_FOUND), user not found (USER_NOT_FOUND), or user has no membership (USER_NOT_MEMBER)")
+    public PlaylistMemberRemovalResponse deletePlaylistMembers(
             @PathVariable("playlist_id") String playlistId,
-            @CurrentUser UserEntity user
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody PlaylistMemberRemoval details
     ) {
-
+        return members.remove(playlistId, user, details);
     }
 
     @GetMapping("/invites")

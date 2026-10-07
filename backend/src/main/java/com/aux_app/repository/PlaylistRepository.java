@@ -2,6 +2,7 @@ package com.aux_app.repository;
 
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
+import com.aux_app.dto.playlist.PlaylistEditor;
 import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.PlaylistMemberEntity;
@@ -43,8 +44,21 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                 Integer.valueOf(1).equals(first.getIsPublic()),
                 new PlaylistOwner(first.getOwnerId(), first.getOwnerPfpUrl(), first.getOwnerUsername()),
                 Integer.valueOf(1).equals(first.getIsSaved()),
-                pieces);
+                pieces,
+                findEditors(publicId));
     }
+
+    // Accepted EDITOR members only, oldest invite first.
+    @Query("""
+            SELECT new com.aux_app.dto.playlist.PlaylistEditor(u.publicId, u.username, u.profilePictureUrl)
+            FROM PlaylistMemberEntity m
+            JOIN PlaylistEntity p ON p.playlistId = m.playlistId
+            JOIN UserEntity u ON u.userId = m.userId
+            WHERE p.publicId = :publicId AND m.status = com.aux_app.dto.playlist.PlaylistMemberStatus.ACCEPTED
+              AND m.permission = com.aux_app.dto.playlist.PlaylistPermission.EDITOR
+            ORDER BY m.invitedAt
+            """)
+    List<PlaylistEditor> findEditors(@Param("publicId") String publicId);
 
     private static @NonNull List<MusicPieceOverview> createPieces(List<PlaylistWithTracksRow> rows) {
         List<MusicPieceOverview> pieces = new ArrayList<>(rows.size());
@@ -125,7 +139,8 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             boolean isPublic,
             PlaylistOwner owner,
             boolean isSaved,
-            List<MusicPieceOverview> pieces
+            List<MusicPieceOverview> pieces,
+            List<PlaylistEditor> editors
     ) {}
 
     // Null if playlist doesn't exist. `invitee` is null if no user has that public id;
