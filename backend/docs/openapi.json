@@ -472,19 +472,152 @@
         } ]
       }
     },
-    "/api/playlists/{playlist_id}/save" : {
+    "/api/playlists/{playlistId}" : {
+      "put" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Edit a playlist's details",
+        "description" : "Partial update of a playlist the caller owns or can edit (accepted EDITOR). Only the owner can change `isPublic`. Every multipart field is optional; a missing or\nblank field leaves that value unchanged.\n- `playlistName`: at most 36 chars, trimmed.\n- `isPublic`: `true` or `false`.\n- `playlistCover`: same rules as on create. Replaces the old cover.\nReturns the playlist's id, name and cover URL after the update.\n",
+        "operationId" : "editPlaylist",
+        "parameters" : [ {
+          "name" : "playlistId",
+          "in" : "path",
+          "description" : "Public id of the playlist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "p_7c2dK1"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistDetailsUpdate"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CorePlaylist"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Editor tried to change `isPublic` (code PLAYLIST_ACTION_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or caller can't edit it (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists/{playlistId}/save" : {
       "put" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "Save a playlist",
         "description" : "Adds another user's public playlist to the caller's saved playlists. Saving a playlist\nthat is already saved is a no-op and still returns 200.\nPrivate playlists return 404, the same as a missing playlist.\nReturns the playlist's id, name and cover URL, and `isSaved` (always true).\n",
         "operationId" : "savePlaylist",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
@@ -498,7 +631,7 @@
             }
           },
           "403" : {
-            "description" : "Caller owns the playlist (code PLAYLIST_ACTION_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "description" : "Caller owns the playlist or is a member of it (code PLAYLIST_ACTION_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -567,12 +700,14 @@
         "description" : "Removes a playlist from the caller's saved playlists. Unsaving a playlist the caller\nhas not saved returns 404, so a repeated call is not idempotent.\nReturns the playlist's id, name and cover URL, and `isSaved` (always false).\n",
         "operationId" : "unsavePlaylist",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
@@ -650,19 +785,21 @@
         } ]
       }
     },
-    "/api/playlists/{playlist_id}/members" : {
+    "/api/playlists/{playlistId}/members" : {
       "get" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "List a playlist's members",
         "description" : "Owner only. Returns every membership, PENDING and ACCEPTED, oldest invite first, each with\nits user, permission, status and timestamps.\n",
         "operationId" : "getPlaylistMembers",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
@@ -748,12 +885,14 @@
         "description" : "Owner only. Updates the permission of an existing member (PENDING or ACCEPTED).\nReturns the updated membership.\n",
         "operationId" : "editPlaylistMemberPermissions",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "requestBody" : {
           "content" : {
@@ -856,12 +995,14 @@
         "description" : "Owner only. Creates a PENDING membership for the user with the given public id and emails\nthem an invitation (a failed email does not fail the request). Returns the new membership.\n",
         "operationId" : "addPlaylistMembers",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "requestBody" : {
           "content" : {
@@ -964,12 +1105,14 @@
         "description" : "Owner only. Deletes the membership of the user with the given public id, whether they\naccepted or the invite is still PENDING (which revokes it). Returns the removed user and\nthe status the membership had.\n",
         "operationId" : "deletePlaylistMembers",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "requestBody" : {
           "content" : {
@@ -1034,135 +1177,6 @@
           },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
-            "headers" : {
-              "Retry-After" : {
-                "description" : "Seconds until the next request is allowed",
-                "schema" : {
-                  "type" : "integer",
-                  "format" : "int32"
-                }
-              }
-            },
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Unexpected server error (code INTERNAL_ERROR)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          }
-        },
-        "security" : [ {
-          "bearerAuth" : [ ]
-        } ]
-      }
-    },
-    "/api/playlists/{playlistId}" : {
-      "put" : {
-        "tags" : [ "playlist-controller" ],
-        "summary" : "Edit a playlist's details",
-        "description" : "Partial update of a playlist the caller owns. Every multipart field is optional; a missing or\nblank field leaves that value unchanged.\n- `playlistName`: at most 36 chars, trimmed.\n- `isPublic`: `true` or `false`.\n- `playlistCover`: same rules as on create. Replaces the old cover.\nReturns the playlist's id, name and cover URL after the update.\n",
-        "operationId" : "editPlaylist",
-        "parameters" : [ {
-          "name" : "playlistId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "multipart/form-data" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/PlaylistDetailsUpdate"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/CorePlaylist"
-                }
-              }
-            }
-          },
-          "400" : {
-            "description" : "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "404" : {
-            "description" : "Playlist not found, or not yours (code PLAYLIST_NOT_FOUND)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "413" : {
-            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "415" : {
-            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "429" : {
-            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
               "Retry-After" : {
                 "description" : "Seconds until the next request is allowed",
@@ -1898,21 +1912,42 @@
         } ]
       }
     },
-    "/api/playlists/{playlist_id}/invites/accept" : {
+    "/api/playlists/{playlistId}/invites/accept" : {
       "post" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Accept a playlist invite",
+        "description" : "Accepts the caller's PENDING invite to the playlist. From then on the caller has the\npermission they were offered (LISTENER or EDITOR), including on a private playlist.\nReturns the caller's membership with status ACCEPTED.\n",
         "operationId" : "acceptPlaylistInvite",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMemberResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or the caller has no pending invite to it (code INVITE_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
@@ -3125,26 +3160,30 @@
         }
       }
     },
-    "/api/playlists/{username}/{playlist_id}" : {
+    "/api/playlists/{username}/{playlistId}" : {
       "get" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "Get a playlist with its tracks",
-        "description" : "`username` must be the playlist owner's username. Private playlists are only visible to\ntheir owner; to anyone else they return 404, the same as a missing playlist.\n`isSaved` is true when the caller has saved the playlist.\n",
+        "description" : "`username` must be the playlist owner's username. Private playlists are only visible to\ntheir owner and accepted members. A caller with a pending invite gets 403\n(PLAYLIST_INVITE_PENDING); anyone else gets 404, the same as a missing playlist.\n`access` is the caller's level (OWNER, EDITOR or LISTENER), null on a public playlist they have no part in.\n`isSaved` is true when the caller has saved the playlist.\n",
         "operationId" : "getPlaylist",
         "parameters" : [ {
           "name" : "username",
           "in" : "path",
+          "description" : "Username of the playlist owner",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "justin"
         }, {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
@@ -3153,6 +3192,16 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PlaylistOverview"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Private playlist and the caller's invite is still pending (code PLAYLIST_INVITE_PENDING); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -3169,87 +3218,6 @@
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "429" : {
-            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
-            "headers" : {
-              "Retry-After" : {
-                "description" : "Seconds until the next request is allowed",
-                "schema" : {
-                  "type" : "integer",
-                  "format" : "int32"
-                }
-              }
-            },
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Unexpected server error (code INTERNAL_ERROR)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          }
-        },
-        "security" : [ {
-          "bearerAuth" : [ ]
-        } ]
-      }
-    },
-    "/api/playlists/{playlist_id}/invite" : {
-      "get" : {
-        "tags" : [ "playlist-controller" ],
-        "operationId" : "getPlaylistInvite",
-        "parameters" : [ {
-          "name" : "playlist_id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -3296,6 +3264,8 @@
     "/api/playlists/invites" : {
       "get" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "List the caller's pending playlist invites",
+        "description" : "Returns every unanswered (PENDING) invite the caller has, newest first, with the playlist's\nname and cover, the permission offered, and who invited them. Accepted invites are not listed.\nA pending invite does not grant access to a private playlist; accept it first.\n",
         "operationId" : "getPlaylistInvites",
         "responses" : {
           "200" : {
@@ -3716,21 +3686,42 @@
         }
       }
     },
-    "/api/playlists/{playlist_id}/membership" : {
+    "/api/playlists/{playlistId}/membership" : {
       "delete" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Leave a playlist",
+        "description" : "Removes the caller from a playlist they accepted an invite to. The owner cannot leave\ntheir own playlist. Returns the caller's user and `previousStatus` ACCEPTED.\n",
         "operationId" : "deletePlaylistMembership",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMemberRemovalResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or the caller is not an accepted member of it (code MEMBERSHIP_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
@@ -3787,21 +3778,42 @@
         } ]
       }
     },
-    "/api/playlists/{playlist_id}/invites" : {
+    "/api/playlists/{playlistId}/invites" : {
       "delete" : {
         "tags" : [ "playlist-controller" ],
+        "summary" : "Decline a playlist invite",
+        "description" : "Deletes the caller's PENDING invite to the playlist. The owner can invite them again later.\nReturns the caller's user and `previousStatus` PENDING.\n",
         "operationId" : "deletePlaylistInvite",
         "parameters" : [ {
-          "name" : "playlist_id",
+          "name" : "playlistId",
           "in" : "path",
+          "description" : "Public id of the playlist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "p_7c2dK1"
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMemberRemovalResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or the caller has no pending invite to it (code INVITE_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
@@ -3965,31 +3977,60 @@
           }
         }
       },
+      "PlaylistDetailsUpdate" : {
+        "type" : "object",
+        "properties" : {
+          "playlistName" : {
+            "type" : "string",
+            "description" : "New name, at most 36 chars. Omit or leave blank to keep the current name",
+            "example" : "My Playlist",
+            "maxLength" : 36,
+            "minLength" : 0
+          },
+          "isPublic" : {
+            "type" : "boolean",
+            "description" : "New visibility. Owner only; omit to keep the current value",
+            "example" : true
+          },
+          "playlistCover" : {
+            "type" : "string",
+            "format" : "binary",
+            "description" : "New cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Omit to keep the current cover"
+          }
+        }
+      },
       "CorePlaylist" : {
         "type" : "object",
+        "description" : "The basic identity of a playlist",
         "properties" : {
           "playlistId" : {
             "type" : "string",
+            "description" : "Public id of the playlist",
             "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
+            "description" : "Display name, 1-36 chars",
             "example" : "Late Night Drive"
           },
           "playlistCoverUrl" : {
             "type" : "string",
+            "description" : "Square WebP cover, at most 1024x1024",
             "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
       "SavedPlaylistResponse" : {
         "type" : "object",
+        "description" : "Result of saving or unsaving a playlist",
         "properties" : {
           "corePlaylist" : {
-            "$ref" : "#/components/schemas/CorePlaylist"
+            "$ref" : "#/components/schemas/CorePlaylist",
+            "description" : "The playlist that was saved or unsaved"
           },
           "isSaved" : {
             "type" : "boolean",
+            "description" : "Whether the playlist is saved after the call: true from save, false from unsave",
             "example" : true
           }
         }
@@ -4032,49 +4073,35 @@
           "invitedAt" : {
             "type" : "string",
             "format" : "date-time",
+            "description" : "When the invite was sent",
             "example" : "2026-10-06T14:03:11Z"
           },
           "respondedAt" : {
             "type" : [ "string", "null" ],
             "format" : "date-time",
-            "description" : "Null while PENDING",
+            "description" : "When the user accepted; null while PENDING",
             "example" : "2026-10-07T09:12:45Z"
           }
         }
       },
       "PlaylistOwner" : {
         "type" : "object",
+        "description" : "A user shown on a playlist: its owner, or the user on a membership",
         "properties" : {
           "userId" : {
             "type" : "string",
+            "description" : "Public id of the user",
             "example" : "u_41x9Rb"
           },
           "pfpUrl" : {
             "type" : "string",
+            "description" : "Profile picture URL",
             "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "username" : {
             "type" : "string",
+            "description" : "Username",
             "example" : "justin"
-          }
-        }
-      },
-      "PlaylistDetailsUpdate" : {
-        "type" : "object",
-        "properties" : {
-          "playlistName" : {
-            "type" : "string",
-            "example" : "My Playlist",
-            "maxLength" : 36,
-            "minLength" : 0
-          },
-          "isPublic" : {
-            "type" : "boolean",
-            "example" : true
-          },
-          "playlistCover" : {
-            "type" : "string",
-            "format" : "binary"
           }
         }
       },
@@ -4083,17 +4110,20 @@
         "properties" : {
           "playlistName" : {
             "type" : "string",
+            "description" : "Name, 1-36 chars",
             "example" : "Chill Beats",
             "maxLength" : 36,
             "minLength" : 0
           },
           "isPublic" : {
             "type" : "boolean",
+            "description" : "Whether anyone can open the playlist; defaults to false",
             "example" : true
           },
           "playlistCover" : {
             "type" : "string",
-            "format" : "binary"
+            "format" : "binary",
+            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes"
           }
         },
         "required" : [ "playlistCover", "playlistName" ]
@@ -4145,51 +4175,63 @@
         "properties" : {
           "userId" : {
             "type" : "string",
+            "description" : "Public id of the editor",
             "example" : "u_41x9Rb"
           },
           "username" : {
             "type" : "string",
+            "description" : "Username of the editor",
             "example" : "justin"
           },
           "pfpUrl" : {
             "type" : [ "string", "null" ],
+            "description" : "Profile picture URL",
             "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
       "PlaylistOverview" : {
         "type" : "object",
+        "description" : "A playlist with its tracks, owner, editors and the caller's access",
         "properties" : {
           "playlistId" : {
             "type" : "string",
+            "description" : "Public id of the playlist",
             "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
+            "description" : "Display name, 1-36 chars",
             "example" : "Late Night Drive"
           },
           "playlistCoverUrl" : {
             "type" : "string",
+            "description" : "Square WebP cover, at most 1024x1024",
             "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "totalPieces" : {
             "type" : "integer",
             "format" : "int32",
+            "description" : "Number of tracks in the playlist",
             "example" : 12
           },
           "isPublic" : {
             "type" : "boolean",
+            "description" : "Whether anyone can open the playlist; private ones are only for the owner and accepted members",
             "example" : true
           },
           "playlistOwner" : {
-            "$ref" : "#/components/schemas/PlaylistOwner"
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The playlist's owner"
           },
           "isSaved" : {
             "type" : "boolean",
+            "description" : "Whether the caller has saved the playlist",
             "example" : false
           },
           "musicPieces" : {
             "type" : "array",
+            "description" : "Tracks in playlist order; empty for a new playlist",
             "items" : {
               "$ref" : "#/components/schemas/MusicPieceOverview"
             }
@@ -4200,6 +4242,11 @@
             "items" : {
               "$ref" : "#/components/schemas/PlaylistEditor"
             }
+          },
+          "access" : {
+            "type" : [ "string", "null" ],
+            "description" : "Caller's access; null when they are only viewing a public playlist",
+            "enum" : [ "OWNER", "EDITOR", "LISTENER" ]
           }
         }
       },
@@ -4386,14 +4433,17 @@
         "properties" : {
           "playlistId" : {
             "type" : "string",
+            "description" : "Public id of the playlist",
             "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
+            "description" : "Display name, 1-36 chars",
             "example" : "Late Night Drive"
           },
           "playlistCoverUrl" : {
             "type" : "string",
+            "description" : "Square WebP cover, at most 1024x1024",
             "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "totalPieces" : {
@@ -4446,14 +4496,17 @@
         "properties" : {
           "playlistId" : {
             "type" : "string",
+            "description" : "Public id of the playlist",
             "example" : "p_7c2dK1"
           },
           "playlistName" : {
             "type" : "string",
+            "description" : "Display name, 1-36 chars",
             "example" : "Late Night Drive"
           },
           "playlistCoverUrl" : {
             "type" : "string",
+            "description" : "Square WebP cover, at most 1024x1024",
             "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "ownerUsername" : {
@@ -4482,31 +4535,41 @@
       },
       "PendingPlaylistInvite" : {
         "type" : "object",
+        "description" : "An unanswered invite to join a playlist",
         "properties" : {
           "playlistId" : {
-            "type" : [ "string", "null" ]
+            "type" : [ "string", "null" ],
+            "description" : "Public id of the playlist; send it to the accept and decline endpoints",
+            "example" : "p_7c2dK1"
           },
           "playlistName" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "Name of the playlist",
+            "example" : "Late Night Drive"
           },
           "playlistCoverUrl" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "Cover of the playlist",
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "permission" : {
             "type" : "string",
-            "description" : "LISTENER can only play the playlist; EDITOR can also change its tracks",
+            "description" : "Access the invite grants once accepted",
             "enum" : [ "LISTENER", "EDITOR" ]
           },
           "invitedBy" : {
-            "$ref" : "#/components/schemas/PlaylistOwner"
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The playlist owner who sent the invite"
           }
         }
       },
       "PendingPlaylistInvites" : {
         "type" : "object",
+        "description" : "The caller's pending playlist invites",
         "properties" : {
           "invites" : {
             "type" : "array",
+            "description" : "Newest first; empty if there are none",
             "items" : {
               "$ref" : "#/components/schemas/PendingPlaylistInvite"
             }
@@ -4582,18 +4645,6 @@
           }
         }
       },
-      "PlaylistMemberRemoval" : {
-        "type" : "object",
-        "properties" : {
-          "userId" : {
-            "type" : "string",
-            "description" : "Public id of the member (or invitee) to remove",
-            "example" : "u_41x9Rb",
-            "minLength" : 1
-          }
-        },
-        "required" : [ "userId" ]
-      },
       "PlaylistMemberRemovalResponse" : {
         "type" : "object",
         "description" : "The membership that was removed",
@@ -4608,6 +4659,18 @@
             "enum" : [ "PENDING", "ACCEPTED" ]
           }
         }
+      },
+      "PlaylistMemberRemoval" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "description" : "Public id of the member (or invitee) to remove",
+            "example" : "u_41x9Rb",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "userId" ]
       },
       "AuxServerError" : {
         "properties" : {
