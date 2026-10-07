@@ -4,6 +4,7 @@ import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.playlist.*;
 import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.*;
+import com.aux_app.repository.PlaylistMemberRepository;
 import com.aux_app.repository.UserSavedPlaylistRepository;
 import com.aux_app.services.PlaylistMembersService;
 import com.aux_app.services.UploadService;
@@ -394,10 +395,10 @@ public class PlaylistController {
     }
 
     @GetMapping("/invites")
-    public void getPlaylistInvites(
+    public PendingPlaylistInvites getPlaylistInvites(
             @CurrentUser UserEntity user
     ) {
-
+        return members.retrievePlaylistInvites(user.getUserId());
     }
 
     @GetMapping("/{playlist_id}/invite")

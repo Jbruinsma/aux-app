@@ -33,4 +33,18 @@ public interface PlaylistMemberRepository extends JpaRepository<PlaylistMemberEn
 
     record MemberWithUser(PlaylistEntity playlist, PlaylistMemberEntity member, UserEntity user) {}
 
+    // Every unanswered (PENDING) invite a user has, newest first, with the playlist and its owner.
+    // `userId` is the internal id, not the public one.
+    @Query("""
+            SELECT new com.aux_app.repository.PlaylistMemberRepository$InviteWithOwner(p, m, o)
+            FROM PlaylistMemberEntity m
+            JOIN PlaylistEntity p ON p.playlistId = m.playlistId
+            JOIN UserEntity o ON o.userId = p.ownerId
+            WHERE m.userId = :userId AND m.status = com.aux_app.dto.playlist.PlaylistMemberStatus.PENDING
+            ORDER BY m.invitedAt DESC
+            """)
+    List<InviteWithOwner> findInvitesForUser(@Param("userId") String userId);
+
+    record InviteWithOwner(PlaylistEntity playlist, PlaylistMemberEntity member, UserEntity owner) {}
+
 }

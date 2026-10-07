@@ -3299,7 +3299,14 @@
         "operationId" : "getPlaylistInvites",
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PendingPlaylistInvites"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Missing or invalid token (code INVALID_TOKEN)",
@@ -4470,6 +4477,39 @@
           "exists" : {
             "type" : "boolean",
             "example" : true
+          }
+        }
+      },
+      "PendingPlaylistInvite" : {
+        "type" : "object",
+        "properties" : {
+          "playlistId" : {
+            "type" : [ "string", "null" ]
+          },
+          "playlistName" : {
+            "type" : "string"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "LISTENER can only play the playlist; EDITOR can also change its tracks",
+            "enum" : [ "LISTENER", "EDITOR" ]
+          },
+          "invitedBy" : {
+            "$ref" : "#/components/schemas/PlaylistOwner"
+          }
+        }
+      },
+      "PendingPlaylistInvites" : {
+        "type" : "object",
+        "properties" : {
+          "invites" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PendingPlaylistInvite"
+            }
           }
         }
       },

@@ -32,6 +32,39 @@ public class PlaylistMembersService {
         this.emails = emails;
     }
 
+    public PendingPlaylistInvites retrievePlaylistInvites (String currentUserId) {
+
+        List<PendingPlaylistInvite> pendingInvites = new ArrayList<>();
+
+        List<PlaylistMemberRepository.InviteWithOwner> playlistInvites = members.findInvitesForUser(currentUserId);
+
+        for (PlaylistMemberRepository.InviteWithOwner invite : playlistInvites) {
+
+            PlaylistEntity playlist = invite.playlist();
+            PlaylistMemberEntity member = invite.member();
+            UserEntity owner = invite.owner();
+
+            if (playlist == null || member == null || owner == null) continue;
+
+            pendingInvites.add(
+                    new PendingPlaylistInvite(
+                            playlist.getPlaylistId(),
+                            playlist.getPlaylistName(),
+                            playlist.getPlaylistCoverUrl(),
+                            member.getPermission(),
+                            new PlaylistOwner(
+                                    owner.getPublicId(),
+                                    owner.getProfilePictureUrl(),
+                                    owner.getUsername()
+                            )
+                    )
+            );
+
+        }
+
+        return new PendingPlaylistInvites(pendingInvites);
+    }
+
     public PlaylistMemberResponse invite(String playlistId, UserEntity owner, PlaylistInvitationDetails details) {
         PlaylistWithMember found = findOwned(playlistId, owner, details.userId());
         UserEntity invitee = found.invitee();
