@@ -3,10 +3,9 @@ package com.aux_app.controller;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.playlist.*;
 import com.aux_app.dto.users.PlaylistOwner;
-import com.aux_app.entity.PlaylistEntity;
-import com.aux_app.entity.UserSavedPlaylistEntity;
-import com.aux_app.entity.UserSavedPlaylistId;
+import com.aux_app.entity.*;
 import com.aux_app.repository.UserSavedPlaylistRepository;
+import com.aux_app.services.PlaylistMembersService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import com.aux_app.auth.CurrentUser;
-import com.aux_app.entity.UserEntity;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -30,15 +28,18 @@ public class PlaylistController {
 
     final private PlaylistRepository playlists;
     final private UserSavedPlaylistRepository savedPlaylists;
+    final private PlaylistMembersService members;
     final private UploadService uploads;
 
     public PlaylistController(
             PlaylistRepository playlists,
             UserSavedPlaylistRepository savedPlaylists,
+            PlaylistMembersService members,
             UploadService uploadService
     ) {
         this.playlists = playlists;
         this.savedPlaylists = savedPlaylists;
+        this.members = members;
         this.uploads = uploadService;
     }
 
@@ -218,7 +219,7 @@ public class PlaylistController {
     @ApiResponse(responseCode = "404", description = "Playlist not found, or private (code PLAYLIST_NOT_FOUND)")
     public SavedPlaylistResponse savePlaylist(
             @CurrentUser UserEntity user,
-            @PathVariable String playlist_id
+            @PathVariable("playlist_id") String playlist_id
     ) {
 
         PlaylistEntity selectedPlaylist = playlists.findByPublicId(playlist_id);
@@ -315,6 +316,98 @@ public class PlaylistController {
                 ),
                 false
         );
+    }
+
+    @GetMapping("/{playlist_id}/members")
+    public void getPlaylistMembers(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+
+    }
+
+    @PostMapping("/{playlist_id}/members")
+    @Operation(
+            summary = "Invite a user to a playlist",
+            description = """
+                    Owner only. Creates a PENDING membership for the user with the given public id and emails
+                    them an invitation (a failed email does not fail the request). Returns the new membership.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "403", description = "User already has a membership row (code USER_ALREADY_INVITED)")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field, or inviting yourself (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or caller is not its owner (PLAYLIST_NOT_FOUND), or user not found (USER_NOT_FOUND)")
+    public PlaylistMemberResponse addPlaylistMembers(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody PlaylistInvitationDetails details
+    ) {
+        return members.invite(playlistId, user, details);
+    }
+
+    @PutMapping("/{playlist_id}/members")
+    @Operation(
+            summary = "Change a member's permission",
+            description = """
+                    Owner only. Updates the permission of an existing member (PENDING or ACCEPTED).
+                    Returns the updated membership.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or caller is not its owner (PLAYLIST_NOT_FOUND), user not found (USER_NOT_FOUND), or user has no membership (USER_NOT_MEMBER)")
+    public PlaylistMemberResponse editPlaylistMemberPermissions(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody PlaylistInvitationDetails details
+    ) {
+        return members.updatePermission(playlistId, user, details);
+    }
+
+    @DeleteMapping("/{playlist_id}/members")
+    public void deletePlaylistMembers(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+
+    }
+
+    @GetMapping("/invites")
+    public void getPlaylistInvites(
+            @CurrentUser UserEntity user
+    ) {
+
+    }
+
+    @GetMapping("/{playlist_id}/invite")
+    public void getPlaylistInvite(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+
+    }
+
+    @PostMapping("/{playlist_id}/invites/accept")
+    public void acceptPlaylistInvite(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+
+    }
+
+    @DeleteMapping("/{playlist_id}/invites")
+    public void deletePlaylistInvite(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+
+    }
+
+    @DeleteMapping("/{playlist_id}/membership")
+    public void deletePlaylistMembership(
+            @PathVariable("playlist_id") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+
     }
 
     // TODO POST /{username}/create                        multipart: uuid, owner, name, isPublic, cover

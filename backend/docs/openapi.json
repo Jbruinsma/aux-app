@@ -650,6 +650,362 @@
         } ]
       }
     },
+    "/api/playlists/{playlist_id}/members" : {
+      "get" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "getPlaylistMembers",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Change a member's permission",
+        "description" : "Owner only. Updates the permission of an existing member (PENDING or ACCEPTED).\nReturns the updated membership.\n",
+        "operationId" : "editPlaylistMemberPermissions",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistInvitationDetails"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMemberResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or bad field (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found or caller is not its owner (PLAYLIST_NOT_FOUND), user not found (USER_NOT_FOUND), or user has no membership (USER_NOT_MEMBER)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Invite a user to a playlist",
+        "description" : "Owner only. Creates a PENDING membership for the user with the given public id and emails\nthem an invitation (a failed email does not fail the request). Returns the new membership.\n",
+        "operationId" : "addPlaylistMembers",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistInvitationDetails"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMemberResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "User already has a membership row (code USER_ALREADY_INVITED); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or bad field, or inviting yourself (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found or caller is not its owner (PLAYLIST_NOT_FOUND), or user not found (USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "deletePlaylistMembers",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/playlists/{playlistId}" : {
       "put" : {
         "tags" : [ "playlist-controller" ],
@@ -1448,6 +1804,77 @@
           },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists/{playlist_id}/invites/accept" : {
+      "post" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "acceptPlaylistInvite",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
               "Retry-After" : {
                 "description" : "Seconds until the next request is allowed",
@@ -2734,6 +3161,140 @@
         } ]
       }
     },
+    "/api/playlists/{playlist_id}/invite" : {
+      "get" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "getPlaylistInvite",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists/invites" : {
+      "get" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "getPlaylistInvites",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/core/users" : {
       "get" : {
         "tags" : [ "core-controller" ],
@@ -3086,6 +3647,148 @@
           }
         }
       }
+    },
+    "/api/playlists/{playlist_id}/membership" : {
+      "delete" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "deletePlaylistMembership",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists/{playlist_id}/invites" : {
+      "delete" : {
+        "tags" : [ "playlist-controller" ],
+        "operationId" : "deletePlaylistInvite",
+        "parameters" : [ {
+          "name" : "playlist_id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
     }
   },
   "components" : {
@@ -3223,6 +3926,71 @@
           }
         }
       },
+      "PlaylistInvitationDetails" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "description" : "Public id of the user to invite or update",
+            "example" : "u_41x9Rb",
+            "minLength" : 1
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "Access level to grant",
+            "enum" : [ "LISTENER", "EDITOR" ]
+          }
+        },
+        "required" : [ "permission", "userId" ]
+      },
+      "PlaylistMemberResponse" : {
+        "type" : "object",
+        "description" : "A user's membership row on a playlist",
+        "properties" : {
+          "user" : {
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The invited or member user"
+          },
+          "permission" : {
+            "type" : "string",
+            "description" : "LISTENER can only play; EDITOR can also change tracks",
+            "enum" : [ "LISTENER", "EDITOR" ]
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "PENDING until the user accepts the invite",
+            "enum" : [ "PENDING", "ACCEPTED" ]
+          },
+          "invitedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "example" : "2026-10-06T14:03:11Z"
+          },
+          "respondedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "Null while PENDING",
+            "example" : "2026-10-07T09:12:45Z"
+          }
+        }
+      },
+      "PlaylistOwner" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "example" : "u_41x9Rb"
+          },
+          "pfpUrl" : {
+            "type" : "string",
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "username" : {
+            "type" : "string",
+            "example" : "justin"
+          }
+        }
+      },
       "PlaylistDetailsUpdate" : {
         "type" : "object",
         "properties" : {
@@ -3339,23 +4107,6 @@
             "items" : {
               "$ref" : "#/components/schemas/MusicPieceOverview"
             }
-          }
-        }
-      },
-      "PlaylistOwner" : {
-        "type" : "object",
-        "properties" : {
-          "userId" : {
-            "type" : "string",
-            "example" : "u_41x9Rb"
-          },
-          "pfpUrl" : {
-            "type" : "string",
-            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-          },
-          "username" : {
-            "type" : "string",
-            "example" : "justin"
           }
         }
       },

@@ -37,6 +37,10 @@ public class EmailService {
         send(to, "Your Aux code: " + code, "Your Aux verification code is " + code + ". It expires in 10 minutes.");
     }
 
+    public void sendPlaylistInvitation(String to, String playlistName, String from) {
+        send(to, "You've been invited to a playlist on Aux", "You've been invited to the playlist " + playlistName + " on Aux.");
+    }
+
     public void sendEmailTakenNotice(String to) {
         send(to, "Someone tried to use this email on Aux",
                 "Someone asked to move an Aux account to this address, but it already has an Aux account, so nothing changed. "

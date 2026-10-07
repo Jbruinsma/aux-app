@@ -4,6 +4,8 @@ import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.PlaylistEntity;
+import com.aux_app.entity.PlaylistMemberEntity;
+import com.aux_app.entity.UserEntity;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -125,6 +127,20 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             boolean isSaved,
             List<MusicPieceOverview> pieces
     ) {}
+
+    // Null if playlist doesn't exist. `invitee` is null if no user has that public id;
+    // `member` is null if the invitee has no row (not invited yet).
+    @Query("""
+            SELECT new com.aux_app.repository.PlaylistRepository$PlaylistWithMember(p, u, m)
+            FROM PlaylistEntity p
+            LEFT JOIN UserEntity u ON u.publicId = :inviteePublicId
+            LEFT JOIN PlaylistMemberEntity m ON m.playlistId = p.playlistId AND m.userId = u.userId
+            WHERE p.publicId = :playlistPublicId
+            """)
+    PlaylistWithMember findPlaylistWithMember(
+            @Param("playlistPublicId") String playlistPublicId, @Param("inviteePublicId") String inviteePublicId);
+
+    record PlaylistWithMember(PlaylistEntity playlist, UserEntity invitee, PlaylistMemberEntity member) {}
 
     // Search by name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
     // Private playlists only show up for their owner (`userId` may be null).
