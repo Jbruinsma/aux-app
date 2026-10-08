@@ -1,6 +1,8 @@
 package com.aux_app.dto.base;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 // ISO 3166-1 alpha-2 codes; keep in sync with frontend/src/utils/countries.js
+@Schema(description = "ISO 3166-1 alpha-2 country code")
 public enum Country {
     AD, AE, AF, AG, AI, AL, AM, AO, AQ, AR, AS, AT,
     AU, AW, AX, AZ, BA, BB, BD, BE, BF, BG, BH, BI,

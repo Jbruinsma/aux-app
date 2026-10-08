@@ -6,8 +6,11 @@ import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.PlaylistMemberEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
+import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.PlaylistMemberRepository;
 import com.aux_app.repository.PlaylistRepository;
+import com.aux_app.repository.PlaylistTrackRepository;
+import com.aux_app.repository.UserSavedPlaylistRepository;
 import com.aux_app.repository.PlaylistRepository.PlaylistWithMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,16 +21,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class PlaylistMembersService {
+public class PlaylistMembersService extends PlaylistService {
 
     private static final Logger log = LoggerFactory.getLogger(PlaylistMembersService.class);
 
-    private final PlaylistRepository playlists;
     private final PlaylistMemberRepository members;
     private final EmailService emails;
 
-    public PlaylistMembersService(PlaylistRepository playlists, PlaylistMemberRepository members, EmailService emails) {
-        this.playlists = playlists;
+    public PlaylistMembersService(
+            PlaylistRepository playlists,
+            UserSavedPlaylistRepository savedPlaylists,
+            MusicPieceRepository musicPieces,
+            PlaylistTrackRepository tracks,
+            UploadService uploads,
+            PlaylistMemberRepository members,
+            EmailService emails
+    ) {
+        super(playlists, savedPlaylists, musicPieces, tracks, uploads);
         this.members = members;
         this.emails = emails;
     }
@@ -74,33 +84,64 @@ public class PlaylistMembersService {
 
     // Declines a PENDING invite.
     public PlaylistMemberRemovalResponse declineInvite(String playlistId, UserEntity user) {
-        return removeOwnRow(playlistId, user, PlaylistMemberStatus.PENDING,
-                "INVITE_NOT_FOUND", "You have no pending invite to this playlist");
+        return removeOwnRow(
+                playlistId,
+                user,
+                PlaylistMemberStatus.PENDING,
+                "INVITE_NOT_FOUND",
+                "You have no pending invite to this playlist"
+        );
     }
 
     // Leaves a playlist the caller accepted. The owner has no member row, so they can't leave.
     public PlaylistMemberRemovalResponse leave(String playlistId, UserEntity user) {
-        return removeOwnRow(playlistId, user, PlaylistMemberStatus.ACCEPTED,
-                "MEMBERSHIP_NOT_FOUND", "You are not a member of this playlist");
+        return removeOwnRow(
+                playlistId,
+                user,
+                PlaylistMemberStatus.ACCEPTED,
+                "MEMBERSHIP_NOT_FOUND",
+                "You are not a member of this playlist"
+        );
     }
 
     private PlaylistMemberRemovalResponse removeOwnRow(
-            String playlistId, UserEntity user, PlaylistMemberStatus required, String errorCode, String message) {
+            String playlistId,
+            UserEntity user,
+            PlaylistMemberStatus required,
+            String errorCode,
+            String message
+    ) {
         PlaylistMemberEntity member = requireOwnRow(playlistId, user, required, errorCode, message);
 
         members.delete(member);
+
         return new PlaylistMemberRemovalResponse(
-                new PlaylistOwner(user.getPublicId(), user.getProfilePictureUrl(), user.getUsername()),
-                member.getStatus());
+                new PlaylistOwner(
+                        user.getPublicId(),
+                        user.getProfilePictureUrl(),
+                        user.getUsername()
+                ),
+                member.getStatus()
+        );
     }
 
     // 404s unless the caller has a member row on the playlist with the required status.
     private PlaylistMemberEntity requireOwnRow(
-            String playlistId, UserEntity user, PlaylistMemberStatus required, String errorCode, String message) {
+            String playlistId,
+            UserEntity user,
+            PlaylistMemberStatus required,
+            String errorCode,
+            String message
+    ) {
         PlaylistRepository.PlaylistWithCaller found = playlists.findPlaylistWithCaller(playlistId, user.getUserId());
 
         if (found == null || found.member() == null || found.member().getStatus() != required) {
-            throw new AuxException(HttpStatus.NOT_FOUND, errorCode, message, "playlistId");
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    errorCode,
+                    message,
+                    "playlistId"
+            );
         }
         return found.member();
     }
@@ -149,7 +190,11 @@ public class PlaylistMembersService {
         return PlaylistMemberResponse.of(member, invitee);
     }
 
-    public PlaylistMemberResponse updatePermission(String playlistId, UserEntity owner, PlaylistInvitationDetails details) {
+    public PlaylistMemberResponse updatePermission(
+            String playlistId,
+            UserEntity owner,
+            PlaylistInvitationDetails details
+    ) {
         PlaylistWithMember found = findOwned(playlistId, owner, details.userId());
         PlaylistMemberEntity member = found.member();
 
@@ -166,7 +211,11 @@ public class PlaylistMembersService {
         return PlaylistMemberResponse.of(members.save(member), found.invitee());
     }
 
-    public PlaylistMemberRemovalResponse remove(String playlistId, UserEntity owner, PlaylistMemberRemoval details) {
+    public PlaylistMemberRemovalResponse remove(
+            String playlistId,
+            UserEntity owner,
+            PlaylistMemberRemoval details
+    ) {
         PlaylistWithMember found = findOwned(playlistId, owner, details.userId());
         PlaylistMemberEntity member = found.member();
 
@@ -188,11 +237,7 @@ public class PlaylistMembersService {
     }
 
     public List<PlaylistMemberResponse> list(String playlistId, UserEntity owner) {
-        PlaylistEntity playlist = playlists.findByPublicId(playlistId);
-
-        if (playlist == null || !playlist.getOwnerId().equals(owner.getUserId())) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "PLAYLIST_NOT_FOUND", "Playlist not found", "playlistId");
-        }
+        PlaylistEntity playlist = findOwnedPlaylist(playlistId, owner.getUserId());
 
         return members.findMembersWithUsers(playlist.getPlaylistId()).stream()
                 .map(row -> PlaylistMemberResponse.of(row.member(), row.user()))

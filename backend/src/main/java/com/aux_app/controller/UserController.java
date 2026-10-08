@@ -4,6 +4,7 @@ import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.users.*;
 import com.aux_app.repository.ProfileDetailsRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.auth.OnboardingUser;
@@ -55,7 +56,7 @@ public class UserController {
             description = "Public. `exists` is true when an account already has this username, ignoring case (`MO` is taken if `mo` exists), or when the username is reserved (e.g. `admin`, `settings`). Does not check the username format."
     )
     @ApiResponse(responseCode = "200", description = "OK")
-    public UserExistance checkUsernameExists(@PathVariable String username) {
+    public UserExistance checkUsernameExists(@Parameter(description = "Username to check, case-insensitive", example = "justin") @PathVariable String username) {
         return new UserExistance(usernames.isTaken(username));
     }
 
@@ -87,9 +88,9 @@ public class UserController {
     @ApiResponse(responseCode = "415", description = "Image is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public UserSummary completeOnboardingStep(
             @OnboardingUser UserEntity user,
-            @RequestParam OnboardingStep step,
-            @RequestParam(value = "file", required = false) MultipartFile file,
-            @RequestParam(required = false) String username
+            @Parameter(description = "The step the user is currently on") @RequestParam OnboardingStep step,
+            @Parameter(description = "Picture for the PFP step: JPEG or PNG; ignored for USERNAME") @RequestParam(value = "file", required = false) MultipartFile file,
+            @Parameter(description = "Username for the USERNAME step; ignored for PFP", example = "justin") @RequestParam(required = false) String username
     ) {
         return UserSummary.of(onboarding.completeStep(user, step, file, username));
     }
@@ -119,7 +120,7 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
     public UserProfile retrieveProfile(
-            @PathVariable String username,
+            @Parameter(description = "Username of the profile owner", example = "justin") @PathVariable String username,
             @OptionalCurrentUser UserEntity user
     ) {
         String currentUserId = (user != null) ? user.getUserId() : null;
@@ -182,7 +183,7 @@ public class UserController {
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public ProfilePictureUpdate updateProfilePicture(
             @CurrentUser UserEntity user,
-            @RequestParam("file") MultipartFile file
+            @Parameter(description = "Image file, JPEG or PNG") @RequestParam("file") MultipartFile file
     ) {
         return new ProfilePictureUpdate(uploads.replaceProfilePicture(user, file));
     }
@@ -203,11 +204,11 @@ public class UserController {
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public BannerUpdate updateBanner(
             @CurrentUser UserEntity user,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam int cropX,
-            @RequestParam int cropY,
-            @RequestParam int cropWidth,
-            @RequestParam int cropHeight
+            @Parameter(description = "Image file, JPEG or PNG") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "Left edge of the crop area, in pixels of the original image") @RequestParam int cropX,
+            @Parameter(description = "Top edge of the crop area, in pixels of the original image") @RequestParam int cropY,
+            @Parameter(description = "Width of the crop area, in pixels") @RequestParam int cropWidth,
+            @Parameter(description = "Height of the crop area, in pixels") @RequestParam int cropHeight
     ) {
         return new BannerUpdate(uploads.replaceBanner(user, file, cropX, cropY, cropWidth, cropHeight));
     }
