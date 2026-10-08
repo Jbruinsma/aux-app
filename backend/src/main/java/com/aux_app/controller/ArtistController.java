@@ -17,6 +17,7 @@ import com.aux_app.repository.UserFavoriteArtistRepository;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -58,7 +59,7 @@ public class ArtistController {
     @ApiResponse(responseCode = "200", description = "OK")
     public List<ArtistSummary> searchArtists(
             @CurrentUser UserEntity user,
-            @RequestParam String q
+            @Parameter(description = "Text to match anywhere in the artist name, case-insensitive", example = "tame") @RequestParam String q
     ) {
         String query = q.strip();
 
@@ -109,7 +110,7 @@ public class ArtistController {
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND)")
     public ArtistDetails getArtist(
-            @PathVariable String artistId,
+            @Parameter(description = "Public id of the artist", example = "a_8f3k2Q") @PathVariable String artistId,
             @OptionalCurrentUser UserEntity user
     ) {
         ArtistEntity artist = findArtist(artistId);
@@ -138,9 +139,9 @@ public class ArtistController {
     @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public ProfilePictureUpdate updateArtistPfp(
-            @PathVariable String artistId,
+            @Parameter(description = "Public id of the artist", example = "a_8f3k2Q") @PathVariable String artistId,
             @CurrentUser UserEntity user,
-            @RequestParam("file") MultipartFile file
+            @Parameter(description = "Image file, JPEG or PNG") @RequestParam("file") MultipartFile file
     ) {
         ArtistEntity artist = findEditableArtist(artistId, user);
         return new ProfilePictureUpdate(this.uploads.replaceArtistPfp(artist, file));
@@ -160,13 +161,13 @@ public class ArtistController {
     @ApiResponse(responseCode = "413", description = "Over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public BannerUpdate updateArtistBanner(
-            @PathVariable String artistId,
+            @Parameter(description = "Public id of the artist", example = "a_8f3k2Q") @PathVariable String artistId,
             @CurrentUser UserEntity user,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam int cropX,
-            @RequestParam int cropY,
-            @RequestParam int cropWidth,
-            @RequestParam int cropHeight
+            @Parameter(description = "Image file, JPEG or PNG") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "Left edge of the crop area, in pixels of the original image") @RequestParam int cropX,
+            @Parameter(description = "Top edge of the crop area, in pixels of the original image") @RequestParam int cropY,
+            @Parameter(description = "Width of the crop area, in pixels") @RequestParam int cropWidth,
+            @Parameter(description = "Height of the crop area, in pixels") @RequestParam int cropHeight
     ) {
         ArtistEntity artist = findEditableArtist(artistId, user);
         return new BannerUpdate(this.uploads.replaceArtistBanner(artist, file, cropX, cropY, cropWidth, cropHeight));
@@ -178,7 +179,7 @@ public class ArtistController {
     @ApiResponse(responseCode = "204", description = "Artist is now a favorite")
     @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND)")
     public void favoriteArtist(
-            @PathVariable String artistId,
+            @Parameter(description = "Public id of the artist", example = "a_8f3k2Q") @PathVariable String artistId,
             @CurrentUser UserEntity user
     ) {
         ArtistEntity artist = findArtist(artistId);
@@ -195,7 +196,7 @@ public class ArtistController {
     @Operation(summary = "Unfavorite an artist", description = "Does nothing if the artist wasn't a favorite or doesn't exist.")
     @ApiResponse(responseCode = "204", description = "Artist is no longer a favorite")
     public void unfavoriteArtist(
-            @PathVariable String artistId,
+            @Parameter(description = "Public id of the artist", example = "a_8f3k2Q") @PathVariable String artistId,
             @CurrentUser UserEntity user
     ) {
         ArtistEntity artist = this.artists.findByPublicId(artistId);
@@ -208,7 +209,7 @@ public class ArtistController {
     @Operation(summary = "List a user's favorite artists", description = "Public. Newest favorite first.")
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
-    public List<ArtistSummary> getFavoriteArtists(@PathVariable String username) {
+    public List<ArtistSummary> getFavoriteArtists(@Parameter(description = "Username of the user whose favorites to list", example = "justin") @PathVariable String username) {
         UserEntity owner = this.users.findByUsernameIgnoreCase(username);
 
         if (owner == null) {

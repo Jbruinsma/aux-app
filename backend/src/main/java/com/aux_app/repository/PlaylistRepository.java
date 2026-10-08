@@ -6,6 +6,7 @@ import com.aux_app.dto.playlist.PlaylistEditor;
 import com.aux_app.dto.playlist.PlaylistMemberStatus;
 import com.aux_app.dto.playlist.PlaylistPermission;
 import com.aux_app.dto.users.PlaylistOwner;
+import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.PlaylistMemberEntity;
 import com.aux_app.entity.UserEntity;
@@ -16,6 +17,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String> {
 
@@ -167,7 +169,6 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
 
         public boolean isOwner(String userId) { return playlist.getOwnerId().equals(userId); }
 
-        // Only ACCEPTED rows grant access; PENDING is an unanswered invite.
         public boolean isEditor() {
             return member != null && member.getStatus() == PlaylistMemberStatus.ACCEPTED
                     && member.getPermission() == PlaylistPermission.EDITOR;
@@ -191,6 +192,34 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             @Param("playlistPublicId") String playlistPublicId, @Param("inviteePublicId") String inviteePublicId);
 
     record PlaylistWithMember(PlaylistEntity playlist, UserEntity invitee, PlaylistMemberEntity member) {}
+
+    // Null if playlist doesn't exist. `caller.member()` is null if the user has no membership row.
+    // `pieces` holds only the ids that exist; no visibility filter, caller checks isPublic / uploader.
+    default PlaylistWithPieces findPlaylistWithPieces(String playlistPublicId, String userId, List<String> piecePublicIds) {
+        List<PlaylistPieceRow> rows = findPlaylistPieceRows(playlistPublicId, userId, piecePublicIds);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        PlaylistPieceRow first = rows.getFirst();
+        List<MusicPieceEntity> pieces = rows.stream().map(PlaylistPieceRow::piece).filter(Objects::nonNull).toList();
+        return new PlaylistWithPieces(new PlaylistWithCaller(first.playlist(), first.member()), pieces);
+    }
+
+    // One row per matching piece (playlist and member repeated); a single row with a null piece if none match.
+    @Query("""
+            SELECT new com.aux_app.repository.PlaylistRepository$PlaylistPieceRow(p, m, mp)
+            FROM PlaylistEntity p
+            LEFT JOIN PlaylistMemberEntity m ON m.playlistId = p.playlistId AND m.userId = :userId
+            LEFT JOIN MusicPieceEntity mp ON mp.publicId IN :piecePublicIds
+            WHERE p.publicId = :playlistPublicId
+            """)
+    List<PlaylistPieceRow> findPlaylistPieceRows(
+            @Param("playlistPublicId") String playlistPublicId, @Param("userId") String userId,
+            @Param("piecePublicIds") List<String> piecePublicIds);
+
+    record PlaylistPieceRow(PlaylistEntity playlist, PlaylistMemberEntity member, MusicPieceEntity piece) {}
+
+    record PlaylistWithPieces(PlaylistWithCaller caller, List<MusicPieceEntity> pieces) {}
 
     // Search by name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
     // Private playlists only show up for their owner (`userId` may be null).

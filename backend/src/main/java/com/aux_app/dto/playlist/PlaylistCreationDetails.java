@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
 
+@Schema(description = "Multipart form for creating a playlist")
 public record PlaylistCreationDetails(
         @Schema(description = "Name, 1-36 chars", example = "Chill Beats") @NotBlank @Size(max = 36) String playlistName,
         @Schema(description = "Whether anyone can open the playlist; defaults to false", example = "true") boolean isPublic,

@@ -125,7 +125,8 @@
                 "properties" : {
                   "file" : {
                     "type" : "string",
-                    "format" : "binary"
+                    "format" : "binary",
+                    "description" : "Image file, JPEG or PNG"
                   }
                 },
                 "required" : [ "file" ]
@@ -330,6 +331,7 @@
         "parameters" : [ {
           "name" : "cropX",
           "in" : "query",
+          "description" : "Left edge of the crop area, in pixels of the original image",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -338,6 +340,7 @@
         }, {
           "name" : "cropY",
           "in" : "query",
+          "description" : "Top edge of the crop area, in pixels of the original image",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -346,6 +349,7 @@
         }, {
           "name" : "cropWidth",
           "in" : "query",
+          "description" : "Width of the crop area, in pixels",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -354,6 +358,7 @@
         }, {
           "name" : "cropHeight",
           "in" : "query",
+          "description" : "Height of the crop area, in pixels",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -368,7 +373,8 @@
                 "properties" : {
                   "file" : {
                     "type" : "string",
-                    "format" : "binary"
+                    "format" : "binary",
+                    "description" : "Image file, JPEG or PNG"
                   }
                 },
                 "required" : [ "file" ]
@@ -1219,10 +1225,12 @@
         "parameters" : [ {
           "name" : "artistId",
           "in" : "path",
+          "description" : "Public id of the artist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "a_8f3k2Q"
         } ],
         "requestBody" : {
           "content" : {
@@ -1232,7 +1240,8 @@
                 "properties" : {
                   "file" : {
                     "type" : "string",
-                    "format" : "binary"
+                    "format" : "binary",
+                    "description" : "Image file, JPEG or PNG"
                   }
                 },
                 "required" : [ "file" ]
@@ -1355,10 +1364,12 @@
         "parameters" : [ {
           "name" : "artistId",
           "in" : "path",
+          "description" : "Public id of the artist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "a_8f3k2Q"
         } ],
         "responses" : {
           "204" : {
@@ -1436,10 +1447,12 @@
         "parameters" : [ {
           "name" : "artistId",
           "in" : "path",
+          "description" : "Public id of the artist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "a_8f3k2Q"
         } ],
         "responses" : {
           "204" : {
@@ -1509,13 +1522,16 @@
         "parameters" : [ {
           "name" : "artistId",
           "in" : "path",
+          "description" : "Public id of the artist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "a_8f3k2Q"
         }, {
           "name" : "cropX",
           "in" : "query",
+          "description" : "Left edge of the crop area, in pixels of the original image",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -1524,6 +1540,7 @@
         }, {
           "name" : "cropY",
           "in" : "query",
+          "description" : "Top edge of the crop area, in pixels of the original image",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -1532,6 +1549,7 @@
         }, {
           "name" : "cropWidth",
           "in" : "query",
+          "description" : "Width of the crop area, in pixels",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -1540,6 +1558,7 @@
         }, {
           "name" : "cropHeight",
           "in" : "query",
+          "description" : "Height of the crop area, in pixels",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -1554,7 +1573,8 @@
                 "properties" : {
                   "file" : {
                     "type" : "string",
-                    "format" : "binary"
+                    "format" : "binary",
+                    "description" : "Image file, JPEG or PNG"
                   }
                 },
                 "required" : [ "file" ]
@@ -1677,18 +1697,22 @@
         "parameters" : [ {
           "name" : "step",
           "in" : "query",
+          "description" : "The step the user is currently on",
           "required" : true,
           "schema" : {
             "type" : "string",
+            "description" : "Steps of onboarding in order. DONE means the account is ready to use",
             "enum" : [ "USERNAME", "PFP", "DONE" ]
           }
         }, {
           "name" : "username",
           "in" : "query",
+          "description" : "Username for the USERNAME step; ignored for PFP",
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "justin"
         } ],
         "requestBody" : {
           "content" : {
@@ -1698,7 +1722,8 @@
                 "properties" : {
                   "file" : {
                     "type" : "string",
-                    "format" : "binary"
+                    "format" : "binary",
+                    "description" : "Picture for the PFP step: JPEG or PNG; ignored for USERNAME"
                   }
                 }
               }
@@ -1879,6 +1904,118 @@
           },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists/{playlistId}/pieces" : {
+      "post" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Add music pieces to a playlist",
+        "description" : "Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.\nA piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, or it is private.\nA private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.\nSkipped pieces do not fail the request.\n",
+        "operationId" : "addPieceToPlaylist",
+        "parameters" : [ {
+          "name" : "playlistId",
+          "in" : "path",
+          "description" : "Public id of the playlist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "p_7c2dK1"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaylistMusicPieceAddition"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK, even if every piece was skipped",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistMusicPieceAdditionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "`musicPieceIds` missing, empty or over 100 (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or caller can't edit it (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
               "Retry-After" : {
                 "description" : "Seconds until the next request is allowed",
@@ -2649,10 +2786,12 @@
         "parameters" : [ {
           "name" : "q",
           "in" : "query",
+          "description" : "Text to match anywhere in the artist name, case-insensitive",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "tame"
         } ],
         "responses" : {
           "200" : {
@@ -2904,10 +3043,12 @@
         "parameters" : [ {
           "name" : "username",
           "in" : "path",
+          "description" : "Username of the profile owner",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "justin"
         } ],
         "responses" : {
           "200" : {
@@ -2978,6 +3119,7 @@
               "application/json" : {
                 "schema" : {
                   "type" : "string",
+                  "description" : "Steps of onboarding in order. DONE means the account is ready to use",
                   "enum" : [ "USERNAME", "PFP", "DONE" ]
                 }
               }
@@ -3112,10 +3254,12 @@
         "parameters" : [ {
           "name" : "username",
           "in" : "path",
+          "description" : "Username to check, case-insensitive",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "justin"
         } ],
         "responses" : {
           "200" : {
@@ -3555,10 +3699,12 @@
         "parameters" : [ {
           "name" : "artistId",
           "in" : "path",
+          "description" : "Public id of the artist",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "a_8f3k2Q"
         } ],
         "responses" : {
           "200" : {
@@ -3625,10 +3771,12 @@
         "parameters" : [ {
           "name" : "username",
           "in" : "path",
+          "description" : "Username of the user whose favorites to list",
           "required" : true,
           "schema" : {
             "type" : "string"
-          }
+          },
+          "example" : "justin"
         } ],
         "responses" : {
           "200" : {
@@ -3875,34 +4023,42 @@
     "schemas" : {
       "UsernameUpdateDetails" : {
         "type" : "object",
+        "description" : "The username to switch to",
         "properties" : {
           "username" : {
             "type" : "string",
+            "description" : "3-16 letters, numbers or underscores. Kept as typed, but unique ignoring case",
             "example" : "new_name"
           }
         }
       },
       "UserSummary" : {
         "type" : "object",
+        "description" : "The signed-in user",
         "properties" : {
           "userId" : {
             "type" : "string",
+            "description" : "Public id of the user",
             "example" : "u_41x9Rb"
           },
           "username" : {
             "type" : "string",
+            "description" : "Username; a generated one until the USERNAME onboarding step is done",
             "example" : "justin"
           },
           "profilePictureUrl" : {
             "type" : "string",
+            "description" : "Profile picture URL",
             "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "bannerUrl" : {
             "type" : "string",
+            "description" : "Banner URL",
             "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "onboardingStep" : {
             "type" : "string",
+            "description" : "The step the user must complete next; DONE when onboarding is finished",
             "enum" : [ "USERNAME", "PFP", "DONE" ],
             "example" : "USERNAME (1) | PFP (2) | DONE (3)"
           }
@@ -3910,29 +4066,35 @@
       },
       "ProfilePictureUpdate" : {
         "type" : "object",
+        "description" : "The new profile picture",
         "properties" : {
           "profilePictureUrl" : {
             "type" : "string",
+            "description" : "Public URL of the new WebP picture",
             "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
       "ProfileDetailsUpdate" : {
         "type" : "object",
+        "description" : "Full replacement of a user's profile fields",
         "properties" : {
           "displayName" : {
             "type" : "string",
+            "description" : "Display name, 3-15 chars. Missing or blank clears it. Profanity is masked",
             "example" : "Joe Mama",
             "maxLength" : 15,
             "minLength" : 3
           },
           "country" : {
             "type" : "string",
+            "description" : "Country code. Missing clears it",
             "enum" : [ "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT", "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM", "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN", "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK", "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW", "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP", "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF", "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW" ],
             "example" : "US"
           },
           "website" : {
             "type" : "string",
+            "description" : "http(s) URL without spaces, at most 2048 chars. Missing or blank clears it",
             "example" : "https://google.com",
             "maxLength" : 2048,
             "minLength" : 0,
@@ -3940,6 +4102,7 @@
           },
           "about" : {
             "type" : "string",
+            "description" : "Short bio, at most 200 chars. Missing or blank clears it. Profanity is masked",
             "example" : "I am a cool guy",
             "maxLength" : 200,
             "minLength" : 0
@@ -3948,37 +4111,45 @@
       },
       "ProfileDetails" : {
         "type" : "object",
+        "description" : "A user's optional profile fields",
         "properties" : {
           "displayName" : {
             "type" : "string",
+            "description" : "Display name; null until set",
             "example" : "Joe Mama"
           },
           "country" : {
             "type" : "string",
+            "description" : "Country; null until set",
             "enum" : [ "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT", "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM", "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR", "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN", "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK", "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW", "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP", "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM", "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF", "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW", "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW" ],
             "example" : "US"
           },
           "website" : {
             "type" : "string",
+            "description" : "http(s) link; null until set",
             "example" : "https://google.com"
           },
           "about" : {
             "type" : "string",
+            "description" : "Short bio, at most 200 chars; null until set",
             "example" : "I am a cool guy"
           }
         }
       },
       "BannerUpdate" : {
         "type" : "object",
+        "description" : "The new banner",
         "properties" : {
           "bannerUrl" : {
             "type" : "string",
+            "description" : "Public URL of the new WebP banner",
             "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
       "PlaylistDetailsUpdate" : {
         "type" : "object",
+        "description" : "Multipart form for editing a playlist; a missing field leaves that value unchanged",
         "properties" : {
           "playlistName" : {
             "type" : "string",
@@ -4037,6 +4208,7 @@
       },
       "PlaylistInvitationDetails" : {
         "type" : "object",
+        "description" : "Who to invite to a playlist, or whose access to change, and the access to give",
         "properties" : {
           "userId" : {
             "type" : "string",
@@ -4107,6 +4279,7 @@
       },
       "PlaylistCreationDetails" : {
         "type" : "object",
+        "description" : "Multipart form for creating a playlist",
         "properties" : {
           "playlistName" : {
             "type" : "string",
@@ -4130,41 +4303,51 @@
       },
       "ArtistSummary" : {
         "type" : "object",
+        "description" : "The short form of an artist, shown on cards and next to music pieces",
         "properties" : {
           "artistId" : {
             "type" : "string",
+            "description" : "Public id of the artist",
             "example" : "a_8f3k2Q"
           },
           "artistName" : {
             "type" : "string",
+            "description" : "Artist name",
             "example" : "Tame Impala"
           },
           "artistPfpUrl" : {
             "type" : "string",
+            "description" : "Artist profile picture URL; null until set",
             "example" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           }
         }
       },
       "MusicPieceOverview" : {
         "type" : "object",
+        "description" : "A music piece as shown in a track list",
         "properties" : {
           "musicPieceId" : {
             "type" : "string",
+            "description" : "Public id of the music piece",
             "example" : "m_92kd0Z"
           },
           "name" : {
             "type" : "string",
+            "description" : "Title",
             "example" : "Let It Happen"
           },
           "coverUrl" : {
             "type" : "string",
+            "description" : "Square WebP cover URL",
             "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistSummary" : {
-            "$ref" : "#/components/schemas/ArtistSummary"
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The artist"
           },
           "isFavorite" : {
             "type" : "boolean",
+            "description" : "Whether the caller has favorited the piece",
             "example" : true
           }
         }
@@ -4250,46 +4433,100 @@
           }
         }
       },
+      "PlaylistMusicPieceAddition" : {
+        "type" : "object",
+        "description" : "Music pieces to add to a playlist",
+        "properties" : {
+          "musicPieceIds" : {
+            "type" : "array",
+            "description" : "Public ids of the music pieces to add, 1 to 100",
+            "example" : [ "m_92kd0Z", "m_3fK81a" ],
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 100,
+            "minItems" : 0
+          }
+        },
+        "required" : [ "musicPieceIds" ]
+      },
+      "PlaylistMusicPieceAdditionResponse" : {
+        "type" : "object",
+        "description" : "Result of adding music pieces to a playlist",
+        "properties" : {
+          "corePlaylist" : {
+            "$ref" : "#/components/schemas/CorePlaylist",
+            "description" : "The playlist the pieces were added to"
+          },
+          "addedCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many pieces were added",
+            "example" : 3
+          },
+          "failedCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many requested pieces were skipped: unknown id, already in the playlist, or a private piece the caller can't add here",
+            "example" : 1
+          },
+          "totalPieces" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Pieces in the playlist after the call",
+            "example" : 15
+          }
+        }
+      },
       "MusicPieceCreationDetails" : {
         "type" : "object",
+        "description" : "Multipart form for uploading a music piece",
         "properties" : {
           "name" : {
             "type" : "string",
+            "description" : "Title, 1-200 chars, trimmed. Profanity is masked",
             "example" : "Dark Fantasy",
             "maxLength" : 200,
             "minLength" : 0
           },
           "artistId" : {
             "type" : "string",
+            "description" : "Public id of an existing artist",
             "example" : "a_8f3k2Q",
             "minLength" : 1
           },
           "isPublic" : {
             "type" : "boolean",
+            "description" : "Whether anyone can play the piece; defaults to false. A private piece can only be played by its uploader",
             "example" : true
           },
           "coverImage" : {
             "type" : "string",
-            "format" : "binary"
+            "format" : "binary",
+            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes"
           },
           "mp3File" : {
             "type" : "string",
-            "format" : "binary"
+            "format" : "binary",
+            "description" : "MP3, at most 25MB and 5 seconds to 10 minutes long. Counts toward the uploader's 2GB quota"
           }
         },
         "required" : [ "artistId", "coverImage", "mp3File", "name" ]
       },
       "RegistrationCredentials" : {
         "type" : "object",
+        "description" : "Email and password for a new account",
         "properties" : {
           "email" : {
             "type" : "string",
+            "description" : "Email for the new account, 3-254 chars",
             "example" : "example@domain.com",
             "maxLength" : 254,
             "minLength" : 3
           },
           "password" : {
             "type" : "string",
+            "description" : "Password, 8-32 chars and at most 72 bytes in UTF-8",
             "example" : "correct-horse-battery",
             "maxLength" : 32,
             "minLength" : 8
@@ -4299,26 +4536,32 @@
       },
       "AuthResponse" : {
         "type" : "object",
+        "description" : "Session returned by register and login",
         "properties" : {
           "token" : {
             "type" : "string",
+            "description" : "Signed JWT; send it as `Authorization: Bearer <token>`",
             "example" : "eyJhbGciOiJIUzI1NiJ9..."
           },
           "expiresAt" : {
             "type" : "string",
             "format" : "date-time",
+            "description" : "When the token stops being valid (UTC)",
             "example" : "2026-10-25T12:00:00Z"
           },
           "user" : {
-            "$ref" : "#/components/schemas/UserSummary"
+            "$ref" : "#/components/schemas/UserSummary",
+            "description" : "The signed-in user"
           }
         }
       },
       "PasswordChangeRequest" : {
         "type" : "object",
+        "description" : "Starts a password change; a 6-digit code is sent to the current address",
         "properties" : {
           "currentPassword" : {
             "type" : "string",
+            "description" : "The user's current password, 8-32 chars",
             "example" : "correct-horse-battery",
             "maxLength" : 32,
             "minLength" : 8
@@ -4328,15 +4571,18 @@
       },
       "PasswordChange" : {
         "type" : "object",
+        "description" : "Finishes a password change",
         "properties" : {
           "code" : {
             "type" : "string",
+            "description" : "6-digit code from the email",
             "example" : "123456",
             "minLength" : 1,
             "pattern" : "\\d{6}"
           },
           "newPassword" : {
             "type" : "string",
+            "description" : "New password, 8-32 chars and at most 72 bytes in UTF-8",
             "example" : "correct-horse-battery",
             "maxLength" : 32,
             "minLength" : 8
@@ -4346,15 +4592,18 @@
       },
       "LoginCredentials" : {
         "type" : "object",
+        "description" : "Email and password of an existing account",
         "properties" : {
           "email" : {
             "type" : "string",
+            "description" : "Account email, 3-254 chars",
             "example" : "example@domain.com",
             "maxLength" : 254,
             "minLength" : 3
           },
           "password" : {
             "type" : "string",
+            "description" : "Account password, 8-32 chars",
             "example" : "correct-horse-battery",
             "maxLength" : 32,
             "minLength" : 8
@@ -4364,15 +4613,18 @@
       },
       "EmailChangeRequest" : {
         "type" : "object",
+        "description" : "Starts an email change; a 6-digit code is sent to the new address",
         "properties" : {
           "newEmail" : {
             "type" : "string",
+            "description" : "New email address, 3-254 chars",
             "example" : "new@domain.com",
             "maxLength" : 254,
             "minLength" : 3
           },
           "currentPassword" : {
             "type" : "string",
+            "description" : "The user's current password, 8-32 chars",
             "example" : "correct-horse-battery",
             "maxLength" : 32,
             "minLength" : 8
@@ -4382,9 +4634,11 @@
       },
       "OtpCode" : {
         "type" : "object",
+        "description" : "A 6-digit one-time code from an email",
         "properties" : {
           "code" : {
             "type" : "string",
+            "description" : "6-digit code from the email",
             "example" : "123456",
             "minLength" : 1,
             "pattern" : "\\d{6}"
@@ -4394,9 +4648,11 @@
       },
       "ArtistCreationDetails" : {
         "type" : "object",
+        "description" : "Details for finding or creating an artist",
         "properties" : {
           "artistName" : {
             "type" : "string",
+            "description" : "Artist name, 1-100 chars, trimmed. Profanity is masked",
             "example" : "Tame Impala",
             "maxLength" : 100,
             "minLength" : 0
@@ -4406,30 +4662,37 @@
       },
       "UserSettings" : {
         "type" : "object",
+        "description" : "Everything the caller's settings page needs",
         "properties" : {
           "email" : {
             "type" : "string",
+            "description" : "The caller's email",
             "example" : "example@domain.com"
           },
           "username" : {
             "type" : "string",
+            "description" : "Username",
             "example" : "justin"
           },
           "profilePictureUrl" : {
             "type" : "string",
+            "description" : "Profile picture URL",
             "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "bannerUrl" : {
             "type" : "string",
+            "description" : "Banner URL",
             "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "profileDetails" : {
-            "$ref" : "#/components/schemas/ProfileDetails"
+            "$ref" : "#/components/schemas/ProfileDetails",
+            "description" : "Optional profile fields"
           }
         }
       },
       "ProfilePlaylist" : {
         "type" : "object",
+        "description" : "A playlist as listed on a profile",
         "properties" : {
           "playlistId" : {
             "type" : "string",
@@ -4449,50 +4712,61 @@
           "totalPieces" : {
             "type" : "integer",
             "format" : "int32",
+            "description" : "Number of tracks in the playlist",
             "example" : 12
           }
         }
       },
       "UserProfile" : {
         "type" : "object",
+        "description" : "A user's public profile and the caller's relation to them",
         "properties" : {
           "username" : {
             "type" : "string",
+            "description" : "Username",
             "example" : "justin"
           },
           "pfpUrl" : {
             "type" : "string",
+            "description" : "Profile picture URL",
             "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "bannerUrl" : {
             "type" : "string",
+            "description" : "Banner URL",
             "example" : "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "profileDetails" : {
-            "$ref" : "#/components/schemas/ProfileDetails"
+            "$ref" : "#/components/schemas/ProfileDetails",
+            "description" : "Optional profile fields"
           },
           "playlists" : {
             "type" : "array",
+            "description" : "The user's playlists: public ones, plus private ones when the caller is the owner",
             "items" : {
               "$ref" : "#/components/schemas/ProfilePlaylist"
             }
           },
           "isMe" : {
             "type" : "boolean",
+            "description" : "Whether the caller owns this profile",
             "example" : false
           },
           "isFollowing" : {
             "type" : "boolean",
+            "description" : "Whether the caller follows this user",
             "example" : true
           },
           "followingMe" : {
             "type" : "boolean",
+            "description" : "Whether this user follows the caller",
             "example" : false
           }
         }
       },
       "LibraryPlaylist" : {
         "type" : "object",
+        "description" : "A playlist in the caller's library",
         "properties" : {
           "playlistId" : {
             "type" : "string",
@@ -4511,24 +4785,29 @@
           },
           "ownerUsername" : {
             "type" : "string",
+            "description" : "Username of the playlist owner",
             "example" : "justin"
           },
           "totalPieces" : {
             "type" : "integer",
             "format" : "int32",
+            "description" : "Number of tracks in the playlist",
             "example" : 12
           },
           "isSaved" : {
             "type" : "boolean",
+            "description" : "Whether the caller has saved the playlist; false for the caller's own unsaved playlists",
             "example" : true
           }
         }
       },
       "UserExistance" : {
         "type" : "object",
+        "description" : "Whether a username is taken",
         "properties" : {
           "exists" : {
             "type" : "boolean",
+            "description" : "True when the username is taken or reserved",
             "example" : true
           }
         }
@@ -4578,69 +4857,85 @@
       },
       "TopMusicPiece" : {
         "type" : "object",
+        "description" : "A music piece in the top list",
         "properties" : {
           "name" : {
             "type" : "string",
+            "description" : "Title",
             "example" : "Devil In a New Dress"
           },
           "coverUrl" : {
             "type" : "string",
+            "description" : "Square WebP cover URL",
             "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistSummary" : {
-            "$ref" : "#/components/schemas/ArtistSummary"
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The artist"
           }
         }
       },
       "SearchQuery" : {
         "type" : "object",
+        "description" : "Search parameters, sent as query params",
         "properties" : {
           "category" : {
             "type" : "string",
+            "description" : "What to search: `USERS`, `MUSIC` or `PLAYLISTS`. Required",
             "enum" : [ "USERS", "MUSIC", "PLAYLISTS" ]
           },
           "query" : {
             "type" : "string",
+            "description" : "Text to match anywhere in the name, case-insensitive, 1-200 chars. `MUSIC` also matches the artist name. Required",
             "maxLength" : 200,
             "minLength" : 1
           },
           "limit" : {
             "type" : "integer",
             "format" : "int32",
+            "description" : "Page size, 1 to 50; defaults to 10",
             "example" : 10
           },
           "offset" : {
             "type" : "integer",
             "format" : "int32",
+            "description" : "How many results to skip; defaults to 0",
             "example" : 0
           }
         }
       },
       "ArtistDetails" : {
         "type" : "object",
+        "description" : "An artist's page data and the caller's relation to it",
         "properties" : {
           "artistId" : {
             "type" : "string",
+            "description" : "Public id of the artist",
             "example" : "a_8f3k2Q"
           },
           "artistName" : {
             "type" : "string",
+            "description" : "Artist name",
             "example" : "Tame Impala"
           },
           "artistPfpUrl" : {
             "type" : "string",
+            "description" : "Artist profile picture URL; null until set",
             "example" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistBannerUrl" : {
             "type" : "string",
+            "description" : "Artist banner URL; null until set",
             "example" : "https://aux.justinabruinsma.com/artist-banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "isFavorite" : {
             "type" : "boolean",
+            "description" : "Whether the caller has favorited the artist; false with no token",
             "example" : true
           },
           "canEdit" : {
             "type" : "boolean",
+            "description" : "Whether the caller created the artist and may change its pfp and banner; false with no token",
             "example" : false
           }
         }
@@ -4662,6 +4957,7 @@
       },
       "PlaylistMemberRemoval" : {
         "type" : "object",
+        "description" : "Which member or invitee to remove",
         "properties" : {
           "userId" : {
             "type" : "string",
@@ -4673,6 +4969,7 @@
         "required" : [ "userId" ]
       },
       "AuxServerError" : {
+        "description" : "Body of every 4xx and 5xx response",
         "properties" : {
           "errorDetails" : {
             "$ref" : "#/components/schemas/ErrorDetails"
@@ -4680,18 +4977,23 @@
         }
       },
       "ErrorDetails" : {
+        "description" : "Details of an error response",
         "properties" : {
           "error" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "HTTP reason phrase, e.g. `Not Found`"
           },
           "code" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "Stable machine-readable error code, e.g. `PLAYLIST_NOT_FOUND`"
           },
           "message" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "Human-readable explanation"
           },
           "parameter" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "Name of the offending field or parameter; null when none applies"
           }
         }
       }

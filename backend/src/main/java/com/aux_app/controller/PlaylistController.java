@@ -1,20 +1,13 @@
 package com.aux_app.controller;
 
-import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.playlist.*;
-import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.*;
-import com.aux_app.repository.PlaylistMemberRepository;
-import com.aux_app.repository.UserSavedPlaylistRepository;
 import com.aux_app.services.PlaylistMembersService;
-import com.aux_app.services.UploadService;
+import com.aux_app.services.PlaylistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import com.aux_app.error.AuxException;
-import com.aux_app.repository.PlaylistRepository;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,28 +15,18 @@ import com.aux_app.auth.CurrentUser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 
 @RestController
 @RequestMapping("/api/playlists")
 public class PlaylistController {
 
-    final private PlaylistRepository playlists;
-    final private UserSavedPlaylistRepository savedPlaylists;
+    final private PlaylistService playlists;
     final private PlaylistMembersService members;
-    final private UploadService uploads;
 
-    public PlaylistController(
-            PlaylistRepository playlists,
-            UserSavedPlaylistRepository savedPlaylists,
-            PlaylistMembersService members,
-            UploadService uploadService
-    ) {
-        this.playlists = playlists;
-        this.savedPlaylists = savedPlaylists;
+    public PlaylistController(PlaylistMembersService members) {
+        this.playlists = members;
         this.members = members;
-        this.uploads = uploadService;
     }
 
     @GetMapping("/{username}/{playlistId}")
@@ -64,66 +47,7 @@ public class PlaylistController {
             @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId,
             @CurrentUser UserEntity user
     ) {
-        String userId = user.getUserId();
-        PlaylistRepository.PlaylistPage playlist = playlists.findPlaylistWithTracks(playlistId, userId);
-
-        if (playlist == null) {
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "PLAYLIST_NOT_FOUND",
-                    "Playlist not found",
-                    "playlistId"
-            );
-        }
-
-        if (!username.equalsIgnoreCase(playlist.owner().username())) {
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "PLAYLIST_NOT_FOUND",
-                    "Playlist not found",
-                    "username"
-            );
-        }
-
-        boolean isOwner = user.getPublicId().equals(playlist.owner().userId());
-        boolean isAccepted = playlist.callerStatus() == PlaylistMemberStatus.ACCEPTED;
-
-        if (!isOwner && !isAccepted && !playlist.isPublic()) {
-            if (playlist.callerStatus() == PlaylistMemberStatus.PENDING) {
-                throw new AuxException(
-                        HttpStatus.FORBIDDEN,
-                        "PLAYLIST_INVITE_PENDING",
-                        "Accept your invitation to access this playlist",
-                        "playlistId"
-                );
-            }
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "PLAYLIST_NOT_FOUND",
-                    "Playlist not found",
-                    "playlistId"
-            );
-        }
-
-        PlaylistAccess access = isOwner ? PlaylistAccess.OWNER
-                : isAccepted ? (playlist.callerPermission() == PlaylistPermission.EDITOR
-                        ? PlaylistAccess.EDITOR : PlaylistAccess.LISTENER)
-                : null;
-
-        return new PlaylistOverview(
-                new CorePlaylist(
-                        playlistId,
-                        playlist.playlistName(),
-                        playlist.playlistCoverUrl()
-                ),
-                playlist.pieces().size(),
-                playlist.isPublic(),
-                playlist.owner(),
-                playlist.isSaved(),
-                playlist.pieces(),
-                playlist.editors(),
-                access
-        );
+        return this.playlists.retrievePlaylist(username, playlistId, user);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -146,37 +70,7 @@ public class PlaylistController {
             @CurrentUser UserEntity user,
             @Valid @ModelAttribute PlaylistCreationDetails playlistCreationDetails
     ) {
-
-        PlaylistEntity newPlaylist = new PlaylistEntity(
-                UUID.randomUUID().toString(),
-                user.getUserId(),
-                playlistCreationDetails.playlistName().strip(),
-                playlistCreationDetails.isPublic()
-        );
-
-        String coverUrl = this.uploads.replacePlaylistCover(
-                newPlaylist,
-                playlistCreationDetails.playlistCover()
-        );
-
-        return new PlaylistOverview(
-                new CorePlaylist(
-                        newPlaylist.getPublicId(),
-                        newPlaylist.getPlaylistName(),
-                        coverUrl
-                ),
-                0,
-                newPlaylist.getIsPublic(),
-                new PlaylistOwner(
-                        user.getPublicId(),
-                        user.getProfilePictureUrl(),
-                        user.getUsername()
-                ),
-                false,
-                new ArrayList<MusicPieceOverview>(),
-                new ArrayList<PlaylistEditor>(),
-                PlaylistAccess.OWNER
-        );
+        return this.playlists.createPlaylist(user, playlistCreationDetails);
     }
 
     @PutMapping(value = "/{playlistId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -201,47 +95,31 @@ public class PlaylistController {
             @Valid @ModelAttribute PlaylistDetailsUpdate playlistDetailsUpdate,
             @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable String playlistId
     ) {
-        PlaylistRepository.PlaylistWithCaller found = playlists.findPlaylistWithCaller(playlistId, user.getUserId());
-        boolean isOwner = found != null && found.isOwner(user.getUserId());
-
-        if (found == null || !(isOwner || found.isEditor())) {
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "PLAYLIST_NOT_FOUND",
-                    "Playlist not found",
-                    "playlistId"
-            );
-        }
-
-        if (playlistDetailsUpdate.isPublic() != null && !isOwner) {
-            throw new AuxException(
-                    HttpStatus.FORBIDDEN,
-                    "PLAYLIST_ACTION_FORBIDDEN",
-                    "Only the owner can change whether a playlist is public",
-                    "isPublic"
-            );
-        }
-
-        PlaylistEntity playlist = found.playlist();
-
-        if (playlistDetailsUpdate.playlistName() != null) {
-            playlist.setPlaylistName(playlistDetailsUpdate.playlistName());
-        }
-        if (playlistDetailsUpdate.isPublic() != null) {
-            playlist.setIsPublic(playlistDetailsUpdate.isPublic());
-        }
-
-        if (playlistDetailsUpdate.playlistCover() != null) {
-            uploads.replacePlaylistCover(playlist, playlistDetailsUpdate.playlistCover());
-        } else {
-            playlists.save(playlist);
-        }
-
-        return new CorePlaylist(
-                playlist.getPublicId(),
-                playlist.getPlaylistName(),
-                playlist.getPlaylistCoverUrl()
+        return this.playlists.editPlaylist(
+                playlistId,
+                playlistDetailsUpdate,
+                user
         );
+    }
+
+    @PostMapping("/{playlistId}/pieces")
+    @Operation(
+            summary = "Add music pieces to a playlist",
+            description = """
+                    Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.
+                    A piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, or it is private.
+                    A private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.
+                    Skipped pieces do not fail the request.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK, even if every piece was skipped")
+    @ApiResponse(responseCode = "400", description = "`musicPieceIds` missing, empty or over 100 (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found, or caller can't edit it (code PLAYLIST_NOT_FOUND)")
+    public PlaylistMusicPieceAdditionResponse addPieceToPlaylist(
+            @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId,
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody PlaylistMusicPieceAddition details
+    ) {
+        return playlists.addMusicPiecesToPlaylist(playlistId, user, details);
     }
 
     @PutMapping("/{playlistId}/save")
@@ -260,52 +138,7 @@ public class PlaylistController {
             @CurrentUser UserEntity user,
             @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId
     ) {
-
-        PlaylistRepository.PlaylistWithCaller found = playlists.findPlaylistWithCaller(playlistId, user.getUserId());
-        PlaylistEntity selectedPlaylist = found == null ? null : found.playlist();
-
-        if (selectedPlaylist == null) {
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "PLAYLIST_NOT_FOUND",
-                    "Playlist not found",
-                    "playlistId"
-            );
-        }
-
-        if (!selectedPlaylist.getIsPublic()) {
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "PLAYLIST_NOT_FOUND",
-                    "Playlist not found",
-                    "playlistId"
-            );
-        }
-
-        String userId = user.getUserId();
-
-        if (found.isOwner(userId) || found.isAcceptedMember()) {
-            throw new AuxException(
-                    HttpStatus.FORBIDDEN,
-                    "PLAYLIST_ACTION_FORBIDDEN",
-                    "Playlist cannot be saved",
-                    "playlistId"
-            );
-        }
-
-        UserSavedPlaylistId id = new UserSavedPlaylistId(userId, selectedPlaylist.getPlaylistId());
-        if (!savedPlaylists.existsById(id)) {
-            savedPlaylists.save(new UserSavedPlaylistEntity(userId, selectedPlaylist.getPlaylistId()));
-        }
-
-        return new SavedPlaylistResponse(
-                new CorePlaylist(
-                        selectedPlaylist.getPublicId(),
-                        selectedPlaylist.getPlaylistName(),
-                        selectedPlaylist.getPlaylistCoverUrl()
-                ),
-                true
-        );
+        return playlists.savePlaylist(playlistId, user);
     }
 
     @DeleteMapping("/{playlistId}/save")
@@ -323,39 +156,7 @@ public class PlaylistController {
             @CurrentUser UserEntity user,
             @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable String playlistId
     ) {
-
-        String userId = user.getUserId();
-
-        PlaylistEntity selectedPlaylist = playlists.findSavedPlaylist(playlistId, userId);
-
-        if (selectedPlaylist == null) {
-            throw new AuxException(
-                    HttpStatus.NOT_FOUND,
-                    "SAVED_PLAYLIST_NOT_FOUND",
-                    "You do not have this playlist saved",
-                    "playlistId"
-            );
-        }
-
-        if (selectedPlaylist.getOwnerId().equals(userId)) {
-            throw new AuxException(
-                    HttpStatus.FORBIDDEN,
-                    "PLAYLIST_ACTION_FORBIDDEN",
-                    "You do cannot remove this saved playlist",
-                    "playlistId"
-            );
-        }
-
-        savedPlaylists.deleteSaved(userId, selectedPlaylist.getPlaylistId());
-
-        return new SavedPlaylistResponse(
-                new CorePlaylist(
-                        selectedPlaylist.getPublicId(),
-                        selectedPlaylist.getPlaylistName(),
-                        selectedPlaylist.getPlaylistCoverUrl()
-                ),
-                false
-        );
+        return playlists.unsavePlaylist(playlistId, user);
     }
 
     @GetMapping("/{playlistId}/members")

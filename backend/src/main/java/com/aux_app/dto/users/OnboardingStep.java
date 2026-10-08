@@ -1,5 +1,7 @@
 package com.aux_app.dto.users;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+@Schema(description = "Steps of onboarding in order. DONE means the account is ready to use")
 public enum OnboardingStep {
     USERNAME(1),
     PFP(2),

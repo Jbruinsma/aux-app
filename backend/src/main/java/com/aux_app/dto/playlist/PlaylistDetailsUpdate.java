@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
 
 // Partial update: a null field means "leave unchanged"
+@Schema(description = "Multipart form for editing a playlist; a missing field leaves that value unchanged")
 public record PlaylistDetailsUpdate(
         @Schema(description = "New name, at most 36 chars. Omit or leave blank to keep the current name", example = "My Playlist")
         @Size(max = 36)
