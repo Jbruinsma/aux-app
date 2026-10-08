@@ -3477,6 +3477,78 @@
         } ]
       }
     },
+    "/api/music-pieces" : {
+      "get" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "List the caller's uploads",
+        "description" : "Every music piece the caller uploaded, public and private, newest first, each with its artist.\n`isFavorite` is true when the caller has favorited the piece.\nPath is `GET /api/music-pieces`, no trailing slash.\n",
+        "operationId" : "getMusicPieces",
+        "responses" : {
+          "200" : {
+            "description" : "OK; `uploadedMusicPieces` is empty if the caller has uploaded nothing",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadedMusicPiecesResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/core/users" : {
       "get" : {
         "tags" : [ "core-controller" ],
@@ -4851,6 +4923,25 @@
             "description" : "Newest first; empty if there are none",
             "items" : {
               "$ref" : "#/components/schemas/PendingPlaylistInvite"
+            }
+          }
+        }
+      },
+      "UploadedMusicPiecesResponse" : {
+        "type" : "object",
+        "description" : "Every music piece the caller uploaded",
+        "properties" : {
+          "uploadedPiecesCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Number of pieces in `uploadedMusicPieces`",
+            "example" : 4
+          },
+          "uploadedMusicPieces" : {
+            "type" : "array",
+            "description" : "Public and private uploads, newest first; empty if the caller has uploaded nothing. `isFavorite` is whether the caller favorited the piece",
+            "items" : {
+              "$ref" : "#/components/schemas/MusicPieceOverview"
             }
           }
         }

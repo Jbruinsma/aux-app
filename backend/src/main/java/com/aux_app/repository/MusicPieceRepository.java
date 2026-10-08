@@ -5,12 +5,28 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 
 public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, String> {
 
     @Query("select coalesce(sum(m.sizeBytes), 0) from MusicPieceEntity m where m.uploaderUserId = :userId")
     long totalSizeBytes(@Param("userId") String userId);
+
+    // Everything the user uploaded, public and private, newest first. `userId` is the internal user id;
+    // `isFavorite` is whether that same user favorited the piece.
+    @Query("""
+            SELECT new com.aux_app.repository.MusicPieceRepository$MusicPieceWithArtist(
+                mp, a, CASE WHEN f.userId IS NOT NULL THEN true ELSE false END)
+            FROM MusicPieceEntity mp
+            JOIN ArtistEntity a ON a.artistId = mp.artistId
+            LEFT JOIN UserFavoriteTrackEntity f ON f.musicPieceId = mp.musicPieceId AND f.userId = :userId
+            WHERE mp.uploaderUserId = :userId
+            ORDER BY mp.createdAt DESC
+            """)
+    List<MusicPieceWithArtist> findUploadsWithArtist(@Param("userId") String userId);
+
+    record MusicPieceWithArtist(MusicPieceEntity piece, ArtistEntity artist, boolean isFavorite) {}
 
     // Search by piece or artist name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
     // Private pieces only show up for their uploader (`userId` may be null).

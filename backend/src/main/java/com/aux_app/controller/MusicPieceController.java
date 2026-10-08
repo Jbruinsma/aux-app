@@ -4,6 +4,7 @@ import com.aux_app.auth.CurrentUser;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceCreationDetails;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
+import com.aux_app.dto.music_piece.UploadedMusicPiecesResponse;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.UserEntity;
@@ -17,11 +18,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,6 +43,50 @@ public class MusicPieceController {
         this.uploads = uploads;
         this.artists = artists;
         this.musicPieces = musicPieces;
+    }
+
+    @GetMapping("")
+    @Operation(
+            summary = "List the caller's uploads",
+            description = """
+                    Every music piece the caller uploaded, public and private, newest first, each with its artist.
+                    `isFavorite` is true when the caller has favorited the piece.
+                    Path is `GET /api/music-pieces`, no trailing slash.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK; `uploadedMusicPieces` is empty if the caller has uploaded nothing")
+    public UploadedMusicPiecesResponse getMusicPieces(
+            @CurrentUser UserEntity user
+    ) {
+        List<MusicPieceRepository.MusicPieceWithArtist> uploadsWithArtist = musicPieces.findUploadsWithArtist(
+                user.getUserId()
+        );
+
+        List<MusicPieceOverview> uploadedMusicPieces = new ArrayList<>();
+
+        for (MusicPieceRepository.MusicPieceWithArtist uploadedPiece : uploadsWithArtist) {
+            MusicPieceEntity musicPiece = uploadedPiece.piece();
+            ArtistEntity artist = uploadedPiece.artist();
+            boolean isFavorite = uploadedPiece.isFavorite();
+
+            uploadedMusicPieces.add(
+                    new MusicPieceOverview(
+                            musicPiece.getPublicId(),
+                            musicPiece.getName(),
+                            musicPiece.getCoverUrl(),
+                            new ArtistSummary(
+                                    artist.getPublicId(),
+                                    artist.getArtistName(),
+                                    artist.getArtistPfpUrl()
+                            ),
+                            isFavorite
+                    )
+            );
+        }
+
+        return new UploadedMusicPiecesResponse(
+                uploadedMusicPieces.size(),
+                uploadedMusicPieces
+        );
     }
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
