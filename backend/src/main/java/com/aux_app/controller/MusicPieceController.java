@@ -3,7 +3,10 @@ package com.aux_app.controller;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceCreationDetails;
+import com.aux_app.dto.base.Message;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
+import com.aux_app.dto.music_piece.MusicPieceStream;
+import com.aux_app.dto.music_piece.PlayEventCreation;
 import com.aux_app.dto.music_piece.UploadedMusicPiecesResponse;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
@@ -12,8 +15,10 @@ import com.aux_app.error.AuxException;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserRepository;
+import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -32,17 +37,20 @@ public class MusicPieceController {
     private final UploadService uploads;
     private final ArtistRepository artists;
     private final MusicPieceRepository musicPieces;
+    private final PlaybackEventService playbackEvents;
 
     public MusicPieceController(
             UserRepository users,
             UploadService uploads,
             ArtistRepository artists,
-            MusicPieceRepository musicPieces
+            MusicPieceRepository musicPieces,
+            PlaybackEventService playbackEvents
     ) {
         this.users = users;
         this.uploads = uploads;
         this.artists = artists;
         this.musicPieces = musicPieces;
+        this.playbackEvents = playbackEvents;
     }
 
     @GetMapping("")
@@ -130,7 +138,7 @@ public class MusicPieceController {
                 user,
                 List.of(musicPieceCreationDetails.mp3File()),
                 stored -> {
-                    UploadService.StoredTrack track = stored.get(0);
+                    UploadService.StoredTrack track = stored.getFirst();
                     MusicPieceEntity piece = new MusicPieceEntity(
                             UUID.randomUUID().toString(),
                             user.getUserId(),
@@ -161,6 +169,67 @@ public class MusicPieceController {
                 new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl()),
                 false
         );
+    }
+
+    @GetMapping("/{musicPieceId}/stream")
+    @Operation(
+            summary = "Get a playable URL for a music piece",
+            description = """
+                    Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.
+                    Fetch a new one when it runs out. A private piece is only playable by its uploader.
+                    Also returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`
+                    when playing from a playlist; the playlist must contain the piece and be visible to the caller.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "404", description = "Music piece not found, or private and not the caller's (code MUSIC_PIECE_NOT_FOUND), or playlist not found, not visible, or without this piece (code PLAYLIST_NOT_FOUND)")
+    public MusicPieceStream getMusicPieceStream(
+            @CurrentUser UserEntity user,
+            @PathVariable String musicPieceId,
+            @Parameter(description = "Public id of the playlist the piece is played from") @RequestParam(required = false) String playlistId
+    ) {
+        MusicPieceEntity piece = this.musicPieces.findByPublicId(musicPieceId);
+
+        if (piece == null) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "MUSIC_PIECE_NOT_FOUND",
+                    "Music piece not found",
+                    "musicPieceId"
+            );
+        }
+
+        String url = this.uploads.signedAudioUrl(piece, user.getUserId());
+
+        return new MusicPieceStream(
+                url,
+                (int) UploadService.SIGNED_URL_TTL.toSeconds(),
+                this.playbackEvents.issuePlayToken(user, piece, playlistId)
+        );
+    }
+
+    @PostMapping("/{musicPieceId}/plays")
+    @Operation(
+            summary = "Record a listen of a music piece",
+            description = """
+                    JSON body: `playToken` from the `/stream` call that started the listen, and
+                    `listenDurationSeconds`. Send it once the caller has listened at least 30 seconds (or the whole
+                    piece, if shorter). Each token counts once.
+                    The server credits at most the time since the token was issued and the piece's length, and
+                    rejects a listen that overlaps the caller's previous play. It is fine to fetch the next piece's
+                    token early, while the current one is still playing.
+                    Feeds listening history, last playback and top music pieces.
+                    """)
+    @ApiResponse(responseCode = "200", description = "Play recorded")
+    @ApiResponse(responseCode = "400", description = "Bad field (codes INVALID_FIELD, MALFORMED_BODY), bad, expired or someone else's token (code INVALID_PLAY_TOKEN), or listen too short (code PLAY_TOO_SHORT)")
+    @ApiResponse(responseCode = "404", description = "Music piece or playlist no longer available (codes MUSIC_PIECE_NOT_FOUND, PLAYLIST_NOT_FOUND)")
+    @ApiResponse(responseCode = "409", description = "Token already used (code PLAY_ALREADY_RECORDED), or listen overlaps the previous play (code PLAY_OVERLAPS)")
+    public Message recordPlay(
+            @CurrentUser UserEntity user,
+            @PathVariable String musicPieceId,
+            @Valid @RequestBody PlayEventCreation playEvent
+    ) {
+        this.playbackEvents.recordPlay(user, musicPieceId, playEvent.playToken(), playEvent.listenDurationSeconds());
+        return new Message("Play recorded");
     }
 
 }
