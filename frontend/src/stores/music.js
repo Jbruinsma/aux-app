@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchAPI, postToAPI } from '@/utils/api.js'
+import { fetchAPI, request } from '@/utils/api.js'
 import { displayArtist, resolveCoverURL } from '@/utils/display.js'
 import { shufflePlaylist } from '@/utils/playlist.js'
 import { API_BASE_URL } from '@/utils/variables.js'
@@ -88,7 +88,8 @@ export const useMusicStore = defineStore('music', () => {
 
     try {
       const url = `${API_BASE_URL}/api/users/${currentUser}/update-last-playback`
-      const data = await postToAPI(url, payload)
+      // Background persistence must not replace feedback for the user's action.
+      const data = await request('POST', url, payload, { notifyOnError: false })
       console.log('Saved last playback:', data)
     } catch (err) {
       console.error('Failed to save last playback:', err)

@@ -43,7 +43,8 @@ watchEffect(async () => {
     const url = `${API_BASE_URL}/api/users/${userStore.userData.username}/get-last-playback`
 
     try {
-      const data = await fetchAPI(url)
+      // Restoring playback is best-effort; it must not replace login feedback.
+      const data = await fetchAPI(url, { notifyOnError: false })
 
       if (data === null || data === undefined) {
         return

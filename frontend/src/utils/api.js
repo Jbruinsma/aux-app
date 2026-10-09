@@ -22,7 +22,7 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export async function request(method, url, body, { ignoredErrorCodes = [] } = {}) {
+export async function request(method, url, body, { ignoredErrorCodes = [], notifyOnError = true } = {}) {
   const options = {
     method,
     headers: authHeaders(),
@@ -47,8 +47,7 @@ export async function request(method, url, body, { ignoredErrorCodes = [] } = {}
       message: "Couldn't reach the server",
     })
 
-    const notification = useNotificationStore()
-    notification.error(error.message)
+    if (notifyOnError) useNotificationStore().error(error.message)
 
     throw error
   }
@@ -61,7 +60,7 @@ export async function request(method, url, body, { ignoredErrorCodes = [] } = {}
     console.error(`${method} ${url} failed:`, error.code, error.message)
 
     // Callers can handle an expected API result without flashing a false error.
-    if (!ignoredErrorCodes.includes(error.code)) {
+    if (notifyOnError && !ignoredErrorCodes.includes(error.code)) {
       useNotificationStore().error(error.message)
     }
 
@@ -71,6 +70,6 @@ export async function request(method, url, body, { ignoredErrorCodes = [] } = {}
   return response.status === 204 ? null : response.json()
 }
 
-export const fetchAPI = (url) => request('GET', url)
+export const fetchAPI = (url, options) => request('GET', url, undefined, options)
 
 export const postToAPI = (url, data) => request('POST', url, data)
