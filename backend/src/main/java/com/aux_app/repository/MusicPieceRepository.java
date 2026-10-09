@@ -10,6 +10,8 @@ import com.aux_app.entity.MusicPieceEntity;
 
 public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, String> {
 
+    MusicPieceEntity findByPublicId(String publicId);
+
     @Query("select coalesce(sum(m.sizeBytes), 0) from MusicPieceEntity m where m.uploaderUserId = :userId")
     long totalSizeBytes(@Param("userId") String userId);
 

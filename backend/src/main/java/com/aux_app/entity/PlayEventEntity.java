@@ -51,4 +51,6 @@ public class PlayEventEntity {
     public Instant getPlayedAt() { return playedAt; }
     public Integer getListenDurationSeconds() { return listenDurationSeconds; }
     public String getContextPlaylistId() { return contextPlaylistId; }
+
+    public void setContextPlaylistId(String contextPlaylistId) { this.contextPlaylistId = contextPlaylistId; }
 }

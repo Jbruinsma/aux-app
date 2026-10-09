@@ -100,7 +100,7 @@ public class UploadService {
     // mid-file, and storing only the frames before the break would silently cut the song short
     static final int MAX_TRAILING_BYTES = 256 * 1024;
     // Long enough to play a 10 minute track with pauses; the frontend asks for a new URL when one expires
-    private static final Duration SIGNED_URL_TTL = Duration.ofHours(1);
+    public static final Duration SIGNED_URL_TTL = Duration.ofHours(1);
     // Layer III bitrates in kbps by bitrate index; 0 (free format) and 15 are invalid
     private static final int[] MPEG1_KBPS = {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0};
     private static final int[] MPEG2_KBPS = {0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0};

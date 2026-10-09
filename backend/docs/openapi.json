@@ -2141,6 +2141,126 @@
         } ]
       }
     },
+    "/api/music-pieces/{musicPieceId}/plays" : {
+      "post" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Record a listen of a music piece",
+        "description" : "JSON body: `playToken` from the `/stream` call that started the listen, and\n`listenDurationSeconds`. Send it once the caller has listened at least 30 seconds (or the whole\npiece, if shorter). Each token counts once.\nThe server credits at most the time since the token was issued and the piece's length, and\nrejects a listen that overlaps the caller's previous play. It is fine to fetch the next piece's\ntoken early, while the current one is still playing.\nFeeds listening history, last playback and top music pieces.\n",
+        "operationId" : "recordPlay",
+        "parameters" : [ {
+          "name" : "musicPieceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlayEventCreation"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Play recorded",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad field (codes INVALID_FIELD, MALFORMED_BODY), bad, expired or someone else's token (code INVALID_PLAY_TOKEN), or listen too short (code PLAY_TOO_SHORT)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Music piece or playlist no longer available (codes MUSIC_PIECE_NOT_FOUND, PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Token already used (code PLAY_ALREADY_RECORDED), or listen overlaps the previous play (code PLAY_OVERLAPS)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/music-pieces/create" : {
       "post" : {
         "tags" : [ "music-piece-controller" ],
@@ -3170,6 +3290,88 @@
         } ]
       }
     },
+    "/api/users/me/last-playback" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Get the caller's last played music piece",
+        "description" : "The most recent play recorded with `POST /api/music-pieces/{musicPieceId}/plays`, for the player\nto show on load. Plays of pieces made private since are skipped. `playlistId` is null when the\npiece wasn't played from a playlist, or the caller can no longer see that playlist.\n",
+        "operationId" : "getLastPlayback",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LastPlayback"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "The caller has never played anything they can still play",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LastPlayback"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/library" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -3490,6 +3692,104 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UploadedMusicPiecesResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/music-pieces/{musicPieceId}/stream" : {
+      "get" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Get a playable URL for a music piece",
+        "description" : "Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.\nFetch a new one when it runs out. A private piece is only playable by its uploader.\nAlso returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`\nwhen playing from a playlist; the playlist must contain the piece and be visible to the caller.\n",
+        "operationId" : "getMusicPieceStream",
+        "parameters" : [ {
+          "name" : "musicPieceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "playlistId",
+          "in" : "query",
+          "description" : "Public id of the playlist the piece is played from",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPieceStream"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Music piece not found, or private and not the caller's (code MUSIC_PIECE_NOT_FOUND), or playlist not found, not visible, or without this piece (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -4550,6 +4850,35 @@
           }
         }
       },
+      "PlayEventCreation" : {
+        "type" : "object",
+        "description" : "One listen of a music piece",
+        "properties" : {
+          "playToken" : {
+            "type" : "string",
+            "description" : "The `playToken` from the `/stream` call that started this listen",
+            "minLength" : 1
+          },
+          "listenDurationSeconds" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How long the caller listened, in seconds. The server caps it at the time since the token was issued and at the piece's length",
+            "example" : 142,
+            "exclusiveMinimum" : 0
+          }
+        },
+        "required" : [ "playToken" ]
+      },
+      "Message" : {
+        "type" : "object",
+        "description" : "Generic success body",
+        "properties" : {
+          "message" : {
+            "type" : "string",
+            "description" : "Human-readable result"
+          }
+        }
+      },
       "MusicPieceCreationDetails" : {
         "type" : "object",
         "description" : "Multipart form for uploading a music piece",
@@ -4836,6 +5165,21 @@
           }
         }
       },
+      "LastPlayback" : {
+        "type" : "object",
+        "description" : "The last music piece the caller played",
+        "properties" : {
+          "musicPiece" : {
+            "$ref" : "#/components/schemas/MusicPieceOverview",
+            "description" : "The music piece"
+          },
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist it was played from, or null",
+            "example" : "p_8sK2mQ"
+          }
+        }
+      },
       "LibraryPlaylist" : {
         "type" : "object",
         "description" : "A playlist in the caller's library",
@@ -4943,6 +5287,26 @@
             "items" : {
               "$ref" : "#/components/schemas/MusicPieceOverview"
             }
+          }
+        }
+      },
+      "MusicPieceStream" : {
+        "type" : "object",
+        "description" : "A short-lived URL the player can stream the MP3 from",
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "description" : "Signed URL to the MP3 in the private audio bucket"
+          },
+          "expiresInSeconds" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Seconds until the URL and play token stop working",
+            "example" : 3600
+          },
+          "playToken" : {
+            "type" : "string",
+            "description" : "Single-use token to send to `POST /api/music-pieces/{musicPieceId}/plays` once the caller has listened"
           }
         }
       },

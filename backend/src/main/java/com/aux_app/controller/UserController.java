@@ -3,6 +3,7 @@ package com.aux_app.controller;
 import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.users.*;
 import com.aux_app.repository.ProfileDetailsRepository;
+import com.aux_app.services.PlaybackEventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,6 +16,7 @@ import com.aux_app.error.AuxException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,19 +37,22 @@ public class UserController {
     private final UploadService uploads;
     private final OnboardingService onboarding;
     private final UsernameService usernames;
+    private final PlaybackEventService playbackEventService;
 
     public UserController(
             UserRepository users,
             ProfileDetailsRepository profileDetails,
             UploadService uploads,
             OnboardingService onboarding,
-            UsernameService usernames
+            UsernameService usernames,
+            PlaybackEventService playbackEventService
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
         this.uploads = uploads;
         this.onboarding = onboarding;
         this.usernames = usernames;
+        this.playbackEventService = playbackEventService;
     }
 
     @GetMapping("/check-username/{username}")
@@ -271,10 +276,24 @@ public class UserController {
         return UserSummary.of(users.save(user));
     }
 
-    // TODO POST /{username}/update-password              json: old_password, new_password
-    // TODO GET  /{username}/get-last-playback
-    // TODO POST /{username}/update-last-playback         json: playback data
-    // TODO POST /{username}/add-public-playlist          json: playlist_uuid, playlist_owner
-    // TODO POST /{username}/remove-public-playlist       json: playlist_uuid, playlist_owner
-    // TODO POST /{username}/remove-added-to-playlist     json: playlist_uuid, playlist_owner
+    @GetMapping("/me/last-playback")
+    @Operation(
+            summary = "Get the caller's last played music piece",
+            description = """
+                    The most recent play recorded with `POST /api/music-pieces/{musicPieceId}/plays`, for the player
+                    to show on load. Plays of pieces made private since are skipped. `playlistId` is null when the
+                    piece wasn't played from a playlist, or the caller can no longer see that playlist.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "204", description = "The caller has never played anything they can still play")
+    public ResponseEntity<LastPlayback> getLastPlayback(
+            @CurrentUser UserEntity user
+    ) {
+        LastPlayback lastPlayback = playbackEventService.retrieveMostRecentPlayback(user.getUserId());
+
+        return lastPlayback == null
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.ok(lastPlayback);
+    }
+
 }
