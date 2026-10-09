@@ -79,7 +79,6 @@
           <div v-else class="name-done">
             <p ref="nameEl" class="handle">
               @{{ userStore.userData.username }}
-              <svg class="icon" viewBox="0 0 24 24" aria-label="Saved"><path d="M20 6 9 17l-5-5" /></svg>
             </p>
             <p class="eyebrow">Step 2 of 2</p>
             <h1 ref="heading" tabindex="-1">Add a profile photo</h1>
@@ -98,6 +97,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
@@ -114,6 +115,7 @@ const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/
 
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 const step = computed(() => userStore.userData.onboardingStep)
 
 const known = computed(() => step.value === 'USERNAME' || step.value === 'PFP')
@@ -185,6 +187,7 @@ async function submitUsername() {
   submitting.value = true
   try {
     const user = await sendStep('USERNAME', 'username', username.value)
+    notification.success('Your username is saved.')
     await moveToPhotoStep(user)
   } catch (err) {
     if (err.code === 'USERNAME_TAKEN') nameStatus.value = 'taken'
@@ -243,6 +246,7 @@ async function submitPhoto() {
   submitting.value = true
   try {
     const user = await sendStep('PFP', 'file', photo.value)
+    notification.success('Your profile photo is saved.')
     finishing.value = true
     await nextTick()
     await animationsDone(banner.value.$el)
@@ -302,7 +306,6 @@ h1:focus { outline: none; }
 .status.taken, .status.invalid { color: var(--danger); }
 
 .handle { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font: 700 20px/28px var(--font-sans); color: var(--link); transform-origin: left center; }
-.handle .icon { color: var(--success); width: 20px; height: 20px; }
 
 .pfp { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin-top: -88px; }
 .ring { display: block; padding: 6px; border-radius: var(--radius-pill); background: var(--surface); }

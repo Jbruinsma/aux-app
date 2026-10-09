@@ -22,7 +22,7 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export async function request(method, url, body) {
+export async function request(method, url, body, { ignoredErrorCodes = [] } = {}) {
   const options = {
     method,
     headers: authHeaders(),
@@ -60,9 +60,10 @@ export async function request(method, url, body) {
 
     console.error(`${method} ${url} failed:`, error.code, error.message)
 
-    // GLOBAL ERROR NOTIFICATION
-    const notification = useNotificationStore()
-    notification.error(error.message)
+    // Callers can handle an expected API result without flashing a false error.
+    if (!ignoredErrorCodes.includes(error.code)) {
+      useNotificationStore().error(error.message)
+    }
 
     throw error
   }

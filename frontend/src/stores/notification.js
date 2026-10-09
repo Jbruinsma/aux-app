@@ -24,6 +24,7 @@ export const useNotificationStore = defineStore('notification', {
     },
 
     hide() {
+      clearTimeout(this.timeout)
       this.visible = false
       this.timeout = null
     },

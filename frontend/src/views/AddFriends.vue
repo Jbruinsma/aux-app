@@ -109,6 +109,9 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
+const notification = useNotificationStore()
 
 import { API_BASE_URL } from '@/utils/variables.js'
 
@@ -187,6 +190,7 @@ async function submitFriends() {
   await postToAPI(url, {
     friends: friendList.value
   })
+  notification.success('Playlist sharing is updated.')
   await router.push(`/playlist/${username}/${id}`)
 }
 

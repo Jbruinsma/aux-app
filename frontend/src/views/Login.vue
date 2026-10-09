@@ -52,6 +52,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -64,6 +66,7 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 
 const email = ref('')
 const password = ref('')
@@ -80,6 +83,7 @@ async function handleLogin() {
     })
 
     userStore.login(response.user, response.token)
+    notification.success('You are logged in.')
 
     await router.push(route.query.redirect || '/dashboard')
   } catch (err) {

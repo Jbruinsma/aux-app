@@ -49,7 +49,6 @@
                   like the example.
                 </p>
                 <p v-if="photoError" class="error" role="alert">{{ photoError }}</p>
-                <p v-if="photoSaved" class="success" role="status">Your new picture is saved.</p>
                 <button type="button" class="btn primary" :disabled="!newPhoto || uploading" @click="uploadPhoto">
                   {{ uploading ? 'Uploading…' : 'Upload picture' }}
                 </button>
@@ -117,7 +116,6 @@
                 sharpest. See how it looks on your profile card.
               </p>
               <p v-if="bannerError" class="error" role="alert">{{ bannerError }}</p>
-              <p v-if="bannerSaved" class="success" role="status">Your new banner is saved.</p>
               <button type="button" class="btn primary" :disabled="!newBanner || bannerUploading" @click="uploadBanner">
                 {{ bannerUploading ? 'Uploading…' : 'Upload banner' }}
               </button>
@@ -189,8 +187,7 @@
                 <button type="submit" class="btn primary" :disabled="detailsSaving || nameInvalid || websiteInvalid">
                   {{ detailsSaving ? 'Saving…' : 'Save changes' }}
                 </button>
-                <p v-if="detailsError" class="error status-line" role="alert">{{ detailsError }}</p>
-                <p v-if="detailsSaved" class="success status-line" role="status">Your details are saved.</p>
+                <p v-if="detailsError" class="error details-error" role="alert">{{ detailsError }}</p>
               </div>
             </form>
           </section>
@@ -260,7 +257,6 @@
                   {{ usernameSaving ? 'Saving…' : 'Change username' }}
                 </button>
                 <p v-if="usernameError" class="error" role="alert">{{ usernameError }}</p>
-                <p v-if="usernameSaved" class="success" role="status">Your username is now {{ usernameSaved }}.</p>
               </div>
             </form>
           </section>
@@ -360,7 +356,6 @@
                   </div>
                 </template>
                 <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
-                <p v-if="emailSaved" class="success" role="status">Your email address is now {{ emailSaved }}.</p>
               </div>
             </form>
           </section>
@@ -462,7 +457,6 @@
                   </div>
                 </template>
                 <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
-                <p v-if="passwordSaved" class="success" role="status">Your password is changed.</p>
               </div>
             </form>
           </section>
@@ -481,7 +475,6 @@
                   </span>
                 </p>
                 <button type="button" class="btn primary" @click="openDeleteDialog">Delete account</button>
-                <p v-if="deleteNotice" class="success" role="status">{{ deleteNotice }}</p>
               </div>
             </div>
           </section>
@@ -559,6 +552,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
@@ -612,6 +607,7 @@ const APPS = [
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 
 const username = computed(() => userStore.userData?.username ?? '')
 const tab = computed(() => (TABS.some((t) => t.id === route.params.tab) ? route.params.tab : 'profile'))
@@ -637,7 +633,6 @@ const fileInput = ref(null)
 const newPhoto = ref(null)
 const previewUrl = ref('')
 const photoError = ref('')
-const photoSaved = ref(false)
 const uploading = ref(false)
 
 const savedPicture = computed(() => {
@@ -655,7 +650,6 @@ async function onPick(event) {
   const [file] = event.target.files
   if (!file) return
   photoError.value = ''
-  photoSaved.value = false
   const problem = await photoProblem(file)
   if (problem) {
     photoError.value = problem
@@ -689,7 +683,7 @@ async function uploadPhoto() {
     const { profilePictureUrl } = await request('PUT', `${API_BASE_URL}/api/users/me/profile-picture`, form)
     userStore.updateUser({ profilePictureUrl })
     clearChoice()
-    photoSaved.value = true
+    notification.success('Your new picture is saved.')
   } catch (err) {
     if (await handleUnauthorized(err)) return
     photoError.value = PHOTO_ERRORS[err.code] ?? "We couldn't upload your picture. Check that the server is running, then try again."
@@ -703,7 +697,6 @@ const bannerFrame = ref(null)
 const newBanner = ref(null)
 const bannerPreviewUrl = ref('')
 const bannerError = ref('')
-const bannerSaved = ref(false)
 const bannerUploading = ref(false)
 const bannerSize = ref(null)
 const bannerCrop = ref({ ...DEFAULT_CROP })
@@ -766,7 +759,6 @@ async function onPickBanner(event) {
   if (!file) return
   const problem = await bannerProblem(file)
   revertBanner()
-  bannerSaved.value = false
   if (problem) {
     bannerError.value = problem
     return
@@ -819,7 +811,7 @@ async function uploadBanner() {
     const { bannerUrl } = await request('PUT', `${API_BASE_URL}/api/users/me/banner?${query}`, form)
     userStore.updateUser({ bannerUrl })
     revertBanner()
-    bannerSaved.value = true
+    notification.success('Your new banner is saved.')
   } catch (err) {
     if (await handleUnauthorized(err)) return
     bannerError.value = BANNER_ERRORS[err.code] ?? "We couldn't upload your banner. Check that the server is running, then try again."
@@ -830,7 +822,6 @@ async function uploadBanner() {
 
 const details = reactive({ displayName: '', country: '', website: '', about: '' })
 const detailsSaving = ref(false)
-const detailsSaved = ref(false)
 const detailsError = ref('')
 
 // The server sends null for anything the user never filled in; the form wants empty strings
@@ -863,7 +854,6 @@ const nameInvalid = computed(() => {
 async function saveDetails() {
   if (detailsSaving.value || nameInvalid.value || websiteInvalid.value) return
   detailsError.value = ''
-  detailsSaved.value = false
   detailsSaving.value = true
   try {
     // Empty values are sent as null, which clears them on the server
@@ -875,7 +865,7 @@ async function saveDetails() {
     }
     const saved = await request('PUT', `${API_BASE_URL}/api/users/me/profile-details`, body)
     showDetails(saved)
-    detailsSaved.value = true
+    notification.success('Your details are saved.')
   } catch (err) {
     if (await handleUnauthorized(err)) return
     detailsError.value = err.code === 'INVALID_FIELD' ? err.message : "We couldn't save your details. Check that the server is running, then try again."
@@ -950,7 +940,6 @@ const {
   check: checkUsername,
 })
 const usernameSaving = ref(false)
-const usernameSaved = ref('')
 const usernameError = ref('')
 
 const usernameStatusText = computed(() => ({
@@ -968,7 +957,6 @@ const canSaveUsername = computed(
 
 function onUsernameInput() {
   usernameError.value = ''
-  usernameSaved.value = ''
   checkNewUsername()
 }
 
@@ -981,7 +969,7 @@ async function saveUsername() {
     userStore.updateUser(user)
     router.replace({ name: 'Settings', params: { username: user.username, tab: 'account' } })
     resetUsername()
-    usernameSaved.value = user.username
+    notification.success(`Your username is now ${user.username}.`)
   } catch (err) {
     if (await handleUnauthorized(err)) return
     if (err.code === 'USERNAME_TAKEN') usernameStatus.value = 'taken'
@@ -1018,7 +1006,6 @@ const emailStatus = computed(() => {
   return 'idle'
 })
 const emailSaving = ref(false)
-const emailSaved = ref('')
 const emailError = ref('')
 const emailPassword = ref('')
 const emailPasswordError = ref('')
@@ -1044,20 +1031,19 @@ const canConfirmEmail = computed(() => !emailSaving.value && CODE_PATTERN.test(e
 
 function onEmailInput() {
   emailError.value = ''
-  emailSaved.value = ''
 }
 
 // Step 1: check the password and email a code to the new address. Also used by "Send a new code"
 async function sendEmailCode() {
   if (!canSaveEmail.value) return
   emailError.value = ''
-  emailSaved.value = ''
   emailSaving.value = true
   try {
     await requestEmailChange(newEmail.value, emailPassword.value)
     emailCode.value = ''
     emailCodeError.value = ''
     emailCodeSent.value = true
+    notification.success('A verification code was sent to your new email address.')
     await nextTick()
     emailCodeInput.value?.focus()
   } catch (err) {
@@ -1080,7 +1066,7 @@ async function confirmEmail() {
     const email = newEmail.value
     currentEmail.value = email
     cancelEmailChange()
-    emailSaved.value = email
+    notification.success(`Your email address is now ${email}.`)
   } catch (err) {
     if (await handleUnauthorized(err)) return
     if (err.code === 'INVALID_OTP') emailCodeError.value = WRONG_CODE
@@ -1106,7 +1092,6 @@ function cancelEmailChange() {
 
 const password = reactive({ current: '', new: '', confirm: '' })
 const passwordSaving = ref(false)
-const passwordSaved = ref(false)
 const passwordError = ref('')
 const currentPasswordError = ref('')
 const passwordCodeSent = ref(false)
@@ -1139,7 +1124,6 @@ const canSavePassword = computed(
 const canConfirmPassword = computed(() => !passwordSaving.value && CODE_PATTERN.test(passwordCode.value))
 
 watch(password, () => {
-  passwordSaved.value = false
   passwordError.value = ''
 })
 
@@ -1154,6 +1138,7 @@ async function sendPasswordCode() {
     passwordCode.value = ''
     passwordCodeError.value = ''
     passwordCodeSent.value = true
+    notification.success('A verification code was sent to your email address.')
     await nextTick()
     passwordCodeInput.value?.focus()
   } catch (err) {
@@ -1174,7 +1159,7 @@ async function confirmPassword() {
     await confirmPasswordChange(passwordCode.value, password.new)
     cancelPasswordChange()
     await nextTick()
-    passwordSaved.value = true
+    notification.success('Your password is changed.')
   } catch (err) {
     if (await handleUnauthorized(err)) return
     if (err.code === 'INVALID_OTP') passwordCodeError.value = WRONG_CODE
@@ -1199,14 +1184,12 @@ const deleteElapsed = ref(0)
 const deleteRun = ref(0)
 const deleting = ref(false)
 const deleteError = ref('')
-const deleteNotice = ref('')
 let deleteTimer = null
 
 const deleteReady = computed(() => deleteElapsed.value >= DELETE_WAIT)
 
 function openDeleteDialog() {
   deleteError.value = ''
-  deleteNotice.value = ''
   deleteElapsed.value = 0
   deleteRun.value++
   deleteDialog.value.showModal()
@@ -1232,10 +1215,11 @@ async function confirmDelete() {
     await deleteAccount()
     deleteDialog.value.close()
     if (ACCOUNT_MOCKED) {
-      deleteNotice.value = "Preview only: your account wasn't deleted."
+      notification.neutral("Preview only: your account wasn't deleted.")
       return
     }
     userStore.logout()
+    notification.success('Your account is deleted.')
     await router.replace({ name: 'Home' })
   } catch (err) {
     if (await handleUnauthorized(err)) return
@@ -1261,7 +1245,6 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-4); }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .hint { margin: 0; font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
 .error { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--danger); }
-.success { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--success); }
 
 .avatar-area { aspect-ratio: 3 / 1; max-height: 200px; display: flex; align-items: center; margin-bottom: var(--space-4); }
 .avatar { height: 100%; aspect-ratio: 1; border-radius: var(--radius-pill); object-fit: cover; background: var(--surface-alt); }
@@ -1281,7 +1264,7 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .input[aria-invalid='true'] { border-color: var(--danger); }
 .textarea { resize: vertical; }
 .details .hint, .details .error { margin-top: var(--space-1); }
-.status-line { margin-top: var(--space-2) !important; }
+.details-error { margin-top: var(--space-2) !important; }
 
 .account-col { align-content: start; display: grid; gap: var(--space-8); grid-template-columns: minmax(0, 1fr); }
 .account-col section + section { border-top: 1px solid var(--line); padding-top: var(--space-8); }

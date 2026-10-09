@@ -33,6 +33,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HeroLayout from '@/components/HeroLayout.vue'
@@ -42,6 +44,7 @@ import { API_BASE_URL } from '@/utils/variables.js'
 
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 
 const email = ref('')
 const password = ref('')
@@ -64,6 +67,7 @@ async function register() {
       password: password.value,
     })
     userStore.login(response.user, response.token)
+    notification.success('Your account is created.')
     await router.push({ name: 'Onboarding' })
   } catch (err) {
     if (err.code === 'EMAIL_TAKEN') {

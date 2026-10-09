@@ -28,6 +28,15 @@ npm run dev
 npm run build
 ```
 
+### Run Frontend Tests
+
+```sh
+npm test
+```
+
+The notification regression tests cover successful and rejected actions, account
+verification, preview-only deletion, playlist saving, navigation, and dismissal timers.
+
 ### Lint with [ESLint](https://eslint.org/)
 
 ```sh

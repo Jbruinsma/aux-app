@@ -92,6 +92,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAPI, postToAPI } from '@/utils/api.js'
@@ -106,6 +108,7 @@ const { username, playlist_id, index, uuid } = route.params
 const showCancelModal = ref(false)
 
 const userStore = useUserStore()
+const notification = useNotificationStore()
 const musicStore = useMusicStore()
 
 const musicPiece = ref({
@@ -155,6 +158,7 @@ async function saveChanges() {
 
   const url = `${API_BASE_URL}/api/playlists/update/${username}/${playlist_id}/music_piece/${index}/${uuid}`
   const response = await postToAPI(url, formData, false)
+  notification.success('Your song changes are saved.')
   const updatedPiece = response.musicPiece
 
   if (musicStore.getCurrentPlaylistUUID() === playlist_id) {
