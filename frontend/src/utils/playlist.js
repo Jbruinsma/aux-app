@@ -35,7 +35,9 @@ export function fetchPlaylist(username, playlistId) {
 export async function setPlaylistSaved(playlistId, saved) {
   const url = `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/save`
   try {
-    const response = await request(saved ? 'PUT' : 'DELETE', url)
+    const response = await request(saved ? 'PUT' : 'DELETE', url, undefined, {
+      ignoredErrorCodes: saved ? [] : ['SAVED_PLAYLIST_NOT_FOUND'],
+    })
     return response.isSaved
   } catch (err) {
     if (!saved && err.code === 'SAVED_PLAYLIST_NOT_FOUND') return false

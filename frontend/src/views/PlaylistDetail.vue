@@ -114,8 +114,7 @@
               </div>
             </div>
 
-            <p v-if="actionError" class="error status-line" role="alert">{{ actionError }}</p>
-            <p v-if="actionNotice" class="success status-line" role="status">{{ actionNotice }}</p>
+            <p v-if="actionError" class="error action-error" role="alert">{{ actionError }}</p>
           </div>
         </header>
 
@@ -197,6 +196,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
@@ -210,13 +211,13 @@ import { useMusicStore } from '@/stores/music.js'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 const musicStore = useMusicStore()
 
 const status = ref('loading')
 const playlist = ref(null)
 const saving = ref(false)
 const actionError = ref('')
-const actionNotice = ref('')
 
 const id = computed(() => route.params.id)
 const owner = computed(() => playlist.value?.playlistOwner ?? { username: route.params.username })
@@ -241,7 +242,6 @@ async function loadPlaylist() {
   const { username, id: playlistId } = route.params
   status.value = 'loading'
   actionError.value = ''
-  actionNotice.value = ''
   try {
     const result = await fetchPlaylist(username, playlistId)
     if (route.params.id !== playlistId) return
@@ -279,10 +279,10 @@ async function shuffle() {
 async function toggleSaved() {
   const saved = !playlist.value.isSaved
   actionError.value = ''
-  actionNotice.value = ''
   saving.value = true
   try {
     playlist.value.isSaved = await setPlaylistSaved(id.value, saved)
+    notification.success(playlist.value.isSaved ? 'Playlist saved to your library.' : 'Playlist removed from your library.')
   } catch (err) {
     if (await handleUnauthorized(err)) return
     actionError.value = saved
@@ -338,10 +338,11 @@ async function confirmDelete() {
     await deletePlaylist(id.value)
     deleteDialog.value.close()
     if (PLAYLIST_DELETE_MOCKED) {
-      actionNotice.value = "Preview only: the playlist wasn't deleted."
+      notification.neutral("Preview only: the playlist wasn't deleted.")
       return
     }
     if (musicStore.getCurrentPlaylistUUID() === id.value) musicStore.reset()
+    notification.success('Playlist deleted.')
     await router.push({ name: 'Dashboard' })
   } catch (err) {
     if (await handleUnauthorized(err)) return
@@ -358,8 +359,7 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-2); overflow-
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
 .meta { align-items: center; color: var(--ink-muted); display: flex; flex-wrap: wrap; font: 500 14px/20px var(--font-sans); gap: var(--space-2); margin: 0; }
 .error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
-.success { color: var(--success); font: 500 14px/20px var(--font-sans); margin: 0; }
-.status-line { margin-top: var(--space-3); }
+.action-error { margin-top: var(--space-3); }
 .icon { fill: none; flex: none; height: 20px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 20px; }
 .icon.filled { fill: currentColor; stroke: none; }
 

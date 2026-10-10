@@ -84,6 +84,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
@@ -103,6 +105,7 @@ const NAME_MAX = 36
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 const { username, id } = route.params
 const playlistRoute = { name: 'Playlist', params: { username, id } }
 
@@ -187,6 +190,7 @@ async function save() {
     if (publicChanged.value) form.append('isPublic', isPublic.value)
     if (coverFile.value) form.append('playlistCover', coverFile.value)
     await request('PUT', `${API_BASE_URL}/api/playlists/${encodeURIComponent(id)}`, form)
+    notification.success('Your playlist changes are saved.')
     finishing.value = true
     await nextTick()
     await animationsDone(banner.value.$el)

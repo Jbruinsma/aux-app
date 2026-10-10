@@ -54,6 +54,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user.js'
@@ -67,6 +69,7 @@ const MEMBER_NAV = ['Music', 'Charts', 'Friends', 'Explore']
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 const musicStore = useMusicStore()
 
 const loggedIn = computed(() => userStore.loggedIn && !!userStore.userData?.username)
@@ -80,6 +83,7 @@ const onOwnProfile = computed(() => route.name === 'Profile' && route.params.use
 async function logOut() {
   musicStore.saveLastPlayback(userStore.userData?.username)
   userStore.logout()
+  notification.success('You are logged out.')
   await router.push('/')
 }
 </script>

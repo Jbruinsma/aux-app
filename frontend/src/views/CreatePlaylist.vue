@@ -103,6 +103,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
@@ -119,6 +121,7 @@ const NAME_MAX = 36
 
 const router = useRouter()
 const userStore = useUserStore()
+const notification = useNotificationStore()
 
 // The steps only live on this page; nothing reaches the server until "Create playlist" sends everything in one request
 const step = ref('NAME')
@@ -189,6 +192,7 @@ async function createPlaylist() {
     form.append('isPublic', isPublic.value)
     form.append('playlistCover', coverFile.value)
     const playlist = await postToAPI(`${API_BASE_URL}/api/playlists`, form)
+    notification.success('Playlist created.')
     finishing.value = true
     await nextTick()
     await animationsDone(banner.value.$el)

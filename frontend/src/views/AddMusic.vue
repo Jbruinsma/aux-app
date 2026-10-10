@@ -104,6 +104,8 @@
 </template>
 
 <script setup>
+import { useNotificationStore } from '@/stores/notification.js'
+
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user.js'
@@ -122,6 +124,7 @@ const router = useRouter()
 const playlistName = ref('')
 
 const userStore = useUserStore()
+const notification = useNotificationStore()
 const currentUser = userStore.userData?.username
 
 onMounted(async () => {
@@ -186,6 +189,7 @@ function submitFiles() {
   postToAPI(url, formData, false)
     .then(response => {
       console.log('Files uploaded:', response);
+      notification.success('Your music is uploaded.')
       router.push(`/playlist/${username}/${id}`);
     })
     .catch(error => {
