@@ -34,12 +34,19 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     PlaylistEntity findSavedPlaylist(@Param("publicId") String publicId, @Param("userId") String userId);
 
     // Null if playlist doesn't exist. Guard before use. Ids in the result are public ids.
-    default PlaylistPage findPlaylistWithTracks(String publicId, String userId) {
-        List<PlaylistWithTracksRow> rows = findPlaylistPage(publicId, userId);
+    // Returns up to `limit` tracks with playlist_position > `afterPosition` (pass -1 for the first page).
+    default PlaylistPage findPlaylistWithTracks(String publicId, String userId, int afterPosition, int limit) {
+        // One extra row tells us whether another page exists
+        List<PlaylistWithTracksRow> rows = findPlaylistPage(publicId, userId, afterPosition, limit + 1);
         if (rows.isEmpty()) {
             return null;
         }
         PlaylistWithTracksRow first = rows.get(0);
+        Integer nextAfterPosition = null;
+        if (rows.size() > limit) {
+            rows = rows.subList(0, limit);
+            nextAfterPosition = rows.getLast().getPlaylistPosition();
+        }
         List<MusicPieceOverview> pieces = createPieces(rows);
         return new PlaylistPage(
                 first.getPlaylistId(),
@@ -48,7 +55,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                 Integer.valueOf(1).equals(first.getIsPublic()),
                 new PlaylistOwner(first.getOwnerId(), first.getOwnerPfpUrl(), first.getOwnerUsername()),
                 Integer.valueOf(1).equals(first.getIsSaved()),
+                first.getPieceCount(),
                 pieces,
+                nextAfterPosition,
                 findEditors(publicId),
                 first.getCallerStatus() == null ? null : PlaylistMemberStatus.valueOf(first.getCallerStatus()),
                 first.getCallerPermission() == null ? null : PlaylistPermission.valueOf(first.getCallerPermission()));
@@ -100,19 +109,23 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                    a.artist_pfp_url AS artistPfpUrl,
                    (uft.user_id IS NOT NULL) AS isFavorite,
                    pm.status AS callerStatus,
-                   pm.permission AS callerPermission
+                   pm.permission AS callerPermission,
+                   (SELECT COUNT(*) FROM playlist_tracks c WHERE c.playlist_id = p.playlist_id) AS pieceCount
             FROM playlists p
             JOIN users u ON u.user_id = p.owner_id
             LEFT JOIN user_saved_playlists usp ON usp.playlist_id = p.playlist_id AND usp.user_id = :userId
-            LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.playlist_id
+            LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.playlist_id AND pt.playlist_position > :afterPosition
             LEFT JOIN music_pieces mp ON mp.music_piece_id = pt.music_piece_id
             LEFT JOIN artists a ON a.artist_id = mp.artist_id
             LEFT JOIN playlist_members pm ON pm.playlist_id = p.playlist_id AND pm.user_id = :userId
             LEFT JOIN user_favorite_tracks uft ON uft.music_piece_id = mp.music_piece_id AND uft.user_id = :userId
             WHERE p.public_id = :publicId
             ORDER BY pt.playlist_position
+            LIMIT :limit
             """, nativeQuery = true)
-    List<PlaylistWithTracksRow> findPlaylistPage(@Param("publicId") String publicId, @Param("userId") String userId);
+    List<PlaylistWithTracksRow> findPlaylistPage(
+            @Param("publicId") String publicId, @Param("userId") String userId,
+            @Param("afterPosition") int afterPosition, @Param("limit") int limit);
 
     interface PlaylistSearchRow {
         String getPlaylistId();
@@ -141,6 +154,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
         String getCallerStatus(); // caller's playlist_members row; null if they have none
         String getCallerPermission();
+        Integer getPieceCount(); // every track in the playlist, not just this page
     }
 
     record PlaylistPage(
@@ -150,7 +164,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             boolean isPublic,
             PlaylistOwner owner,
             boolean isSaved,
+            int totalPieces,
             List<MusicPieceOverview> pieces,
+            Integer nextAfterPosition, // pass as afterPosition for the next page; null when this is the last one
             List<PlaylistEditor> editors,
             PlaylistMemberStatus callerStatus, // null if the caller has no member row
             PlaylistPermission callerPermission

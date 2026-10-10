@@ -31,13 +31,15 @@ public class PlaylistController {
 
     @GetMapping("/{username}/{playlistId}")
     @Operation(
-            summary = "Get a playlist with its tracks",
+            summary = "Get a playlist with its first page of tracks",
             description = """
                     `username` must be the playlist owner's username. Private playlists are only visible to
                     their owner and accepted members. A caller with a pending invite gets 403
                     (PLAYLIST_INVITE_PENDING); anyone else gets 404, the same as a missing playlist.
                     `access` is the caller's level (OWNER, EDITOR or LISTENER), null on a public playlist they have no part in.
                     `isSaved` is true when the caller has saved the playlist.
+                    `musicPieces` holds the first 50 tracks and `totalPieces` counts all of them. If `nextCursor` is not null,
+                    get the rest from `GET /{playlistId}/pieces`.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "403", description = "Private playlist and the caller's invite is still pending (code PLAYLIST_INVITE_PENDING)")
@@ -48,6 +50,25 @@ public class PlaylistController {
             @CurrentUser UserEntity user
     ) {
         return this.playlists.retrievePlaylist(username, playlistId, user);
+    }
+
+    @GetMapping("/{playlistId}/pieces")
+    @Operation(
+            summary = "Get the next page of a playlist's tracks",
+            description = """
+                    Continues the track list from `GET /{username}/{playlistId}`. Pass its `nextCursor` as `cursor`,
+                    then each page's `nextCursor` after that. Stop when `nextCursor` is null. Same visibility rules.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Bad `cursor` (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "403", description = "Private playlist and the caller's invite is still pending (code PLAYLIST_INVITE_PENDING)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found, or private and not yours (code PLAYLIST_NOT_FOUND)")
+    public PlaylistQueuePage getPlaylistPieces(
+            @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId,
+            @Parameter(description = "`nextCursor` from the previous page") @RequestParam String cursor,
+            @CurrentUser UserEntity user
+    ) {
+        return this.playlists.retrievePlaylistPieces(playlistId, cursor, user);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -107,7 +128,8 @@ public class PlaylistController {
             summary = "Add music pieces to a playlist",
             description = """
                     Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.
-                    A piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, or it is private.
+                    A piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, it is private,
+                    or the playlist already has 10,000 tracks.
                     A private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.
                     Skipped pieces do not fail the request.
                     """)
@@ -295,6 +317,30 @@ public class PlaylistController {
         return members.leave(playlistId, user);
     }
 
+    @GetMapping("/{playlistId}/play")
+    @Operation(
+            summary = "Get a page of a playlist's play queue",
+            description = """
+                    First call: pass `start` (optional) and `shuffle`. Without shuffle the queue runs in playlist order from `start`
+                    (earlier tracks are not queued). With shuffle `start` plays first, then every other track once in random order.
+                    Later calls: pass only the `nextCursor`
+                    from the previous page as `cursor`. Stop when `nextCursor` is null.
+                    Stream each track with `/music-pieces/{id}/stream?playlistId=...`.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Bad `cursor`, or `cursor` sent together with `start`/`shuffle` (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "403", description = "Private playlist and the caller's invite is still pending (code PLAYLIST_INVITE_PENDING)")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or not visible to the caller (code PLAYLIST_NOT_FOUND), or `start` is not in the playlist (code MUSIC_PIECE_NOT_FOUND)")
+    public PlaylistQueuePage playPlaylist(
+            @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId,
+            @Parameter(description = "Music piece to play first; defaults to the start of the playlist", example = "m_92kd0Z") @RequestParam(required = false) String start,
+            @Parameter(description = "Shuffle the queue") @RequestParam(defaultValue = "false") boolean shuffle,
+            @Parameter(description = "`nextCursor` from the previous page") @RequestParam(required = false) String cursor,
+            @CurrentUser UserEntity user
+    ) {
+        return playlists.playPlaylist(playlistId, user, start, shuffle, cursor);
+    }
+
     // TODO POST /{username}/create                        multipart: uuid, owner, name, isPublic, cover
     // TODO POST /{username}/{playlistId}/delete
     // TODO POST /{username}/{playlistId}/edit            multipart: name, isPublic, musicDeleted (JSON string), cover
@@ -302,6 +348,4 @@ public class PlaylistController {
     // TODO POST /{username}/{playlistId}/add/friends     json: friends
     // TODO GET  /summary/{username}/{playlistId}/music_piece/{index}/{mp3_uuid}
     // TODO POST /update/{username}/{playlistId}/music_piece/{index}/{mp3_uuid}   multipart: name, artist, cover
-    // TODO GET  /{username}/{playlistId}/play[/{start_index}]   query: shuffle
-    // TODO GET  /{username}/{playlistId}/play-shuffled/
 }
