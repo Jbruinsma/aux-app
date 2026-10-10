@@ -1,5 +1,5 @@
 <template>
-  <div class="add-music-page">
+  <div class="aux-page with-player add-music-page">
     <nav class="navbar">
       <div class="nav-content">
         <router-link to="/" class="site-name">Unchained</router-link>
@@ -212,42 +212,50 @@ function confirmExit() {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Libertinus+Math&display=swap');
-.add-music-page{background:#1e1e1e;color:#f0f0f0;min-height:100vh;}
-.back-arrow{align-items:center;color:#fff;cursor:pointer;display:flex;margin-bottom:1rem;}
-.back-arrow:hover{color:#f44336;}
-.back-arrow svg{height:24px;width:24px;}
-.container{background:rgba(255,255,255,0.05);border-radius:10px;margin:2rem auto;max-width:600px;padding:2rem;}
-.title-row{margin-bottom:1.5rem;text-align:center;}
-.title-row h1{font-family:'Libertinus Math',serif;font-size:2rem;}
-.music-upload{border:2px dashed #666;border-radius:8px;cursor:pointer;margin-bottom:1rem;padding:2rem;text-align:center;transition:background 0.3s;}
-.music-upload:hover{background:rgba(255,255,255,0.1);}
-.music-upload p{color:#aaa;}
-.music-item{align-items:center;background:#333;border-radius:6px;display:flex;gap:1rem;justify-content:space-between;margin-bottom:0.5rem;padding:0.75rem 1rem;}
-.music-info{align-items:center;display:flex;gap:0.5rem;}
-.music-item svg{flex-shrink:0;height:20px;width:20px;}
-.music-delete{cursor:pointer;transition:transform 0.2s;}
-.music-delete:hover{transform:scale(1.2);}
-.upload-btn{background:#333;border:none;border-radius:6px;color:#fff;cursor:pointer;display:block;font-size:1rem;margin:2rem auto 0 auto;padding:0.75rem 2rem;transition:background 0.3s;}
-.upload-btn:disabled{background:#555;cursor:not-allowed;}
-.upload-btn:hover:not(:disabled){background:#444;}
-.modal-overlay{align-items:center;background:rgba(0,0,0,0.7);display:flex;height:100vh;justify-content:center;left:0;position:fixed;top:0;width:100vw;z-index:1000;}
-.modal-content{background:#2a2a2a;border:2px solid #f44336;border-radius:8px;max-width:400px;padding:2rem;text-align:center;width:90%;}
-.modal-content h2{font-size:1.5rem;margin-bottom:1rem;}
-.modal-content p{color:#ccc;margin-bottom:2rem;}
-.modal-actions{display:flex;gap:1rem;justify-content:center;}
-.modal-btn{background:#555;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:1rem;padding:0.75rem 1.5rem;transition:background 0.3s;}
-.modal-btn.cancel:hover{background:#666;}
-.modal-btn.exit{background:#d9534f;}
-.modal-btn.exit:hover{background:#c9302c;}
-.navbar{background:#000;padding:1rem 0;}
-.nav-content{align-items:center;display:flex;justify-content:space-between;margin:0 auto;max-width:1200px;padding:0 1rem;}
-.nav-links{display:flex;gap:2rem;}
-.nav-link{color:#fff;font-weight:500;text-decoration:none;transition:color 0.3s;}
-.nav-link:hover{color:#ccc;}
-.site-name{color:#fff;font-family:'Libertinus Math',serif;font-size:1.8rem;text-decoration:none;}
-.fade-enter-active,.fade-leave-active{transition:opacity 0.5s;}
-.fade-enter-from,.fade-leave-to{opacity:0;}
-.fade-enter-to,.fade-leave-from{opacity:1;}
-</style>
+.add-music-page{background:var(--surface);color:var(--ink);min-height:100vh;}
+.back-arrow { align-items:center; color:var(--ink); cursor:pointer; display:flex; margin-bottom:1rem; }
+.back-arrow:hover { color:var(--danger); }
+.back-arrow svg { height:24px; width:24px; }
+.container { background:var(--surface-alt); border-radius:var(--radius-md); margin:2rem auto; max-width:600px; padding:2rem; }
+.title-row { margin-bottom:1.5rem; text-align:center; }
+.title-row h1 { font-family:var(--font-sans); font-size:2rem; }
+.music-upload { border:2px dashed var(--line-strong); border-radius:var(--radius-md); cursor:pointer; margin-bottom:1rem; padding:2rem; text-align:center; transition:background 0.3s; }
+.music-upload:hover { background:var(--purple-soft); }
+.music-upload p { color:var(--ink-muted); }
+.music-item { align-items:center; background:var(--surface-alt); border-radius:var(--radius-md); display:flex; gap:1rem; justify-content:space-between; margin-bottom:0.5rem; padding:0.75rem 1rem; }
+.music-info { align-items:center; display:flex; gap:0.5rem; }
+.music-item svg { flex-shrink:0; height:20px; width:20px; }
+.music-delete { cursor:pointer; transition:transform 0.2s; }
+.music-delete:hover { transform:scale(1.2); }
+.upload-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; display:block; font-size:1rem; margin:2rem auto 0 auto; padding:0.75rem 2rem; transition:background 0.3s; }
+.upload-btn:disabled { background:var(--surface-alt); cursor:not-allowed; }
+.upload-btn:hover:not(:disabled) { background:var(--purple-soft); }
+.modal-overlay { align-items:center; background:var(--scrim); display:flex; height:100vh; justify-content:center; left:0; position:fixed; top:0; width:100vw; z-index:1000; }
+.modal-content { background:var(--surface); border:2px solid var(--danger); border-radius:var(--radius-md); max-width:400px; padding:2rem; text-align:center; width:90%; }
+.modal-content h2 { font-size:1.5rem; margin-bottom:1rem; }
+.modal-content p { color:var(--ink-muted); margin-bottom:2rem; }
+.modal-actions { display:flex; gap:1rem; justify-content:center; }
+.modal-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; font-size:1rem; padding:0.75rem 1.5rem; transition:background 0.3s; }
+.modal-btn.cancel:hover { background:var(--line-strong); }
+.modal-btn.exit { background:var(--primary); }
+.modal-btn.exit:hover { background:var(--purple-hover); }
+.navbar { background:var(--surface); padding:1rem 0; }
+.nav-content { align-items:center; display:flex; justify-content:space-between; margin:0 auto; max-width:1200px; padding:0 1rem; }
+.nav-links { display:flex; gap:2rem; }
+.nav-link { color:var(--ink); font-weight:500; text-decoration:none; transition:color 0.3s; }
+.nav-link:hover { color:var(--ink-muted); }
+.site-name { color:var(--ink); font-family:var(--font-sans); font-size:1.8rem; text-decoration:none; }
+.fade-enter-active,.fade-leave-active { transition:opacity 0.5s; }
+.fade-enter-from,.fade-leave-to { opacity:0; }
+.fade-enter-to,.fade-leave-from { opacity:1; }
 
+button, input { font-family: var(--font-sans); }
+.upload-btn, .modal-btn.exit { background: var(--primary); color: var(--on-primary); }
+.upload-btn:hover:not(:disabled), .modal-btn.exit:hover { background: var(--purple-hover); }
+.upload-btn:disabled { background: var(--primary); opacity: 0.4; }
+.modal-content { border: 1px solid var(--line-strong); }
+.container { box-sizing: border-box; width: min(100%, 600px); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+</style>

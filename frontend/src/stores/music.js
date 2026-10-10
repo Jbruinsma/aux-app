@@ -1,9 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchAPI, request } from '@/utils/api.js'
+import { useNotificationStore } from '@/stores/notification.js'
 import { displayArtist, resolveCoverURL } from '@/utils/display.js'
 import { shufflePlaylist } from '@/utils/playlist.js'
-import { API_BASE_URL } from '@/utils/variables.js'
 
 export const useMusicStore = defineStore('music', () => {
   const DEFAULT_UUID = ''
@@ -14,8 +13,6 @@ export const useMusicStore = defineStore('music', () => {
   const DEFAULT_ORDERED_PLAYLIST = {orderedPlaylist: [], orderedPlaylistCurrentIndex: 0}
   const DEFAULT_VOLUME = 0
   const DEFAULT_POSITION = 0
-
-  const firstLoad = ref(true)
 
   const showArrow = ref(true)
   const collapsed = ref(true)
@@ -38,65 +35,20 @@ export const useMusicStore = defineStore('music', () => {
 
   let currentPlaylistIndex = null
 
-  async function loadPlaylist(playlistUUID, playlistOwner, startingMusicPieceIndex) {
-
-    if ( currentPlaylistUUID.value === playlistUUID && currentPlaylistIndex === startingMusicPieceIndex ) {
-      isPlaying.value = true
-      return
-    }
-
-    try {
-      const shuffle = shuffleOn.value
-
-      let url
-      if (startingMusicPieceIndex === null) { url = `${API_BASE_URL}/api/playlists/${playlistOwner}/${playlistUUID}/play-shuffled/` }
-      else { url = `${API_BASE_URL}/api/playlists/${playlistOwner}/${playlistUUID}/play/${startingMusicPieceIndex}?shuffle=${shuffle}`}
-
-      const data = await fetchAPI(url)
-
-      if ('error' in data) { return }
-
-      currentPlaylistIndex = data.startIndex
-
-      orderedPlaylist.value.orderedPlaylist = data.orderedPlaylist
-      orderedPlaylist.value.orderedPlaylistCurrentIndex = startingMusicPieceIndex === null ? data.orderedStartingIndex : data.startIndex
-      playlist.value = data.playlist
-      currentPlaylistUUID.value = playlistUUID
-
-      const track = playlist.value[currentPlaylistIndex]
-      updateCurrentMusicPiece(track)
-
-      position.value = 0
-      isPlaying.value = true
-      firstLoad.value = false
-    } catch (err) {
-      console.error('Failed to load playlist:', err)
-    }
+  // The old playlist/play and playback-save endpoints have been retired.
+  // Phase 2 will build queues and request audio from the music-piece playback API.
+  async function loadPlaylist() {
+    useNotificationStore().neutral('Playback is temporarily unavailable.')
+    return false
   }
 
-  async function saveLastPlayback(currentUser) {
-    if (!currentUser) return
-
-    const payload = {
-      position: position.value,
-      current_playlist_index: currentPlaylistIndex,
-      current_music_piece_uuid: currentMusicPiece.value.uuid,
-      playlist_uuid: currentPlaylistUUID.value,
-      repeatOn: repeatOn.value,
-      shuffleOn: shuffleOn.value,
-    }
-
-    try {
-      const url = `${API_BASE_URL}/api/users/${currentUser}/update-last-playback`
-      // Background persistence must not replace feedback for the user's action.
-      const data = await request('POST', url, payload, { notifyOnError: false })
-      console.log('Saved last playback:', data)
-    } catch (err) {
-      console.error('Failed to save last playback:', err)
-    }
+  async function saveLastPlayback() {
+    // Kept for existing callers until Phase 2 records listening events instead.
+    return false
   }
 
   function moveForward() {
+    if (!playlist.value.length) return
     currentPlaylistIndex = currentPlaylistIndex === playlist.value.length - 1 ? 0 : currentPlaylistIndex + 1;
 
     if (!shuffleOn.value) { orderedPlaylist.value.orderedPlaylistCurrentIndex = currentPlaylistIndex; }
@@ -107,6 +59,7 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   function moveBackward() {
+    if (!playlist.value.length) return
     if (currentPlaylistIndex > 0) {
       currentPlaylistIndex--;
       if (!shuffleOn.value) { orderedPlaylist.value.orderedPlaylistCurrentIndex = currentPlaylistIndex; }
@@ -123,6 +76,7 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   function toggleShuffle() {
+    if (!playlist.value.length) return
     shuffleOn.value = !shuffleOn.value;
 
     if (shuffleOn.value) {
@@ -149,30 +103,18 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   function updateBottomPlayerAfterLogin(playbackData) {
-    const wasShuffled = playbackData.shuffleOn
-    const wasRepeating = playbackData.repeatOn
-    const savedIndex = playbackData.currentPlaylistIndex
-    const backendQueue = playbackData.queue
-    const originalOrder = playbackData.orderedPlaylist
-
-    shuffleOn.value = wasShuffled
-    repeatOn.value = wasRepeating
-    currentPlaylistUUID.value = playbackData.currentPlaylistUUID
-
-    orderedPlaylist.value.orderedPlaylist = [...originalOrder]
-    orderedPlaylist.value.orderedPlaylistCurrentIndex = savedIndex
-
-    if (wasShuffled) {
-      playlist.value = backendQueue
-      currentPlaylistIndex = 0
-    } else {
-      playlist.value = [...originalOrder]
-      currentPlaylistIndex = savedIndex
+    const piece = playbackData?.musicPiece
+    if (!piece?.musicPieceId) return
+    reset()
+    currentPlaylistUUID.value = playbackData.playlistId ?? ''
+    currentMusicPiece.value = {
+      uuid: piece.musicPieceId,
+      title: piece.name,
+      cover: piece.coverUrl ? resolveCoverURL(piece.coverUrl) : '',
+      artist: piece.artistSummary?.artistName ?? '',
+      // LastPlayback contains metadata only, not an audio URL or a queue.
+      mp3File: null,
     }
-
-    const track = playlist.value[currentPlaylistIndex]
-    updateCurrentMusicPiece(track)
-    position.value = playbackData.position
     collapsed.value = false
     forceShowPlayerActive.value = true
   }
@@ -209,7 +151,7 @@ export const useMusicStore = defineStore('music', () => {
     }
     currentPlaylistUUID.value = DEFAULT_UUID
     playlist.value = [...DEFAULT_PLAYLIST]
-    orderedPlaylist.value = DEFAULT_ORDERED_PLAYLIST
+    orderedPlaylist.value = { orderedPlaylist: [], orderedPlaylistCurrentIndex: 0 }
     isPlaying.value = false
     shuffleOn.value = false
     repeatOn.value = false
