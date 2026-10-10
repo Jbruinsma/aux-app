@@ -1938,10 +1938,118 @@
       }
     },
     "/api/playlists/{playlistId}/pieces" : {
+      "get" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Get the next page of a playlist's tracks",
+        "description" : "Continues the track list from `GET /{username}/{playlistId}`. Pass its `nextCursor` as `cursor`,\nthen each page's `nextCursor` after that. Stop when `nextCursor` is null. Same visibility rules.\n",
+        "operationId" : "getPlaylistPieces",
+        "parameters" : [ {
+          "name" : "playlistId",
+          "in" : "path",
+          "description" : "Public id of the playlist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "p_7c2dK1"
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` from the previous page",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistQueuePage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad `cursor` (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Private playlist and the caller's invite is still pending (code PLAYLIST_INVITE_PENDING); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found, or private and not yours (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
       "post" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "Add music pieces to a playlist",
-        "description" : "Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.\nA piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, or it is private.\nA private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.\nSkipped pieces do not fail the request.\n",
+        "description" : "Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.\nA piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, it is private,\nor the playlist already has 10,000 tracks.\nA private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.\nSkipped pieces do not fail the request.\n",
         "operationId" : "addPieceToPlaylist",
         "parameters" : [ {
           "name" : "playlistId",
@@ -3509,8 +3617,8 @@
     "/api/playlists/{username}/{playlistId}" : {
       "get" : {
         "tags" : [ "playlist-controller" ],
-        "summary" : "Get a playlist with its tracks",
-        "description" : "`username` must be the playlist owner's username. Private playlists are only visible to\ntheir owner and accepted members. A caller with a pending invite gets 403\n(PLAYLIST_INVITE_PENDING); anyone else gets 404, the same as a missing playlist.\n`access` is the caller's level (OWNER, EDITOR or LISTENER), null on a public playlist they have no part in.\n`isSaved` is true when the caller has saved the playlist.\n",
+        "summary" : "Get a playlist with its first page of tracks",
+        "description" : "`username` must be the playlist owner's username. Private playlists are only visible to\ntheir owner and accepted members. A caller with a pending invite gets 403\n(PLAYLIST_INVITE_PENDING); anyone else gets 404, the same as a missing playlist.\n`access` is the caller's level (OWNER, EDITOR or LISTENER), null on a public playlist they have no part in.\n`isSaved` is true when the caller has saved the playlist.\n`musicPieces` holds the first 50 tracks and `totalPieces` counts all of them. If `nextCursor` is not null,\nget the rest from `GET /{playlistId}/pieces`.\n",
         "operationId" : "getPlaylist",
         "parameters" : [ {
           "name" : "username",
@@ -3554,6 +3662,134 @@
           },
           "404" : {
             "description" : "Playlist not found, or private and not yours (code PLAYLIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/playlists/{playlistId}/play" : {
+      "get" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Get a page of a playlist's play queue",
+        "description" : "First call: pass `start` (optional) and `shuffle`. Without shuffle the queue runs in playlist order from `start`\n(earlier tracks are not queued). With shuffle `start` plays first, then every other track once in random order.\nLater calls: pass only the `nextCursor`\nfrom the previous page as `cursor`. Stop when `nextCursor` is null.\nStream each track with `/music-pieces/{id}/stream?playlistId=...`.\n",
+        "operationId" : "playPlaylist",
+        "parameters" : [ {
+          "name" : "playlistId",
+          "in" : "path",
+          "description" : "Public id of the playlist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "p_7c2dK1"
+        }, {
+          "name" : "start",
+          "in" : "query",
+          "description" : "Music piece to play first; defaults to the start of the playlist",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "m_92kd0Z"
+        }, {
+          "name" : "shuffle",
+          "in" : "query",
+          "description" : "Shuffle the queue",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` from the previous page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlaylistQueuePage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad `cursor`, or `cursor` sent together with `start`/`shuffle` (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Private playlist and the caller's invite is still pending (code PLAYLIST_INVITE_PENDING); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Playlist not found or not visible to the caller (code PLAYLIST_NOT_FOUND), or `start` is not in the playlist (code MUSIC_PIECE_NOT_FOUND)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -4786,10 +5022,14 @@
           },
           "musicPieces" : {
             "type" : "array",
-            "description" : "Tracks in playlist order; empty for a new playlist",
+            "description" : "First page of tracks in playlist order; empty for a new playlist",
             "items" : {
               "$ref" : "#/components/schemas/MusicPieceOverview"
             }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send as `cursor` to `GET /api/playlists/{playlistId}/pieces` for the next page; null when every track is here"
           },
           "editors" : {
             "type" : "array",
@@ -4839,7 +5079,7 @@
           "failedCount" : {
             "type" : "integer",
             "format" : "int32",
-            "description" : "How many requested pieces were skipped: unknown id, already in the playlist, or a private piece the caller can't add here",
+            "description" : "How many requested pieces were skipped: unknown id, already in the playlist, a private piece the caller can't add here, or the playlist hit 10,000 tracks",
             "example" : 1
           },
           "totalPieces" : {
@@ -5225,6 +5465,23 @@
             "type" : "boolean",
             "description" : "True when the username is taken or reserved",
             "example" : true
+          }
+        }
+      },
+      "PlaylistQueuePage" : {
+        "type" : "object",
+        "description" : "One page of a playlist's play queue",
+        "properties" : {
+          "musicPieces" : {
+            "type" : "array",
+            "description" : "Next tracks to play, in play order",
+            "items" : {
+              "$ref" : "#/components/schemas/MusicPieceOverview"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send back as `cursor` to get the next page; null when the queue is done"
           }
         }
       },
