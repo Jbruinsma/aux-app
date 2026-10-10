@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import App from './App.vue'
 import { useUserStore } from './stores/user.js'
 import { useMusicStore } from './stores/music.js'
@@ -46,20 +47,18 @@ it.each([false, true])('preserves the rendered login confirmation when playback 
   useUserStore().login({ username: 'listener', onboardingStep: 'DONE' }, 'token')
   useNotificationStore().success('You are logged in.')
   await flushPromises()
-  expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/get-last-playback'), expect.any(Object))
+  expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/me/last-playback'), expect.any(Object))
   expect(wrapper.get('.notification-message').text()).toBe('You are logged in.')
   expect(useNotificationStore().type).toBe('success')
   expect(console.log).toHaveBeenCalledWith('Error fetching last playback:', expect.any(Error))
 })
 
-it.each([false, true])('preserves action feedback when background playback saving fails (network=%s)', async network => {
-  const fetch = failFetch(network)
+it('does not call retired playback routes or replace action feedback', async () => {
+  const fetch = failFetch()
   useNotificationStore().success('Your details are saved.')
   await useMusicStore().saveLastPlayback('listener')
-  expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/update-last-playback'), expect.objectContaining({ method: 'POST' }))
+  expect(fetch).not.toHaveBeenCalled()
   expect(useNotificationStore().message).toBe('Your details are saved.')
-  expect(useNotificationStore().type).toBe('success')
-  expect(console.error).toHaveBeenCalledWith('Failed to save last playback:', expect.any(Error))
 })
 
 it.each([false, true])('still announces and rejects ordinary action failures (network=%s)', async network => {
@@ -68,4 +67,30 @@ it.each([false, true])('still announces and rejects ordinary action failures (ne
   await expect(request('PUT', '/api/users/me/profile-details', {})).rejects.toThrow()
   expect(useNotificationStore().type).toBe('error')
   expect(useNotificationStore().message).toBe(network ? "Couldn't reach the server" : 'No static resource')
+})
+
+it('treats 204 as no history and does not refetch on profile updates', async () => {
+  const fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+  vi.stubGlobal('fetch', fetch)
+  wrapper = mount(App, { global: { stubs: { RouterView: true } } })
+  useUserStore().login({ username: 'listener', onboardingStep: 'DONE' }, 'token')
+  await flushPromises()
+  expect(useMusicStore().isEmpty()).toBe(true)
+  useUserStore().updateUser({ username: 'newname', profilePictureUrl: '/cover.webp' })
+  await flushPromises()
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/users/me/last-playback'), expect.any(Object))
+})
+
+it('ignores an old restoration response after logout', async () => {
+  let finish
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(resolve => { finish = resolve })))
+  wrapper = mount(App, { global: { stubs: { RouterView: true } } })
+  useUserStore().login({ username: 'listener', onboardingStep: 'DONE' }, 'token')
+  await nextTick()
+  useUserStore().logout()
+  await nextTick()
+  finish({ ok: true, status: 200, json: async () => ({ musicPiece: { musicPieceId: 'old-track', name: 'Old song' }, playlistId: null }) })
+  await flushPromises()
+  expect(useMusicStore().isEmpty()).toBe(true)
 })

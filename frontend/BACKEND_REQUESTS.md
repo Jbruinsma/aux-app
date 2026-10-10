@@ -45,10 +45,12 @@ with `{ "musicPieceIds": [...] }` in the new order.
 
 ### Playback
 
-The player (`src/stores/music.js`) still calls the old UnChained routes, which don't exist:
-`GET /api/playlists/{owner}/{id}/play/{index}?shuffle=` and `GET /api/playlists/{owner}/{id}/play-shuffled/`.
-It needs a way to get a playable (signed) MP3 URL for each song in a playlist. What shape do you want for that?
-
+The retired playlist play/shuffle and playback-update calls are now guarded in
+`src/stores/music.js` and do not send requests. Phase 2 will replace those guards
+with queue construction, playable URLs, and listening-event recording against the
+current API. `GET /api/users/me/last-playback` is integrated for metadata display;
+204 means no history, and the 200 response contains `musicPiece` plus an optional
+`playlistId`, without an audio URL, queue, or seek position.
 ### Sharing
 
 "Manage access" on the playlist page links to the old Add friends page. Is sharing a playlist with specific people

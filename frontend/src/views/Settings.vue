@@ -20,6 +20,8 @@
         </div>
       </div>
 
+      <div class="wrap"><ThemePreference /></div>
+
       <div v-if="tab === 'profile'" class="wrap layout">
         <div class="main-col">
           <section aria-labelledby="picture-heading">
@@ -552,6 +554,7 @@
 </template>
 
 <script setup>
+import ThemePreference from '@/components/ThemePreference.vue'
 import { useNotificationStore } from '@/stores/notification.js'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'

@@ -1,5 +1,5 @@
 <template>
-  <div class="edit-song-page">
+  <div class="aux-page with-player edit-song-page">
     <nav class="navbar">
       <div class="container nav-content">
         <router-link to="/" class="site-name">Unchained</router-link>
@@ -204,48 +204,58 @@ function confirmCancel(){
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Libertinus+Math&display=swap');
-.back-arrow{align-items:center;color:#fff;cursor:pointer;display:flex;flex-shrink:0;padding:0.5rem;transition:transform 0.2s;}
-.back-arrow:hover{color:#f44336;}
-.back-arrow svg{height:24px;width:24px;}
-.save-row{align-items:center;display:flex;gap:1rem;justify-content:space-between;margin-bottom:1rem;}
-.save-btn{align-items:center;background:#333;border:none;border-radius:6px;color:#fff;cursor:pointer;display:flex;font-size:1rem;justify-content:center;padding:0.75rem 2rem;transition:background 0.3s;}
-.save-btn:hover{background:#444;}
-.container.content{margin:2rem auto;max-width:600px;padding:0 1rem;text-align:center;}
-.cover-overlay{align-items:center;background:rgba(0,0,0,0.4);border-radius:12px;bottom:0;color:#fff;display:flex;font-size:2rem;justify-content:center;left:0;position:absolute;right:0;top:0;transition:background 0.3s;}
-.cover-overlay:hover{background:rgba(0,0,0,0.6);}
-.cover-section{margin-bottom:2rem;}
-.download-btn{background:#444;border-radius:8px;color:#f0f0f0;display:inline-block;padding:0.75rem 1.5rem;text-decoration:none;transition:background 0.3s;}
-.download-btn:hover{background:#555;}
-.download-icon svg{height:22px;stroke:#fff;width:22px;}
-.download-icon svg:hover{stroke:#4caf50;}
-.edit-song-page{background:#1e1e1e;color:#f0f0f0;min-height:100vh;}
-.field{align-items:center;display:flex;flex-direction:column;margin-bottom:1.5rem;}
-.field label{color:#ccc;font-size:0.9rem;margin-bottom:0.3rem;text-align:left;width:60%;}
-.field input{background:#2a2a2a;border:none;border-radius:8px;color:#f0f0f0;padding:0.75rem;width:60%;}
-.fields{margin-bottom:2rem;}
-.nav-content{align-items:center;display:flex;justify-content:space-between;margin:0 auto;max-width:1200px;padding:0 1rem;}
-.nav-link{color:#fff;font-weight:500;text-decoration:none;transition:color 0.3s;}
-.nav-link:hover{color:#ccc;}
-.nav-links{display:flex;gap:2rem;}
-.navbar{background:#000;padding:1rem 0;}
-.site-name{color:#fff;font-family:'Libertinus Math',serif;font-size:1.8rem;text-decoration:none;}
-.song-cover{background:#444 center;background-size:cover;border-radius:12px;height:300px;margin:0 auto;position:relative;width:300px;}
-.song-download-box{align-items:center;background:#2a2a2a;border-radius:8px;cursor:pointer;display:flex;gap:1rem;justify-content:space-between;margin:1rem auto;padding:0.5rem 1rem;width:50%;}
-.song-thumbnail{background:#555 center;background-size:cover;border-radius:6px;height:35px;width:35px;}
-.song-info{flex:1;text-align:left;}
-.song-title{font-size:1rem;}
-.download-icon svg{height:24px;stroke:#fff;width:24px;}
-.download-icon svg:hover{stroke:#4caf50;}
-.exit-modal{border:2px solid #f44336;}
-.modal-actions{display:flex;gap:1rem;justify-content:center;}
-.modal-btn{background:#555;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:1rem;padding:0.75rem 1.5rem;transition:background 0.3s;}
-.modal-btn.cancel:hover{background:#666;}
-.modal-btn.exit-editing{background:#d9534f;}
-.modal-btn.exit-editing:hover{background:#c9302c;}
-.modal-content{background:#2a2a2a;border-radius:8px;max-width:400px;padding:2rem;text-align:center;width:90%;}
-.modal-content h2{font-size:1.5rem;margin-bottom:1rem;}
-.modal-content p{color:#ccc;margin-bottom:2rem;}
-.modal-option svg{display:block;flex:0 0 auto;height:20px;width:20px;}
-.modal-overlay{align-items:center;background:rgba(0,0,0,0.7);display:flex;height:100vh;justify-content:center;left:0;position:fixed;top:0;width:100vw;z-index:1000;}
+.back-arrow{align-items:center;color:var(--ink);cursor:pointer;display:flex;flex-shrink:0;padding:0.5rem;transition:transform 0.2s;}
+.back-arrow:hover { color:var(--danger); }
+.back-arrow svg { height:24px; width:24px; }
+.save-row { align-items:center; display:flex; gap:1rem; justify-content:space-between; margin-bottom:1rem; }
+.save-btn { align-items:center; background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; display:flex; font-size:1rem; justify-content:center; padding:0.75rem 2rem; transition:background 0.3s; }
+.save-btn:hover { background:var(--purple-soft); }
+.container.content { margin:2rem auto; max-width:600px; padding:0 1rem; text-align:center; }
+.cover-overlay { align-items:center; background:var(--scrim); border-radius:var(--radius-md); bottom:0; color:var(--ink); display:flex; font-size:2rem; justify-content:center; left:0; position:absolute; right:0; top:0; transition:background 0.3s; }
+.cover-overlay:hover { background:var(--scrim); }
+.cover-section { margin-bottom:2rem; }
+.download-btn { background:var(--purple-soft); border-radius:var(--radius-md); color:var(--ink); display:inline-block; padding:0.75rem 1.5rem; text-decoration:none; transition:background 0.3s; }
+.download-btn:hover { background:var(--surface-alt); }
+.download-icon svg { height:22px; stroke:var(--ink); width:22px; }
+.download-icon svg:hover { stroke:var(--link); }
+.edit-song-page { background:var(--surface); color:var(--ink); min-height:100vh; }
+.field { align-items:center; display:flex; flex-direction:column; margin-bottom:1.5rem; }
+.field label { color:var(--ink-muted); font-size:0.9rem; margin-bottom:0.3rem; text-align:left; width:60%; }
+.field input { background:var(--surface); border:none; border-radius:var(--radius-md); color:var(--ink); padding:0.75rem; width:60%; }
+.fields { margin-bottom:2rem; }
+.nav-content { align-items:center; display:flex; justify-content:space-between; margin:0 auto; max-width:1200px; padding:0 1rem; }
+.nav-link { color:var(--ink); font-weight:500; text-decoration:none; transition:color 0.3s; }
+.nav-link:hover { color:var(--ink-muted); }
+.nav-links { display:flex; gap:2rem; }
+.navbar { background:var(--surface); padding:1rem 0; }
+.site-name { color:var(--ink); font-family:var(--font-sans); font-size:1.8rem; text-decoration:none; }
+.song-cover { background:var(--purple-soft) center; background-size:cover; border-radius:var(--radius-md); height:300px; margin:0 auto; position:relative; width:300px; }
+.song-download-box { align-items:center; background:var(--surface); border-radius:var(--radius-md); cursor:pointer; display:flex; gap:1rem; justify-content:space-between; margin:1rem auto; padding:0.5rem 1rem; width:50%; }
+.song-thumbnail { background:var(--surface-alt) center; background-size:cover; border-radius:var(--radius-md); height:35px; width:35px; }
+.song-info { flex:1; text-align:left; }
+.song-title { font-size:1rem; }
+.download-icon svg { height:24px; stroke:var(--ink); width:24px; }
+.download-icon svg:hover { stroke:var(--link); }
+.exit-modal { border:2px solid var(--danger); }
+.modal-actions { display:flex; gap:1rem; justify-content:center; }
+.modal-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; font-size:1rem; padding:0.75rem 1.5rem; transition:background 0.3s; }
+.modal-btn.cancel:hover { background:var(--line-strong); }
+.modal-btn.exit-editing { background:var(--primary); }
+.modal-btn.exit-editing:hover { background:var(--purple-hover); }
+.modal-content { background:var(--surface); border-radius:var(--radius-md); max-width:400px; padding:2rem; text-align:center; width:90%; }
+.modal-content h2 { font-size:1.5rem; margin-bottom:1rem; }
+.modal-content p { color:var(--ink-muted); margin-bottom:2rem; }
+.modal-option svg { display:block; flex:0 0 auto; height:20px; width:20px; }
+.modal-overlay { align-items:center; background:var(--scrim); display:flex; height:100vh; justify-content:center; left:0; position:fixed; top:0; width:100vw; z-index:1000; }
+
+button, input { font-family: var(--font-sans); }
+.save-btn, .modal-btn.exit-editing { background: var(--primary); color: var(--on-primary); }
+.save-btn:hover, .modal-btn.exit-editing:hover { background: var(--purple-hover); }
+.modal-content, .field input { border: 1px solid var(--line-strong); }
+.cover-overlay { color: var(--white); }
+.container { box-sizing: border-box; width: min(100%, 600px); }
+.song-cover { max-width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
 </style>

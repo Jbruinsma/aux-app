@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-import { computed, watchEffect } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import BottomPlayer from '@/components/BottomPlayer.vue'
@@ -38,24 +38,24 @@ const hideBottomPlayerOnThisRoute = computed(() => {
   return !(currentUser || musicStore.forceShowPlayerActive || musicStore.currentSong)
 })
 
-watchEffect(async () => {
-  if (userStore.loggedIn) {
-    const url = `${API_BASE_URL}/api/users/${userStore.userData.username}/get-last-playback`
-
+// Restore once per authenticated session, not on page changes. Ignore stale replies.
+watch(
+  () => [userStore.loggedIn, userStore.token, userStore.onboarded],
+  async ([loggedIn, , onboarded], previous, onCleanup) => {
+    if (!loggedIn || !onboarded) return
+    let cancelled = false
+    onCleanup(() => { cancelled = true })
     try {
-      // Restoring playback is best-effort; it must not replace login feedback.
-      const data = await fetchAPI(url, { notifyOnError: false })
-
-      if (data === null || data === undefined) {
-        return
-      }
-
+      const data = await fetchAPI(`${API_BASE_URL}/api/users/me/last-playback`, { notifyOnError: false })
+      if (cancelled || !data || musicStore.isPlaying) return
       musicStore.updateBottomPlayerAfterLogin(data)
     } catch (err) {
       console.log('Error fetching last playback:', err)
     }
-  }
-})
+  },
+  { immediate: true },
+)
+
 </script>
 
 <style>
@@ -66,9 +66,9 @@ body,
   padding: 0;
   width: 100%;
   max-width: none;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #121212;
-  color: #f0f0f0;
+  font-family: var(--font-sans);
+  background: var(--surface);
+  color: var(--ink);
   line-height: 1.6;
   margin-bottom: 70px;
 }

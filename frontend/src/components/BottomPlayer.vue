@@ -29,16 +29,16 @@
       </div>
 
       <div class="controls">
-        <button type="button" class="icon-btn" aria-label="Previous" @click="prevTrack">
+        <button type="button" class="icon-btn" :disabled="!canPlay || !musicStore.playlist.length" aria-label="Previous" @click="prevTrack">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M6 5h2v14H6zM19 5.5v13a.5.5 0 0 1-.77.42L9 12.42a.5.5 0 0 1 0-.84l9.23-6.5a.5.5 0 0 1 .77.42z" />
           </svg>
         </button>
-        <button type="button" class="play" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="togglePlay">
+        <button type="button" class="play" :disabled="!canPlay" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="togglePlay">
           <svg v-if="!isPlaying" width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
           <svg v-else width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor" /></svg>
         </button>
-        <button type="button" class="icon-btn" aria-label="Next" @click="nextTrack">
+        <button type="button" class="icon-btn" :disabled="!canPlay || !musicStore.playlist.length" aria-label="Next" @click="nextTrack">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" />
           </svg>
@@ -46,14 +46,14 @@
       </div>
 
       <div class="right-side">
-        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
+        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canPlay || !musicStore.playlist.length" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" />
             <path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" />
             <path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" />
           </svg>
         </button>
-        <button type="button" class="icon-btn toggle" :class="{ active: repeatOn }" aria-label="Repeat" :aria-pressed="repeatOn ? 'true' : 'false'" @click="toggleRepeat">
+        <button type="button" class="icon-btn toggle" :class="{ active: repeatOn }" :disabled="!canPlay" aria-label="Repeat" :aria-pressed="repeatOn ? 'true' : 'false'" @click="toggleRepeat">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" />
             <path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
@@ -80,7 +80,7 @@
         :max="Math.floor(duration)"
         step="any"
         :value="progress"
-        aria-label="Seek"
+        :disabled="!canPlay" aria-label="Seek"
         :aria-valuetext="`${formattedCurrentTime} of ${formattedDuration}`"
         :style="{ '--fill': progressFill }"
         @input="e => progress = parseFloat(e.target.value)"
@@ -110,6 +110,7 @@ const showArrow = computed(() => musicStore.forceShowPlayerActive || musicStore.
 const shouldShowPlayer = showArrow
 
 const currentMusicPiece = computed(() => musicStore.currentMusicPiece)
+const canPlay = computed(() => Boolean(currentMusicPiece.value?.mp3File))
 const isPlaying = computed(() => musicStore.isPlaying)
 const shuffleOn = computed(() => musicStore.shuffleOn)
 const repeatOn = computed(() => musicStore.repeatOn)
@@ -223,6 +224,7 @@ function onTimeUpdate() {
 }
 
 function togglePlay() {
+  if (!canPlay.value) return
   if (!musicStore.isEmpty()) {
     musicStore.isPlaying = !musicStore.isPlaying
     const currentUser = userStore.userData?.username
@@ -257,6 +259,7 @@ function nextTrack() {
 </script>
 
 <style scoped>
+button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .bottom-player,
 .progress-bar-container { position: fixed; left: 0; right: 0; background: var(--surface-alt); color: var(--ink); font-family: var(--font-sans); transition: transform var(--dur-med) var(--ease); }
 .bottom-player { bottom: 32px; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--page-gutter) var(--space-1); border-top: 1px solid var(--line); }

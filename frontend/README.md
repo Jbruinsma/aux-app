@@ -42,3 +42,22 @@ verification, preview-only deletion, playlist saving, navigation, and dismissal 
 ```sh
 npm run lint
 ```
+
+### Theme preferences
+
+Settings → Appearance offers System, Light, and Dark. Explicit choices are stored
+in `localStorage` under `aux-theme`; System removes the override and follows device
+changes live. The theme is applied to `<html>` before the app mounts. Storage
+restrictions do not prevent changing the current tab's appearance.
+
+### Playback migration
+
+Startup reads `GET /api/users/me/last-playback` once per authenticated session.
+A 204 response leaves the player empty. A 200 response supplies track metadata and
+an optional playlist ID; it does not include an audio URL, queue, or seek position.
+The last track is displayed paused, with unavailable playback controls disabled.
+
+The retired playlist play/shuffle and playback-update calls are guarded and send
+no requests. Phase 2 must implement playable URLs, queues, and listening-event
+recording against the current API before enabling those paths. This change does
+not claim to restore audio playback.

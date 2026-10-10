@@ -39,6 +39,7 @@
 }
 
 :root {
+  --scrim: rgba(0, 0, 0, 0.6);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
