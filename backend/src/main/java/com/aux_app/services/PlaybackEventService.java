@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -68,8 +69,14 @@ public class PlaybackEventService {
     public @Nullable LastPlayback retrieveMostRecentPlayback(String userId) {
         PlayEventRepository.LastPlaybackRow row = playEvents.findLastPlayback(userId);
 
-        if (row == null) return null;
+        return row == null ? null : toLastPlayback(row);
+    }
 
+    public List<LastPlayback> retrieveRecentPlaybacks(String userId) {
+        return playEvents.findRecentPlaybacks(userId).stream().map(PlaybackEventService::toLastPlayback).toList();
+    }
+
+    private static LastPlayback toLastPlayback(PlayEventRepository.LastPlaybackRow row) {
         return new LastPlayback(
                 new MusicPieceOverview(
                         row.getMusicPieceId(),

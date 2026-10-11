@@ -100,6 +100,33 @@ public class UserController {
         return UserSummary.of(onboarding.completeStep(user, step, file, username));
     }
 
+    @GetMapping("/recent-listening")
+    @Operation(
+            summary = "Get the caller's recently played music pieces",
+            description = """
+                    Up to 4 distinct pieces from plays recorded with `POST /api/music-pieces/{musicPieceId}/plays`,
+                    most recently played first. A piece played several times appears once, with the `playlistId` of its
+                    latest play. Same rules as `GET /me/last-playback`: plays of pieces made private since are skipped,
+                    and `playlistId` is null when the piece wasn't played from a playlist or the caller can no longer see it.
+                    `recents` is empty when the caller has played nothing they can still play.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    public RecentListeningResponse getRecentListening(@CurrentUser UserEntity user) {
+        return new RecentListeningResponse(playbackEventService.retrieveRecentPlaybacks(user.getUserId()));
+    }
+
+    @GetMapping("/top-artists")
+    @Operation(
+            summary = "Get the caller's most played artists",
+            description = """
+                    Up to 4 artists ranked by how many plays the caller has recorded of their pieces, all time.
+                    Ties go to the artist played most recently. `artists` is empty when the caller has played nothing.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    public TopArtistsResponse getTopArtists(@CurrentUser UserEntity user) {
+        return new TopArtistsResponse(users.findTopArtists(user.getUserId()));
+    }
+
     @GetMapping("/library")
     @Operation(
             summary = "Get the caller's playlist library",
