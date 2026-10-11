@@ -1,5 +1,6 @@
 package com.aux_app.repository;
 
+import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.base.Country;
 import com.aux_app.dto.playlist.CorePlaylist;
 import com.aux_app.dto.playlist.LibraryPlaylist;
@@ -168,6 +169,31 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getPlaylistName();
         String getPlaylistCoverUrl();
         int getTotalPieces();
+    }
+
+    default List<ArtistSummary> findTopArtists(String userId) {
+        return findTopArtistRows(userId).stream()
+                .map(r -> new ArtistSummary(r.getArtistId(), r.getArtistName(), r.getArtistPfpUrl()))
+                .toList();
+    }
+
+    // The user's 4 most played artists, all time. Ties go to the artist played most recently.
+    @Query(value = """
+            SELECT a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
+            FROM play_events pe
+            JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
+            JOIN artists a ON a.artist_id = mp.artist_id
+            WHERE pe.user_id = :userId
+            GROUP BY a.artist_id
+            ORDER BY COUNT(*) DESC, MAX(pe.played_at) DESC
+            LIMIT 4
+            """, nativeQuery = true)
+    List<TopArtistRow> findTopArtistRows(@Param("userId") String userId);
+
+    interface TopArtistRow {
+        String getArtistId();
+        String getArtistName();
+        String getArtistPfpUrl();
     }
 
     // Search: `pattern` is a LIKE pattern (caller escapes %, _ and \\). Users who haven't finished onboarding are hidden.

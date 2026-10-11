@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface PlayEventRepository extends JpaRepository<PlayEventEntity, String> {
 
     // Null if the user has never played anything
@@ -31,6 +33,33 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             LIMIT 1
             """, nativeQuery = true)
     LastPlaybackRow findLastPlayback(@Param("userId") String userId);
+
+    // The user's 4 most recently played distinct pieces they can still play, newest first, one row per piece from its
+    // latest play. Same visibility rules as findLastPlayback.
+    @Query(value = """
+            WITH latest AS (
+                SELECT pe.music_piece_id, pe.context_playlist_id, pe.played_at,
+                       ROW_NUMBER() OVER (PARTITION BY pe.music_piece_id ORDER BY pe.played_at DESC) AS rn
+                FROM play_events pe
+                WHERE pe.user_id = :userId
+            )
+            SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
+                   a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
+                   CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
+                   CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN p.public_id END AS playlistId
+            FROM latest l
+            JOIN music_pieces mp ON mp.music_piece_id = l.music_piece_id
+            JOIN artists a ON a.artist_id = mp.artist_id
+            LEFT JOIN user_favorite_tracks f ON f.user_id = :userId AND f.music_piece_id = mp.music_piece_id
+            LEFT JOIN playlists p ON p.playlist_id = l.context_playlist_id
+            LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = :userId
+            WHERE l.rn = 1
+              AND (mp.is_public = 1 OR mp.uploader_user_id = :userId)
+            ORDER BY l.played_at DESC
+            LIMIT 4
+            """, nativeQuery = true)
+    List<LastPlaybackRow> findRecentPlaybacks(@Param("userId") String userId);
 
     interface LastPlaybackRow {
         String getMusicPieceId();

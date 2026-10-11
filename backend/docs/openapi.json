@@ -3190,6 +3190,78 @@
         } ]
       }
     },
+    "/api/users/top-artists" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Get the caller's most played artists",
+        "description" : "Up to 4 artists ranked by how many plays the caller has recorded of their pieces, all time.\nTies go to the artist played most recently. `artists` is empty when the caller has played nothing.\n",
+        "operationId" : "getTopArtists",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TopArtistsResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/settings" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -3203,6 +3275,78 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/users/recent-listening" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Get the caller's recently played music pieces",
+        "description" : "Up to 4 distinct pieces from plays recorded with `POST /api/music-pieces/{musicPieceId}/plays`,\nmost recently played first. A piece played several times appears once, with the `playlistId` of its\nlatest play. Same rules as `GET /me/last-playback`: plays of pieces made private since are skipped,\nand `playlistId` is null when the piece wasn't played from a playlist or the caller can no longer see it.\n`recents` is empty when the caller has played nothing they can still play.\n",
+        "operationId" : "getRecentListening",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecentListeningResponse"
                 }
               }
             }
@@ -5301,6 +5445,19 @@
         },
         "required" : [ "artistName" ]
       },
+      "TopArtistsResponse" : {
+        "type" : "object",
+        "description" : "The caller's most played artists",
+        "properties" : {
+          "artists" : {
+            "type" : "array",
+            "description" : "Up to 4 artists, most played first",
+            "items" : {
+              "$ref" : "#/components/schemas/ArtistSummary"
+            }
+          }
+        }
+      },
       "UserSettings" : {
         "type" : "object",
         "description" : "Everything the caller's settings page needs",
@@ -5328,6 +5485,34 @@
           "profileDetails" : {
             "$ref" : "#/components/schemas/ProfileDetails",
             "description" : "Optional profile fields"
+          }
+        }
+      },
+      "LastPlayback" : {
+        "type" : "object",
+        "description" : "The last music piece the caller played",
+        "properties" : {
+          "musicPiece" : {
+            "$ref" : "#/components/schemas/MusicPieceOverview",
+            "description" : "The music piece"
+          },
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist it was played from, or null",
+            "example" : "p_8sK2mQ"
+          }
+        }
+      },
+      "RecentListeningResponse" : {
+        "type" : "object",
+        "description" : "The caller's most recently played music pieces",
+        "properties" : {
+          "recents" : {
+            "type" : "array",
+            "description" : "Up to 4 distinct pieces, most recently played first; each with the playlist of its latest play",
+            "items" : {
+              "$ref" : "#/components/schemas/LastPlayback"
+            }
           }
         }
       },
@@ -5402,21 +5587,6 @@
             "type" : "boolean",
             "description" : "Whether this user follows the caller",
             "example" : false
-          }
-        }
-      },
-      "LastPlayback" : {
-        "type" : "object",
-        "description" : "The last music piece the caller played",
-        "properties" : {
-          "musicPiece" : {
-            "$ref" : "#/components/schemas/MusicPieceOverview",
-            "description" : "The music piece"
-          },
-          "playlistId" : {
-            "type" : "string",
-            "description" : "Public id of the playlist it was played from, or null",
-            "example" : "p_8sK2mQ"
           }
         }
       },
