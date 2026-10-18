@@ -25,9 +25,30 @@ export const PLAYLIST_DELETE_MOCKED = true
 
 const wait = () => new Promise((resolve) => setTimeout(resolve, 400))
 
-// PlaylistOverview: { playlistId, playlistName, playlistCoverUrl, totalPieces, playlistOwner, isSaved, musicPieces }
-export function fetchPlaylist(username, playlistId) {
-  return fetchAPI(`${API_BASE_URL}/api/playlists/${encodeURIComponent(username)}/${encodeURIComponent(playlistId)}`)
+// PlaylistOverview: { playlistId, playlistName, playlistCoverUrl, totalPieces, isPublic, playlistOwner, isSaved,
+// musicPieces (first 50), nextCursor, editors, access: OWNER | EDITOR | LISTENER | null }.
+// 403 PLAYLIST_INVITE_PENDING: the caller was invited to this private playlist and hasn't accepted yet
+export function fetchPlaylist(username, playlistId, options) {
+  return fetchAPI(`${API_BASE_URL}/api/playlists/${encodeURIComponent(username)}/${encodeURIComponent(playlistId)}`, options)
+}
+
+// { musicPieces, nextCursor }. The cursor is opaque: send back exactly what the last page gave
+export function fetchPlaylistPieces(playlistId, cursor) {
+  const query = new URLSearchParams({ cursor })
+  return fetchAPI(`${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/pieces?${query}`)
+}
+
+// { invites: [{ playlistId, playlistName, playlistCoverUrl, permission: LISTENER | EDITOR, invitedBy }] }, newest first
+export function fetchPendingInvites() {
+  return fetchAPI(`${API_BASE_URL}/api/playlists/invites`)
+}
+
+export function acceptInvite(playlistId) {
+  return request('POST', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/invites/accept`)
+}
+
+export function declineInvite(playlistId) {
+  return request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/invites`)
 }
 
 // Returns the new isSaved. Unsaving a playlist that isn't saved is a 404 SAVED_PLAYLIST_NOT_FOUND on the backend; that's

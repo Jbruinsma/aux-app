@@ -59,13 +59,15 @@
           />
           <p id="name-hint" class="hint">{{ name.length }} / {{ NAME_MAX }} characters</p>
 
-          <label class="check">
-            <input v-model="isPublic" type="checkbox" aria-describedby="public-hint" />
-            Make this playlist public
-          </label>
-          <p id="public-hint" class="hint">
-            {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you can see it.' }}
-          </p>
+          <template v-if="isOwner">
+            <label class="check">
+              <input v-model="isPublic" type="checkbox" aria-describedby="public-hint" />
+              Make this playlist public
+            </label>
+            <p id="public-hint" class="hint">
+              {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you and the people you invite can see it.' }}
+            </p>
+          </template>
 
           <p v-if="error" class="error" role="alert">{{ error }}</p>
 
@@ -126,7 +128,8 @@ const error = ref('')
 const coverSrc = computed(() => coverPreview.value
   || (original.value?.playlistCoverUrl ? resolveCoverURL(original.value.playlistCoverUrl) : ''))
 const nameChanged = computed(() => name.value.trim() !== original.value?.playlistName)
-const publicChanged = computed(() => isPublic.value !== original.value?.isPublic)
+const isOwner = computed(() => original.value?.access === 'OWNER')
+const publicChanged = computed(() => isOwner.value && isPublic.value !== original.value?.isPublic)
 const dirty = computed(() => Boolean(original.value) && (nameChanged.value || publicChanged.value || Boolean(coverFile.value)))
 
 onMounted(async () => {
@@ -135,10 +138,9 @@ onMounted(async () => {
     return
   }
   try {
-    const playlist = await fetchPlaylist(username, id)
-    // Only the owner can edit (the endpoint 404s for anyone else), so send everyone else to the playlist itself
-    // Compare usernames, not ids: userData persists in localStorage and may predate the switch to public ids
-    if (playlist.playlistOwner.username?.toLowerCase() !== userStore.userData?.username?.toLowerCase()) {
+    const playlist = await fetchPlaylist(username, id, { ignoredErrorCodes: ['PLAYLIST_NOT_FOUND', 'PLAYLIST_INVITE_PENDING'] })
+    // The owner and accepted editors can edit; send everyone else to the playlist itself
+    if (playlist.access !== 'OWNER' && playlist.access !== 'EDITOR') {
       await router.replace(playlistRoute)
       return
     }
@@ -146,8 +148,13 @@ onMounted(async () => {
     name.value = playlist.playlistName
     isPublic.value = playlist.isPublic
   } catch (err) {
+    if (err.sessionEnded) return
+    if (err.code === 'PLAYLIST_INVITE_PENDING') {
+      await router.replace(playlistRoute)
+      return
+    }
     loadError.value = err.code === 'PLAYLIST_NOT_FOUND'
-      ? "This playlist doesn't exist or isn't yours."
+      ? "This playlist doesn't exist, or you can't edit it."
       : "We couldn't load this playlist. Check that the server is running, then refresh the page."
   }
 })
@@ -199,7 +206,8 @@ async function save() {
     if (err.sessionEnded) return
     if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     else if (err.code === 'INVALID_FIELD') error.value = `Give your playlist a name of 1 to ${NAME_MAX} characters.`
-    else if (err.code === 'PLAYLIST_NOT_FOUND') error.value = "This playlist no longer exists or isn't yours."
+    else if (err.code === 'PLAYLIST_NOT_FOUND') error.value = "This playlist no longer exists, or you can no longer edit it."
+    else if (err.code === 'PLAYLIST_ACTION_FORBIDDEN') error.value = 'Only the owner can make this playlist public or private.'
     else if (err.code === 'RATE_LIMITED') error.value = "You're saving too quickly. Wait a minute, then try again."
     else error.value = "We couldn't save your changes. Check that the server is running, then try again."
   } finally {
