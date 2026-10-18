@@ -22,6 +22,25 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+let endingSession = false
+
+// Logs out and sends the user to log in, then back to this page. Several requests can fail at once; only the first acts
+async function endSession() {
+  if (endingSession) return
+  endingSession = true
+  try {
+    const { default: router } = await import('@/router/index.js')
+    const userStore = useUserStore()
+    if (!userStore.loggedIn) return
+    userStore.logout()
+    useNotificationStore().neutral('Your session ended. Log in again to continue.')
+    const { fullPath } = router.currentRoute.value
+    await router.replace({ name: 'Login', query: fullPath === '/' ? {} : { redirect: fullPath } })
+  } finally {
+    endingSession = false
+  }
+}
+
 export async function request(method, url, body, { ignoredErrorCodes = [], notifyOnError = true } = {}) {
   const options = {
     method,
@@ -58,6 +77,13 @@ export async function request(method, url, body, { ignoredErrorCodes = [], notif
     const error = new ApiError(response.status, errorBody?.errorDetails)
 
     console.error(`${method} ${url} failed:`, error.code, error.message)
+
+    // INVALID_TOKEN is the only 401 that means the session ended (a wrong login is INVALID_CREDENTIALS)
+    if (error.code === 'INVALID_TOKEN') {
+      error.sessionEnded = true
+      await endSession()
+      throw error
+    }
 
     // Callers can handle an expected API result without flashing a false error.
     if (notifyOnError && !ignoredErrorCodes.includes(error.code)) {

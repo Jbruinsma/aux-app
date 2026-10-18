@@ -196,12 +196,7 @@ async function save() {
     await animationsDone(banner.value.$el)
     await router.push(playlistRoute)
   } catch (err) {
-    // A 401 means the session ended
-    if (err.status === 401) {
-      userStore.logout()
-      await router.replace({ name: 'Login' })
-      return
-    }
+    if (err.sessionEnded) return
     if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     else if (err.code === 'INVALID_FIELD') error.value = `Give your playlist a name of 1 to ${NAME_MAX} characters.`
     else if (err.code === 'PLAYLIST_NOT_FOUND') error.value = "This playlist no longer exists or isn't yours."
