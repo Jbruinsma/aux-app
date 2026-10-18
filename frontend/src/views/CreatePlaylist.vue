@@ -198,12 +198,7 @@ async function createPlaylist() {
     await animationsDone(banner.value.$el)
     await router.push({ name: 'Playlist', params: { username: playlist.playlistOwner.username, id: playlist.playlistId } })
   } catch (err) {
-    // A 401 means the session ended
-    if (err.status === 401) {
-      userStore.logout()
-      await router.replace({ name: 'Login' })
-      return
-    }
+    if (err.sessionEnded) return
     if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     else if (err.code === 'INVALID_FIELD') {
       await toNameStep()

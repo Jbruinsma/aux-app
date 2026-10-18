@@ -624,14 +624,6 @@ onMounted(() => {
   loadSettings()
 })
 
-// A 401 means the session ended: log out and go to the login page
-async function handleUnauthorized(err) {
-  if (err.status !== 401) return false
-  userStore.logout()
-  await router.replace({ name: 'Login' })
-  return true
-}
-
 const fileInput = ref(null)
 const newPhoto = ref(null)
 const previewUrl = ref('')
@@ -688,7 +680,7 @@ async function uploadPhoto() {
     clearChoice()
     notification.success('Your new picture is saved.')
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     photoError.value = PHOTO_ERRORS[err.code] ?? "We couldn't upload your picture. Check that the server is running, then try again."
   } finally {
     uploading.value = false
@@ -816,7 +808,7 @@ async function uploadBanner() {
     revertBanner()
     notification.success('Your new banner is saved.')
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     bannerError.value = BANNER_ERRORS[err.code] ?? "We couldn't upload your banner. Check that the server is running, then try again."
   } finally {
     bannerUploading.value = false
@@ -843,7 +835,7 @@ async function loadSettings() {
     currentEmail.value = settings.email
     userStore.updateUser({ bannerUrl: settings.bannerUrl })
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     detailsError.value = "We couldn't load your settings. Check that the server is running, then reload."
     accountError.value = "We couldn't load your email address. Check that the server is running, then reload."
   }
@@ -870,7 +862,7 @@ async function saveDetails() {
     showDetails(saved)
     notification.success('Your details are saved.')
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     detailsError.value = err.code === 'INVALID_FIELD' ? err.message : "We couldn't save your details. Check that the server is running, then try again."
   } finally {
     detailsSaving.value = false
@@ -974,7 +966,7 @@ async function saveUsername() {
     resetUsername()
     notification.success(`Your username is now ${user.username}.`)
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     if (err.code === 'USERNAME_TAKEN') usernameStatus.value = 'taken'
     else if (err.code === 'INVALID_USERNAME') usernameStatus.value = 'invalid'
     else usernameError.value = "We couldn't change your username. Check that the server is running, then try again."
@@ -1050,7 +1042,7 @@ async function sendEmailCode() {
     await nextTick()
     emailCodeInput.value?.focus()
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     if (err.code === 'INVALID_FIELD') emailError.value = 'Enter a full email address, like name@example.com.'
     else if (err.code === 'WRONG_PASSWORD') emailPasswordError.value = "That isn't your current password. Try again."
     else emailError.value = codeFlowError(err, 'email address')
@@ -1071,7 +1063,7 @@ async function confirmEmail() {
     cancelEmailChange()
     notification.success(`Your email address is now ${email}.`)
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     if (err.code === 'INVALID_OTP') emailCodeError.value = WRONG_CODE
     else if (err.code === 'EMAIL_TAKEN') {
       // Someone registered the address after the code went out; the code is spent, so start over
@@ -1145,7 +1137,7 @@ async function sendPasswordCode() {
     await nextTick()
     passwordCodeInput.value?.focus()
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     if (err.code === 'WRONG_PASSWORD') currentPasswordError.value = "That isn't your current password. Try again."
     else passwordError.value = codeFlowError(err, 'password')
   } finally {
@@ -1164,7 +1156,7 @@ async function confirmPassword() {
     await nextTick()
     notification.success('Your password is changed.')
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     if (err.code === 'INVALID_OTP') passwordCodeError.value = WRONG_CODE
     else if (err.code === 'INVALID_FIELD') passwordError.value = `That password isn't allowed. Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
     else passwordError.value = codeFlowError(err, 'password')
@@ -1225,7 +1217,7 @@ async function confirmDelete() {
     notification.success('Your account is deleted.')
     await router.replace({ name: 'Home' })
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     deleteError.value = "We couldn't delete your account. Check that the server is running, then try again."
   } finally {
     deleting.value = false

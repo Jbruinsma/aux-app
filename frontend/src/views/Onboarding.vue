@@ -133,11 +133,8 @@ async function refreshStatus() {
     const onboardingStep = await fetchAPI(`${API_BASE_URL}/api/users/onboarding/status`)
     userStore.updateUser({ onboardingStep })
     if (onboardingStep === 'DONE') await router.replace({ name: 'Dashboard' })
-  } catch (err) {
-    if (err.status === 401) {
-      userStore.logout()
-      await router.replace({ name: 'Login' })
-    }
+  } catch {
+    // The request layer handles an ended session; anything else leaves the current step showing
   }
 }
 

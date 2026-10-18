@@ -230,14 +230,6 @@ const songCount = computed(() => {
   return total === 1 ? '1 song' : `${total} songs`
 })
 
-// A 401 means the session ended: log out and go to the login page
-async function handleUnauthorized(err) {
-  if (err.status !== 401) return false
-  userStore.logout()
-  await router.replace({ name: 'Login', query: { redirect: route.fullPath } })
-  return true
-}
-
 async function loadPlaylist() {
   const { username, id: playlistId } = route.params
   status.value = 'loading'
@@ -248,7 +240,7 @@ async function loadPlaylist() {
     playlist.value = result
     status.value = 'ready'
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     status.value = err.status === 404 ? 'missing' : 'error'
   }
 }
@@ -284,7 +276,7 @@ async function toggleSaved() {
     playlist.value.isSaved = await setPlaylistSaved(id.value, saved)
     notification.success(playlist.value.isSaved ? 'Playlist saved to your library.' : 'Playlist removed from your library.')
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     actionError.value = saved
       ? "We couldn't save this playlist. Check that the server is running, then try again."
       : "We couldn't remove this playlist from your library. Check that the server is running, then try again."
@@ -345,7 +337,7 @@ async function confirmDelete() {
     notification.success('Playlist deleted.')
     await router.push({ name: 'Dashboard' })
   } catch (err) {
-    if (await handleUnauthorized(err)) return
+    if (err.sessionEnded) return
     deleteError.value = "We couldn't delete this playlist. Check that the server is running, then try again."
   } finally {
     deleting.value = false
