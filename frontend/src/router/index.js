@@ -45,7 +45,7 @@ const routes = [
       return userStore.onboarded ? { name: 'Dashboard' } : true
     },
   },
-  { path: '/dashboard', name: 'Dashboard', component: Dashboard},
+  { path: '/dashboard/:section?', name: 'Dashboard', component: Dashboard },
   ...['Music', 'Charts', 'Friends', 'Explore'].map((title) => ({
     path: `/${title.toLowerCase()}`,
     name: title,
