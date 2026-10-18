@@ -55,3 +55,32 @@ current API. `GET /api/users/me/last-playback` is integrated for metadata displa
 
 "Manage access" on the playlist page links to the old Add friends page. Is sharing a playlist with specific people
 (view or edit) still planned? There's nothing for it in the API yet.
+
+## Dashboard
+
+### GET /api/users/matches
+
+For Dashboard → People who hear it too (`/dashboard/people-who-hear-it-too`), which shows an empty state until this
+exists. Listeners who share the caller's taste, best match first. Needs `Authorization: Bearer <token>`.
+
+Response `200`:
+```json
+{
+  "matches": [
+    {
+      "user": { "userId": "u_41x9Rb", "username": "justin", "pfpUrl": "https://…" },
+      "compatibility": 87,
+      "sharedArtists": [{ "artistId": "a_8f3k2Q", "artistName": "Tame Impala", "artistPfpUrl": null }]
+    }
+  ]
+}
+```
+`compatibility` is 0-100 (the style guide's Low to Super levels). `sharedArtists`: up to 3. `matches` is empty when the
+caller has played nothing.
+
+### Questions
+
+- Recent listening and Top artists each have their own page now. Could `GET /api/users/recent-listening` and
+  `GET /api/users/top-artists` take a `limit` (say up to 20)? At 4 items the pages look sparse.
+- Recent listening gives a `playlistId` but not the owner's username, which the playlist page URL needs. Could it
+  include the owner's username so a recent song can link to its playlist?

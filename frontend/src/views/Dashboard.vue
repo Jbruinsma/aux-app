@@ -25,44 +25,21 @@
               />
             </form>
           </div>
-
-          <!-- No listening data yet: ghost shapes show what each section will hold -->
-          <div class="soon">
-            <section class="panel" aria-labelledby="recent-heading">
-              <h2 id="recent-heading">Recent listening</h2>
-              <ul class="ghost-rows" aria-hidden="true">
-                <li v-for="n in 4" :key="n" class="ghost-row">
-                  <span class="ghost-art"></span>
-                  <span class="ghost-lines"><span class="ghost-line"></span><span class="ghost-line short"></span></span>
-                </li>
-              </ul>
-              <p class="meta">Play a song from one of your playlists and it shows up here.</p>
-            </section>
-
-            <section class="panel" aria-labelledby="artists-heading">
-              <h2 id="artists-heading">Top artists</h2>
-              <ul class="ghost-artists" aria-hidden="true">
-                <li v-for="n in 4" :key="n" class="ghost-artist">
-                  <span class="ghost-circle"></span><span class="ghost-line short"></span>
-                </li>
-              </ul>
-              <p class="meta">Your most-played artists appear here once you've listened to a few songs.</p>
-            </section>
-
-            <section class="panel" aria-labelledby="match-heading">
-              <h2 id="match-heading">People who hear it too</h2>
-              <ul class="ghost-rows" aria-hidden="true">
-                <li v-for="n in 3" :key="n" class="ghost-row">
-                  <span class="ghost-circle small"></span>
-                  <span class="ghost-lines"><span class="ghost-line"></span></span>
-                  <span class="ghost-badge"></span>
-                </li>
-              </ul>
-              <p class="meta">Aux matches you with listeners who share your favorite artists and shows your compatibility score.</p>
-            </section>
-          </div>
         </div>
       </section>
+
+      <nav class="section-nav" aria-label="Dashboard sections">
+        <div class="wrap tabs">
+          <router-link
+            v-for="item in SECTIONS"
+            :key="item.id"
+            class="tab"
+            :class="{ active: section === item.id }"
+            :aria-current="section === item.id ? 'page' : undefined"
+            :to="{ name: 'Dashboard', params: { section: item.id === 'library' ? undefined : item.id } }"
+          >{{ item.label }}</router-link>
+        </div>
+      </nav>
 
       <div class="wrap below">
         <section v-if="searching" class="block" aria-labelledby="results-heading">
@@ -127,7 +104,7 @@
           </template>
         </section>
 
-        <section v-else class="block" aria-labelledby="library-heading">
+        <section v-else-if="section === 'library'" class="block" aria-labelledby="library-heading">
           <div class="section-head">
             <h2 id="library-heading">Your library</h2>
             <div class="tabs" role="tablist" aria-label="Library filter">
@@ -166,6 +143,81 @@
           </PlaylistGrid>
         </section>
 
+        <section v-else-if="section === 'recent-listening'" class="block" aria-labelledby="recent-heading">
+          <div class="section-head">
+            <div>
+              <h2 id="recent-heading">Recent listening</h2>
+              <p class="meta">The last songs you played, newest first.</p>
+            </div>
+          </div>
+
+          <p v-if="recent.error" class="error" role="alert">{{ recent.error }}</p>
+          <p v-else-if="recent.loading" class="meta">Loading your recent listening…</p>
+          <EmptyState
+            v-else-if="!recent.items.length"
+            title="No plays yet"
+            text="Play a song from one of your playlists and it shows up here."
+          />
+          <ul v-else class="cards">
+            <li v-for="{ musicPiece } in recent.items" :key="musicPiece.musicPieceId" class="card">
+              <img v-if="musicPiece.coverUrl" class="card-art" :src="resolveCoverURL(musicPiece.coverUrl)" alt="" loading="lazy" />
+              <span v-else class="card-art card-art-empty" aria-hidden="true">
+                <svg class="card-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+              </span>
+              <span class="card-body">
+                <span class="card-title">{{ musicPiece.name }}</span>
+                <span v-if="musicPiece.artistSummary?.artistName" class="card-meta">{{ musicPiece.artistSummary.artistName }}</span>
+              </span>
+            </li>
+          </ul>
+        </section>
+
+        <section v-else-if="section === 'top-artists'" class="block" aria-labelledby="artists-heading">
+          <div class="section-head">
+            <div>
+              <h2 id="artists-heading">Top artists</h2>
+              <p class="meta">The artists you've played most, all time.</p>
+            </div>
+          </div>
+
+          <p v-if="topArtists.error" class="error" role="alert">{{ topArtists.error }}</p>
+          <p v-else-if="topArtists.loading" class="meta">Loading your top artists…</p>
+          <EmptyState
+            v-else-if="!topArtists.items.length"
+            icon="mic"
+            title="No top artists yet"
+            text="Your most-played artists appear here once you've listened to a few songs."
+          />
+          <ol v-else class="cards">
+            <li v-for="(artist, index) in topArtists.items" :key="artist.artistId" class="card">
+              <span class="card-art-wrap">
+                <img v-if="artist.artistPfpUrl" class="card-art" :src="resolveCoverURL(artist.artistPfpUrl)" alt="" loading="lazy" />
+                <span v-else class="card-art card-art-empty card-initial" aria-hidden="true">{{ artist.artistName.charAt(0).toUpperCase() }}</span>
+                <span class="rank">#{{ index + 1 }}</span>
+              </span>
+              <span class="card-body">
+                <span class="card-title">{{ artist.artistName }}</span>
+                <span class="card-meta">{{ index === 0 ? 'Your most played artist' : `Number ${index + 1} for you` }}</span>
+              </span>
+            </li>
+          </ol>
+        </section>
+
+        <section v-else class="block" aria-labelledby="match-heading">
+          <div class="section-head">
+            <div>
+              <h2 id="match-heading">People who hear it too</h2>
+              <p class="meta">Listeners who share your favorite artists, with your compatibility score.</p>
+            </div>
+          </div>
+
+          <EmptyState
+            icon="users"
+            title="Matching is on its way"
+            text="Aux will match you with listeners who share your taste once matching is built. Keep listening in the meantime."
+          />
+        </section>
+
       </div>
     </main>
     <AppFooter />
@@ -175,7 +227,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import CreateDialog from '@/components/CreateDialog.vue'
@@ -196,10 +248,21 @@ const LIBRARY_TABS = [
   { id: 'yours', label: 'Yours' },
   { id: 'saved', label: 'Saved' },
 ]
+const SECTIONS = [
+  { id: 'library', label: 'Your library' },
+  { id: 'recent-listening', label: 'Recent listening' },
+  { id: 'top-artists', label: 'Top artists' },
+  { id: 'people-who-hear-it-too', label: 'People who hear it too' },
+]
 const PAGE_SIZE = 20
 const DEBOUNCE_MS = 300
 
+const route = useRoute()
 const router = useRouter()
+
+const section = computed(() =>
+  SECTIONS.some((item) => item.id === route.params.section) ? route.params.section : 'library',
+)
 const createDialog = ref(null)
 const userStore = useUserStore()
 
@@ -225,6 +288,30 @@ const librarySummary = computed(() => {
   return saved ? `${ownText} · ${saved} saved` : ownText
 })
 
+
+// Recent listening: GET /api/users/recent-listening. Top artists: GET /api/users/top-artists. Both return up to 4
+const recent = reactive({ items: [], loading: false, loaded: false, error: '' })
+const topArtists = reactive({ items: [], loading: false, loaded: false, error: '' })
+
+async function loadSection(state, url, key, what) {
+  if (state.loaded || state.loading) return
+  state.loading = true
+  state.error = ''
+  try {
+    state.items = (await fetchAPI(`${API_BASE_URL}${url}`))[key] ?? []
+    state.loaded = true
+  } catch {
+    state.error = `We couldn't load your ${what}. Check that the server is running, then refresh the page.`
+  } finally {
+    state.loading = false
+  }
+}
+
+watch(section, (id) => {
+  if (!username.value) return
+  if (id === 'recent-listening') loadSection(recent, '/api/users/recent-listening', 'recents', 'recent listening')
+  else if (id === 'top-artists') loadSection(topArtists, '/api/users/top-artists', 'artists', 'top artists')
+}, { immediate: true })
 
 // Search: GET /api/core/search, one category at a time
 const searchText = ref('')
@@ -306,7 +393,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
 .sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
-.hero-text { justify-content: center; min-width: 0; }
+.panel { background: var(--surface-alt); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+.hero-text { justify-content: center; max-width: 720px; min-width: 0; }
 .greeting { font: 800 40px/44px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
 .lead { color: var(--ink-muted); margin: calc(var(--space-3) * -1) 0 0; }
 
@@ -315,8 +403,7 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .search-input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font: 400 16px/24px var(--font-sans); padding: 15px var(--space-4) 15px 48px; width: 100%; }
 
 .wrap { padding: 0 var(--page-gutter); }
-.hero { border-bottom: 1px solid var(--line); }
-.hero-in { align-items: stretch; display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); padding-bottom: var(--space-8); padding-top: 56px; }
+.hero-in { padding-bottom: var(--space-6); padding-top: 56px; }
 .below { padding-bottom: var(--space-8); }
 .block { border-bottom: 1px solid var(--line); padding: var(--space-8) 0; }
 .section-head { align-items: flex-end; display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); justify-content: space-between; margin-bottom: var(--space-6); }
@@ -325,6 +412,21 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .tab { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink-muted); cursor: pointer; font: 600 14px/20px var(--font-sans); padding: 0 0 var(--space-2); }
 .tab:hover { border-bottom-color: var(--primary); color: var(--ink); }
 .tab.active { border-bottom-color: var(--primary); color: var(--link); }
+.section-nav { border-bottom: 1px solid var(--line); }
+.section-nav .tabs { overflow-x: auto; scrollbar-width: none; }
+.section-nav .tab { flex: none; font-size: 15px; text-decoration: none; white-space: nowrap; }
+
+.cards { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); list-style: none; margin: 0; padding: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.card-art-wrap { display: block; position: relative; }
+.card-art { aspect-ratio: 1; background: var(--surface-alt); display: block; object-fit: cover; width: 100%; }
+.card-art-empty { color: var(--ink-muted); display: grid; place-items: center; }
+.card-icon { fill: none; height: 48px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; width: 48px; }
+.card-initial { background: var(--purple-soft); color: var(--link); font: 800 56px/1 var(--font-sans); }
+.rank { background: var(--primary); border-radius: var(--radius-pill); color: var(--on-primary); font: 600 12px/16px var(--font-sans); left: var(--space-3); padding: 2px var(--space-2); position: absolute; top: var(--space-3); }
+.card-body { background: var(--surface-alt); border-top: 1px solid var(--line); display: flex; flex: 1; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); }
+.card-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .count { margin: calc(var(--space-3) * -1) 0 var(--space-4); }
 .below .big-grid { gap: var(--space-6); grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
@@ -349,28 +451,9 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .song-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .more { margin-top: var(--space-6); }
 
-.soon { display: grid; gap: var(--space-4); grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.panel { background: var(--surface-alt); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
-.ghost-rows, .ghost-artists { list-style: none; margin: 0; padding: 0; }
-.ghost-rows { display: flex; flex-direction: column; gap: var(--space-3); }
-.ghost-row { align-items: center; display: flex; gap: var(--space-3); }
-.ghost-art { background: var(--surface); border-radius: var(--radius-sm); flex: none; height: 40px; width: 40px; }
-.ghost-lines { display: flex; flex: 1; flex-direction: column; gap: var(--space-2); }
-.ghost-line { background: var(--surface); border-radius: var(--radius-pill); display: block; height: 10px; width: 70%; }
-.ghost-line.short { width: 40%; }
-.ghost-artists { display: grid; gap: var(--space-3); grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.ghost-artist { align-items: center; display: flex; flex-direction: column; gap: var(--space-2); }
-.ghost-artist .ghost-line { width: 70%; }
-.ghost-circle { aspect-ratio: 1; background: var(--surface); border-radius: var(--radius-pill); display: block; width: 100%; }
-.ghost-circle.small { flex: none; width: 40px; }
-.ghost-badge { background: var(--purple-soft); border-radius: var(--radius-pill); flex: none; height: 20px; width: 56px; }
-
-@media (max-width: 1280px) {
-  .hero-in { grid-template-columns: 1fr; }
-}
 @media (max-width: 720px) {
   .hero-in { padding-top: var(--space-8); }
-  .soon { grid-template-columns: 1fr; }
+  .cards { gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .songs { grid-template-columns: 1fr; }
   .below .big-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .people { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
