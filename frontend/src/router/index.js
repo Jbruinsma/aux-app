@@ -10,9 +10,9 @@ import Settings from '@/views/Settings.vue'
 import CreatePlaylist from '@/views/CreatePlaylist.vue'
 import PlaylistDetail from '@/views/PlaylistDetail.vue'
 import AddMusic from '@/views/AddMusic.vue'
+import UploadMusic from '@/views/UploadMusic.vue'
 import AddFriends from '@/views/AddFriends.vue'
 import EditPlaylist from '@/views/EditPlaylist.vue'
-import EditMusicPiece from '@/views/EditMusicPiece.vue'
 import Onboarding from '@/views/Onboarding.vue'
 import { useUserStore } from '@/stores/user.js'
 
@@ -56,8 +56,7 @@ const routes = [
   {
     path: '/upload',
     name: 'Upload',
-    component: ComingSoon,
-    props: { title: 'Music upload' },
+    component: UploadMusic,
     beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
   },
   { path: '/:username', name: 'Profile', component: PublicProfile },
@@ -66,8 +65,7 @@ const routes = [
   { path: '/playlist/:username/:id', name: 'Playlist', component: PlaylistDetail },
   { path: '/add/:username/:id', name: 'Add', component: AddMusic },
   { path: '/add-friends/:username/:id', name: 'AddFriends', component: AddFriends },
-  { path: '/edit-playlist/:username/:id', name: 'Edit', component: EditPlaylist },
-  { path: '/:username/:playlist_id/edit-mp3/:index/:uuid', name: 'EditMP3', component: EditMusicPiece }
+  { path: '/edit-playlist/:username/:id', name: 'Edit', component: EditPlaylist }
 ]
 
 const router = createRouter({

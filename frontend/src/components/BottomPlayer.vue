@@ -46,7 +46,7 @@
       </div>
 
       <div class="right-side">
-        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canPlay || !musicStore.playlist.length" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
+        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canPlay || !musicStore.currentPlaylistUUID || !musicStore.playlist.length" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" />
             <path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" />
@@ -69,7 +69,7 @@
       </div>
     </div>
 
-    <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" style="width:0; height:0; opacity:0;"></audio>
+    <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" style="width:0; height:0; opacity:0;"></audio>
 
     <div class="progress-bar-container" :class="{ collapsed }" v-if="shouldShowPlayer">
       <span class="time">{{ formattedCurrentTime }}</span>
@@ -110,7 +110,8 @@ const showArrow = computed(() => musicStore.forceShowPlayerActive || musicStore.
 const shouldShowPlayer = showArrow
 
 const currentMusicPiece = computed(() => musicStore.currentMusicPiece)
-const canPlay = computed(() => Boolean(currentMusicPiece.value?.mp3File))
+// A restored song has no audio yet, but Play can fetch it
+const canPlay = computed(() => Boolean(currentMusicPiece.value?.mp3File || (currentMusicPiece.value?.uuid && musicStore.playlist.length)))
 const isPlaying = computed(() => musicStore.isPlaying)
 const shuffleOn = computed(() => musicStore.shuffleOn)
 const repeatOn = computed(() => musicStore.repeatOn)
@@ -127,8 +128,7 @@ watch(isPlaying, playing => {
   const audio = audioRef.value
   if (!audio) return
   if (playing) {
-    audio.play().catch(() => {
-    })
+    audio.play().catch(onPlayBlocked)
   } else {
     audio.pause()
   }
@@ -168,7 +168,7 @@ watch(
     audioRef.value.load()
     audioRef.value.volume = volume.value
     if (isPlaying.value) {
-      audioRef.value.play().catch(() => {})
+      audioRef.value.play().catch(onPlayBlocked)
     }
   },
   { immediate: false }
@@ -196,9 +196,14 @@ watch(() => musicStore.position,
 async function onLoadedMetadata() {
   const audio = audioRef.value
   duration.value = audio.duration
+  musicStore.duration = audio.duration
+  lastTime = null
+  const target = musicStore.seekOnLoad ?? musicStore.position
+  musicStore.seekOnLoad = null
 
-  if (musicStore.position > 0 && musicStore.position < duration.value) {
-    audio.currentTime = musicStore.position
+  if (target > 0 && target < duration.value) {
+    musicStore.position = target
+    audio.currentTime = target
   } else {
     musicStore.position = 0
     audio.currentTime = 0
@@ -206,25 +211,59 @@ async function onLoadedMetadata() {
 
   audio.volume = volume.value
   if (isPlaying.value) {
-    audio.play().catch(() => {})
+    audio.play().catch(onPlayBlocked)
   }
 }
 
-function onTrackEnd(){
+function onTrackEnd() {
   if (!audioRef.value) return
+  lastTime = null
   if (musicStore.repeatOn) {
+    musicStore.startRepeat()
     progress.value = 0
-    audioRef.value.play().catch(() => {})
-  } else { nextTrack() }
+    audioRef.value.play().catch(onPlayBlocked)
+  } else {
+    musicStore.finishListening()
+    nextTrack()
+  }
 }
 
+const PREFETCH_BEFORE_END = 20
+// Steps between timeupdate events are about a quarter second; anything bigger is a seek, not listening
+const MAX_LISTEN_STEP = 1.5
+let lastTime = null
+
 function onTimeUpdate() {
-  if (!audioRef.value) return
-  progress.value = audioRef.value.currentTime
+  const audio = audioRef.value
+  if (!audio || musicStore.seekOnLoad !== null) return
+  if (lastTime !== null) {
+    const step = audio.currentTime - lastTime
+    if (step > 0 && step < MAX_LISTEN_STEP) musicStore.recordListening(step)
+  }
+  lastTime = audio.currentTime
+  progress.value = audio.currentTime
+  if (audio.duration - audio.currentTime < PREFETCH_BEFORE_END) musicStore.prefetchNext()
+}
+
+// The browser refused to start audio (no click yet, for example after a reload): show Play instead of a stuck Pause
+function onPlayBlocked(err) {
+  if (err?.name === 'NotAllowedError') musicStore.isPlaying = false
+}
+
+function onSeeking() {
+  lastTime = null
+}
+
+function onAudioError() {
+  musicStore.recoverStream()
 }
 
 function togglePlay() {
   if (!canPlay.value) return
+  if (!currentMusicPiece.value?.mp3File) {
+    musicStore.resume()
+    return
+  }
   if (!musicStore.isEmpty()) {
     musicStore.isPlaying = !musicStore.isPlaying
     const currentUser = userStore.userData?.username

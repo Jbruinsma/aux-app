@@ -1,24 +1,6 @@
 import { fetchAPI, request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-function shuffleArray(array) {
-  let currentIndex = array.length;
-  while (currentIndex > 1) {
-    const randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    const temp = array[currentIndex];
-    array[currentIndex] = array[randomIndex];
-    array[randomIndex] = temp;
-  }
-}
-
-export function shufflePlaylist(playlist, startIndex = 0){
-  const selectedPiece = playlist[startIndex];
-  const remainingPieces = playlist.slice(0, startIndex).concat(playlist.slice(startIndex + 1));
-  shuffleArray(remainingPieces);
-  return [selectedPiece, ...remainingPieces]
-}
-
 // Delete isn't on the backend yet. It's requested in BACKEND_REQUESTS.md and answers from mock data until then; flip
 // this off once it ships, since the real call below already uses the requested shape
 export const PLAYLIST_DELETE_MOCKED = true

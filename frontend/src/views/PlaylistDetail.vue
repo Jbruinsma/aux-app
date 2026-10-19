@@ -189,16 +189,6 @@
                   <span v-if="artistName(track)" class="track-artist">{{ artistName(track) }}</span>
                 </span>
               </button>
-              <router-link
-                v-if="canEdit"
-                class="edit"
-                :aria-label="`Edit ${track.name}`"
-                :to="{ name: 'EditMP3', params: { username: owner.username, playlist_id: id, index, uuid: track.musicPieceId } }"
-              >
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
-                </svg>
-              </router-link>
             </li>
           </ol>
 
@@ -394,17 +384,12 @@ function isPlayingTrack(track) {
   return musicStore.getCurrentPlaylistUUID() === id.value && musicStore.getCurrentMusicPieceUUID() === track.musicPieceId
 }
 
-async function playFrom(index) {
-  musicStore.reset()
-  musicStore.forceShowPlayer()
-  await musicStore.loadPlaylist(id.value, owner.value.username, index)
+function playFrom(index) {
+  return musicStore.playPlaylist(id.value, { start: tracks.value[index]?.musicPieceId ?? null })
 }
 
-async function shuffle() {
-  musicStore.reset()
-  musicStore.forceShowPlayer()
-  musicStore.toggleShuffle()
-  await musicStore.loadPlaylist(id.value, owner.value.username, null)
+function shuffle() {
+  return musicStore.playPlaylist(id.value, { shuffle: true })
 }
 
 async function toggleSaved() {
@@ -545,12 +530,8 @@ p.page-state { display: block; }
 .track-name { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playing .track-name { color: var(--link); }
 .track-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.edit { border-radius: var(--radius-sm); color: var(--ink-muted); display: grid; flex: none; height: 40px; margin-right: var(--space-2); place-items: center; width: 40px; }
-.edit:hover { color: var(--ink); }
 
 @media (hover: hover) {
-  .edit { opacity: 0; }
-  .track:hover .edit, .edit:focus-visible { opacity: 1; }
   .track:hover .rank-number, .track-main:focus-visible .rank-number { opacity: 0; }
   .track:hover .rank-play, .track-main:focus-visible .rank-play { opacity: 1; }
 }
@@ -566,6 +547,5 @@ p.page-state { display: block; }
   .head { align-items: start; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); padding-top: var(--space-6); }
   .cover-wrap { max-width: 200px; }
   .track-main { gap: var(--space-2); grid-template-columns: 24px 40px minmax(0, 1fr); padding-left: 0; }
-  .edit { margin-right: 0; }
 }
 </style>

@@ -265,6 +265,51 @@
               @click="libraryExpanded = !libraryExpanded"
             >{{ libraryExpanded ? 'Show less' : `More (${filteredLibrary.length - LIBRARY_PREVIEW_COUNT})` }}</button>
           </section>
+
+          <section class="block" aria-labelledby="uploads-heading">
+            <div class="section-head">
+              <div>
+                <h2 id="uploads-heading">My Uploads</h2>
+                <p class="meta">{{ uploadsSummary }}</p>
+              </div>
+              <router-link :to="{ name: 'Upload' }" class="btn secondary">Upload music</router-link>
+            </div>
+
+            <p v-if="uploads.error" class="error" role="alert">{{ uploads.error }}</p>
+            <p v-else-if="uploads.loading" class="meta">Loading your uploads…</p>
+            <EmptyState
+              v-else-if="!uploads.items.length"
+              title="No uploads yet"
+              text="Upload an MP3 to start your library."
+            />
+            <template v-else>
+              <ol class="upload-list">
+                <li v-for="(piece, index) in shownUploads" :key="piece.musicPieceId" class="upload" :class="{ playing: isPlayingUpload(piece) }">
+                  <button
+                    type="button"
+                    class="upload-main"
+                    :aria-label="`Play ${piece.name}${piece.artistSummary?.artistName ? ` by ${piece.artistSummary.artistName}` : ''}`"
+                    @click="musicStore.playPieces(uploads.items, index)"
+                  >
+                    <img v-if="piece.coverUrl" class="upload-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
+                    <span v-else class="upload-art" aria-hidden="true"></span>
+                    <span class="upload-text">
+                      <span class="upload-title">{{ piece.name }}</span>
+                      <span v-if="piece.artistSummary?.artistName" class="upload-artist">{{ piece.artistSummary.artistName }}</span>
+                    </span>
+                    <svg class="upload-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" /></svg>
+                  </button>
+                </li>
+              </ol>
+              <button
+                v-if="uploads.items.length > UPLOADS_PREVIEW_COUNT"
+                type="button"
+                class="btn secondary more"
+                :aria-expanded="uploadsExpanded ? 'true' : 'false'"
+                @click="uploadsExpanded = !uploadsExpanded"
+              >{{ uploadsExpanded ? 'Show less' : `More (${uploads.items.length - UPLOADS_PREVIEW_COUNT})` }}</button>
+            </template>
+          </section>
         </div>
 
       </div>
@@ -289,6 +334,8 @@ import { API_BASE_URL } from '@/utils/variables.js'
 import { MATCHES_MOCKED, compatibilityLevel, fetchMatches, nameSeparator } from '@/utils/matches.js'
 import { DASHBOARD_PREVIEW, PREVIEW_RECENTS, PREVIEW_TOP_ARTISTS } from '@/utils/dashboardPreview.js'
 import { useDragScroll } from '@/utils/dragScroll.js'
+import { fetchUploads } from '@/utils/music.js'
+import { useMusicStore } from '@/stores/music.js'
 
 const SEARCH_TABS = [
   { id: 'USERS', label: 'People', icon: 'users' },
@@ -315,6 +362,21 @@ const libraryLoading = ref(true)
 const libraryError = ref('')
 const libraryFilter = ref('all')
 const LIBRARY_PREVIEW_COUNT = 7
+const UPLOADS_PREVIEW_COUNT = 6
+const musicStore = useMusicStore()
+
+// My Uploads: GET /api/music-pieces. Clicking a song plays it with the rest of the uploads queued after it
+const uploads = reactive({ items: [], loading: true, error: '' })
+const uploadsExpanded = ref(false)
+const shownUploads = computed(() => (uploadsExpanded.value ? uploads.items : uploads.items.slice(0, UPLOADS_PREVIEW_COUNT)))
+const uploadsSummary = computed(() => {
+  if (uploads.loading || uploads.error) return 'Songs you uploaded, newest first.'
+  return uploads.items.length === 1 ? '1 song, newest first.' : `${uploads.items.length} songs, newest first.`
+})
+
+function isPlayingUpload(piece) {
+  return !musicStore.currentPlaylistUUID && musicStore.currentMusicPiece.uuid === piece.musicPieceId
+}
 const libraryExpanded = ref(false)
 
 const filteredLibrary = computed(() => {
@@ -469,6 +531,7 @@ onMounted(async () => {
   loadRow(recent, () => fetchAPI(`${API_BASE_URL}/api/users/recent-listening`), 'recents', 'your recent listening', PREVIEW_RECENTS)
   loadRow(topArtists, () => fetchAPI(`${API_BASE_URL}/api/users/top-artists`), 'artists', 'your top artists', PREVIEW_TOP_ARTISTS)
   loadRow(matches, fetchMatches, 'matches', 'people who hear it too')
+  loadRow(uploads, fetchUploads, 'uploadedMusicPieces', 'your uploads')
 
   try {
     library.value = await fetchAPI(`${API_BASE_URL}/api/users/library`)
@@ -555,6 +618,19 @@ a.match-name:hover { color: var(--link); text-decoration: underline; }
 .pct { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); margin-left: var(--space-2); }
 .shared { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
 .shared b { color: var(--ink); font-weight: 600; }
+
+.upload-list { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
+.upload { border-bottom: 1px solid var(--line); transition: background var(--dur-fast) var(--ease); }
+.upload:hover { background: var(--surface-alt); }
+.upload.playing { background: var(--purple-soft); }
+.upload-main { align-items: center; background: none; border: 0; color: inherit; cursor: pointer; display: flex; font: inherit; gap: var(--space-3); padding: var(--space-3) var(--space-2); text-align: left; width: 100%; }
+.upload-art { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-sm); flex: none; object-fit: cover; width: 40px; }
+.upload-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.upload-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playing .upload-title { color: var(--link); }
+.upload-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-play { fill: var(--link); flex: none; height: 20px; opacity: 0; width: 20px; }
+.upload:hover .upload-play, .upload-main:focus-visible .upload-play, .playing .upload-play { opacity: 1; }
 
 .count { margin: calc(var(--space-3) * -1) 0 var(--space-4); }
 .below .big-grid { gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
