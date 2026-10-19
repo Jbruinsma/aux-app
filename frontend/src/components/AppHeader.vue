@@ -31,6 +31,7 @@
               <circle cx="12" cy="12" r="3" />
             </svg>
           </a>
+          <NotificationBell />
           <a
             :href="`/${username}`"
             class="avatar-link"
@@ -58,6 +59,7 @@ import { useNotificationStore } from '@/stores/notification.js'
 
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { useUserStore } from '@/stores/user.js'
 import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
