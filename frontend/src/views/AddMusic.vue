@@ -1,261 +1,254 @@
 <template>
-  <div class="aux-page with-player add-music-page">
-    <nav class="navbar">
-      <div class="nav-content">
-        <router-link to="/" class="site-name">Unchained</router-link>
-        <div class="nav-links">
-          <router-link to="/dashboard" class="nav-link">Playlists</router-link>
-          <router-link to="/settings" class="nav-link">Settings</router-link>
-        </div>
-      </div>
-    </nav>
+  <div class="aux-page with-player">
+    <AppHeader />
 
-    <div class="container">
-      <div class="upload-section">
-        <div class="title-row">
-          <div class="back-arrow" @click="attemptBack">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"
-              />
-            </svg>
+    <main class="wrap">
+      <router-link :to="playlistRoute" class="back">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        {{ playlist ? playlist.playlistName : 'Back to playlist' }}
+      </router-link>
+      <h1>Add music</h1>
+
+      <p v-if="status === 'loading'" class="meta">Loading…</p>
+
+      <section v-else-if="status === 'forbidden'" class="page-state">
+        <p class="meta">Only the playlist's owner and editors can add music.</p>
+        <router-link :to="playlistRoute" class="btn secondary">Back to playlist</router-link>
+      </section>
+
+      <section v-else-if="status === 'error'" class="page-state">
+        <p class="meta">We couldn't load this playlist. Check that the server is running, then try again.</p>
+        <button type="button" class="btn secondary" @click="load">Try again</button>
+      </section>
+
+      <template v-else>
+        <div class="toolbar">
+          <div class="tabs" role="tablist" aria-label="Where to find songs">
+            <button
+              v-for="item in SOURCES"
+              :key="item.id"
+              type="button"
+              role="tab"
+              class="tab"
+              :class="{ active: source === item.id }"
+              :aria-selected="source === item.id ? 'true' : 'false'"
+              @click="source = item.id"
+            >{{ item.label }}</button>
           </div>
-          <h1>Add Music to "{{ playlistName }}"</h1>
+          <router-link :to="uploadRoute" class="btn text">Upload a new song</router-link>
         </div>
 
-        <div
-          class="music-upload"
-          @dragover.prevent
-          @drop.prevent="handleDrop"
-          @click="triggerFileInput"
-        >
-          <p>Drag & drop your MP3 files here, or click to browse</p>
+        <div v-if="source === 'search'" class="search">
+          <label class="visually-hidden" for="music-search">Search songs and artists</label>
           <input
-            ref="fileInput"
-            type="file"
-            accept=".mp3"
-            multiple
-            @change="handleFileChange"
-            style="display: none"
+            id="music-search"
+            v-model="searchText"
+            class="input"
+            type="search"
+            autocomplete="off"
+            maxlength="200"
+            placeholder="Search songs and artists"
           />
         </div>
 
-        <transition-group v-if="musicFiles.length" name="fade" tag="div" class="music-stack">
-          <div v-for="(file, index) in musicFiles" :key="file.name + index" class="music-item">
-            <div class="music-info">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"
-                />
-              </svg>
-              {{ file.name }}
-            </div>
-            <div class="music-delete" @click="removeFile(index)">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                />
-              </svg>
-            </div>
-          </div>
-        </transition-group>
-
-        <button class="upload-btn" @click="submitFiles" :disabled="!musicFiles.length">
-          Upload Music
-        </button>
-      </div>
-    </div>
-
-    <div v-if="showExitModal" class="modal-overlay" @click.self="showExitModal = false">
-      <div class="modal-content">
-        <h2>Are you sure?</h2>
-        <p>If you exit now, your uploaded music files will not be saved.</p>
-        <div class="modal-actions">
-          <button class="modal-btn cancel" @click="showExitModal = false">Cancel</button>
-          <button class="modal-btn exit" @click="confirmExit">Exit Anyway</button>
+        <div class="action-bar">
+          <p class="meta" aria-live="polite">{{ selectedText }}</p>
+          <button type="button" class="btn primary" :disabled="!selected.size || adding" @click="add">
+            {{ adding ? 'Adding…' : selected.size > 1 ? `Add ${selected.size} songs` : 'Add to playlist' }}
+          </button>
         </div>
-      </div>
-    </div>
+
+        <p v-if="list.error" class="error" role="alert">{{ list.error }}</p>
+        <p v-else-if="list.loading" class="meta">{{ source === 'uploads' ? 'Loading your uploads…' : 'Searching…' }}</p>
+        <EmptyState
+          v-else-if="source === 'uploads' && !list.items.length"
+          title="No uploads yet"
+          text="Upload an MP3 and it shows up here, ready to add."
+        />
+        <p v-else-if="source === 'search' && !searchText.trim()" class="meta">Type a song or artist to find music on Aux.</p>
+        <EmptyState
+          v-else-if="!list.items.length"
+          icon="disc"
+          :title="`No songs match “${searchText.trim()}”`"
+          text="Check the spelling or try a shorter search."
+        />
+        <ul v-else class="songs">
+          <li v-for="piece in list.items" :key="piece.musicPieceId" class="song" :class="{ chosen: selected.has(piece.musicPieceId) }">
+            <label class="song-main" :class="{ disabled: inPlaylist.has(piece.musicPieceId) }">
+              <input
+                type="checkbox"
+                :checked="selected.has(piece.musicPieceId)"
+                :disabled="inPlaylist.has(piece.musicPieceId)"
+                @change="toggle(piece)"
+              />
+              <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
+              <span v-else class="art" aria-hidden="true"></span>
+              <span class="song-text">
+                <span class="song-title">{{ piece.name }}</span>
+                <span v-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
+              </span>
+              <span v-if="inPlaylist.has(piece.musicPieceId)" class="tag">In playlist</span>
+            </label>
+          </li>
+        </ul>
+
+      </template>
+    </main>
+
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import { resolveCoverURL } from '@/utils/display.js'
+import { fetchPlaylist } from '@/utils/playlist.js'
+import { addPiecesToPlaylist, additionMessage, fetchUploads, searchMusic } from '@/utils/music.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user.js'
-import { fetchAPI, postToAPI } from '@/utils/api.js'
-import { v4 as uuidv4 } from 'uuid'
-import { API_BASE_URL } from '@/utils/variables.js'
+const SOURCES = [
+  { id: 'uploads', label: 'Your uploads' },
+  { id: 'search', label: 'Search music' },
+]
 
-const { username, id } = useRoute().params
-
-const isOwner = ref(false)
-const fileInput = ref(null)
-const musicFiles = ref([])
-const showExitModal = ref(false)
+const route = useRoute()
 const router = useRouter()
-
-const playlistName = ref('')
-
-const userStore = useUserStore()
 const notification = useNotificationStore()
-const currentUser = userStore.userData?.username
+const { username, id } = route.params
+const playlistRoute = { name: 'Playlist', params: { username, id } }
+const uploadRoute = { name: 'Upload', query: { playlist: id, owner: username } }
 
-onMounted(async () => {
-  const url = `${API_BASE_URL}/api/playlists/${username}/${id}`
-  const playlistInfo = await fetchAPI(url)
-  isOwner.value = playlistInfo.owner === currentUser
+const status = ref('loading')
+const playlist = ref(null)
+const source = ref('uploads')
+const searchText = ref('')
+const list = reactive({ items: [], loading: false, error: '' })
+// Songs already in the playlist, from its first page of tracks. Others already in it come back as skipped
+const inPlaylist = ref(new Set())
+const selected = ref(new Map())
+const adding = ref(false)
+let searchTimer = null
+let requestId = 0
 
-  playlistName.value = playlistInfo.name
-
-  let isSharedWith = false
-  let canEdit = false
-
-  for (const userSharedWith of playlistInfo.sharedWith) {
-    if (userSharedWith.username === currentUser) {
-      isSharedWith = true
-      canEdit = userSharedWith.canEdit
-      break
-    }
-  }
-
-  const canAccess = isOwner.value || (isSharedWith && canEdit)
-
-  if (!canAccess) {
-    await router.push('/dashboard')
-  }
+const selectedText = computed(() => {
+  if (!selected.value.size) return 'Choose songs to add.'
+  return selected.value.size === 1 ? '1 song chosen.' : `${selected.value.size} songs chosen.`
 })
 
-function triggerFileInput() {
-  fileInput.value.click()
-}
-
-function handleFileChange(event) {
-  const files = Array.from(event.target.files)
-  musicFiles.value.push(...files)
-}
-
-function handleDrop(event) {
-  const files = Array.from(event.dataTransfer.files).filter((f) => f.type === 'audio/mpeg')
-  musicFiles.value.push(...files)
-}
-
-function removeFile(index) {
-  musicFiles.value.splice(index, 1)
-}
-
-function submitFiles() {
-  const formData = new FormData();
-
-  formData.append('playlist_uuid', id);
-  formData.append('playlist_name', playlistName.value);
-  const uuids = [];
-
-  for (const file of musicFiles.value) {
-    const uuid = uuidv4();
-    uuids.push(uuid);
-    formData.append('mp3s', file);
-  }
-
-  formData.append('uuids', JSON.stringify(uuids));
-
-  const url = `${API_BASE_URL}/api/playlists/${username}/${id}/add`;
-  postToAPI(url, formData, false)
-    .then(response => {
-      console.log('Files uploaded:', response);
-      notification.success('Your music is uploaded.')
-      router.push(`/playlist/${username}/${id}`);
-    })
-    .catch(error => {
-      console.error('Upload error:', error);
-    });
-}
-
-function attemptBack() {
-  if (musicFiles.value.length) {
-    showExitModal.value = true
-  } else {
-    router.back()
+async function load() {
+  status.value = 'loading'
+  try {
+    const result = await fetchPlaylist(username, id, { ignoredErrorCodes: ['PLAYLIST_NOT_FOUND', 'PLAYLIST_INVITE_PENDING'] })
+    if (result.access !== 'OWNER' && result.access !== 'EDITOR') {
+      status.value = 'forbidden'
+      return
+    }
+    playlist.value = result
+    inPlaylist.value = new Set(result.musicPieces.map((piece) => piece.musicPieceId))
+    status.value = 'ready'
+    loadSource()
+  } catch (err) {
+    if (err.sessionEnded) return
+    status.value = err.code === 'PLAYLIST_NOT_FOUND' || err.code === 'PLAYLIST_INVITE_PENDING' ? 'forbidden' : 'error'
   }
 }
 
-function confirmExit() {
-  showExitModal.value = false
-  router.back()
+async function loadSource() {
+  clearTimeout(searchTimer)
+  const request = ++requestId
+  list.error = ''
+  if (source.value === 'search' && !searchText.value.trim()) {
+    list.items = []
+    list.loading = false
+    return
+  }
+  list.loading = true
+  try {
+    const items = source.value === 'uploads'
+      ? (await fetchUploads()).uploadedMusicPieces
+      : (await searchMusic(searchText.value.trim())).results
+    if (request === requestId) list.items = items
+  } catch (err) {
+    if (request !== requestId || err.sessionEnded) return
+    list.items = []
+    list.error = err.code === 'RATE_LIMITED'
+      ? 'Too many searches at once. Wait a few seconds, then try again.'
+      : "We couldn't load songs. Check that the server is running, then try again."
+  } finally {
+    if (request === requestId) list.loading = false
+  }
 }
+
+watch(source, loadSource)
+watch(searchText, () => {
+  clearTimeout(searchTimer)
+  list.loading = Boolean(searchText.value.trim())
+  searchTimer = setTimeout(loadSource, 300)
+})
+onBeforeUnmount(() => clearTimeout(searchTimer))
+
+function toggle(piece) {
+  const next = new Map(selected.value)
+  if (next.has(piece.musicPieceId)) next.delete(piece.musicPieceId)
+  else next.set(piece.musicPieceId, piece)
+  selected.value = next
+}
+
+async function add() {
+  if (!selected.value.size || adding.value) return
+  adding.value = true
+  try {
+    const result = await addPiecesToPlaylist(id, [...selected.value.keys()])
+    notification[result.failedCount ? 'neutral' : 'success'](additionMessage(result))
+    await router.push(playlistRoute)
+  } catch (err) {
+    if (err.sessionEnded) return
+    notification.error(err.code === 'PLAYLIST_NOT_FOUND'
+      ? "This playlist doesn't exist anymore, or you can no longer edit it."
+      : "We couldn't add those songs. Check that the server is running, then try again.")
+  } finally {
+    adding.value = false
+  }
+}
+
+load()
 </script>
 
 <style scoped>
-.add-music-page{background:var(--surface);color:var(--ink);min-height:100vh;}
-.back-arrow { align-items:center; color:var(--ink); cursor:pointer; display:flex; margin-bottom:1rem; }
-.back-arrow:hover { color:var(--danger); }
-.back-arrow svg { height:24px; width:24px; }
-.container { background:var(--surface-alt); border-radius:var(--radius-md); margin:2rem auto; max-width:600px; padding:2rem; }
-.title-row { margin-bottom:1.5rem; text-align:center; }
-.title-row h1 { font-family:var(--font-sans); font-size:2rem; }
-.music-upload { border:2px dashed var(--line-strong); border-radius:var(--radius-md); cursor:pointer; margin-bottom:1rem; padding:2rem; text-align:center; transition:background 0.3s; }
-.music-upload:hover { background:var(--purple-soft); }
-.music-upload p { color:var(--ink-muted); }
-.music-item { align-items:center; background:var(--surface-alt); border-radius:var(--radius-md); display:flex; gap:1rem; justify-content:space-between; margin-bottom:0.5rem; padding:0.75rem 1rem; }
-.music-info { align-items:center; display:flex; gap:0.5rem; }
-.music-item svg { flex-shrink:0; height:20px; width:20px; }
-.music-delete { cursor:pointer; transition:transform 0.2s; }
-.music-delete:hover { transform:scale(1.2); }
-.upload-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; display:block; font-size:1rem; margin:2rem auto 0 auto; padding:0.75rem 2rem; transition:background 0.3s; }
-.upload-btn:disabled { background:var(--surface-alt); cursor:not-allowed; }
-.upload-btn:hover:not(:disabled) { background:var(--purple-soft); }
-.modal-overlay { align-items:center; background:var(--scrim); display:flex; height:100vh; justify-content:center; left:0; position:fixed; top:0; width:100vw; z-index:1000; }
-.modal-content { background:var(--surface); border:2px solid var(--danger); border-radius:var(--radius-md); max-width:400px; padding:2rem; text-align:center; width:90%; }
-.modal-content h2 { font-size:1.5rem; margin-bottom:1rem; }
-.modal-content p { color:var(--ink-muted); margin-bottom:2rem; }
-.modal-actions { display:flex; gap:1rem; justify-content:center; }
-.modal-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; font-size:1rem; padding:0.75rem 1.5rem; transition:background 0.3s; }
-.modal-btn.cancel:hover { background:var(--line-strong); }
-.modal-btn.exit { background:var(--primary); }
-.modal-btn.exit:hover { background:var(--purple-hover); }
-.navbar { background:var(--surface); padding:1rem 0; }
-.nav-content { align-items:center; display:flex; justify-content:space-between; margin:0 auto; max-width:1200px; padding:0 1rem; }
-.nav-links { display:flex; gap:2rem; }
-.nav-link { color:var(--ink); font-weight:500; text-decoration:none; transition:color 0.3s; }
-.nav-link:hover { color:var(--ink-muted); }
-.site-name { color:var(--ink); font-family:var(--font-sans); font-size:1.8rem; text-decoration:none; }
-.fade-enter-active,.fade-leave-active { transition:opacity 0.5s; }
-.fade-enter-from,.fade-leave-to { opacity:0; }
-.fade-enter-to,.fade-leave-from { opacity:1; }
+.wrap { padding: var(--space-8) var(--page-gutter); width: 100%; }
+.back { align-items: center; color: var(--link); display: inline-flex; font: 600 14px/20px var(--font-sans); gap: var(--space-1); margin-bottom: var(--space-2); text-decoration: none; }
+.back:hover { text-decoration: underline; }
+h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-6); }
+.meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
+.error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
+.icon { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
+.page-state { align-items: flex-start; display: flex; flex-direction: column; gap: var(--space-3); }
+.visually-hidden { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
-button, input { font-family: var(--font-sans); }
-.upload-btn, .modal-btn.exit { background: var(--primary); color: var(--on-primary); }
-.upload-btn:hover:not(:disabled), .modal-btn.exit:hover { background: var(--purple-hover); }
-.upload-btn:disabled { background: var(--primary); opacity: 0.4; }
-.modal-content { border: 1px solid var(--line-strong); }
-.container { box-sizing: border-box; width: min(100%, 600px); }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; }
-}
+.toolbar { align-items: flex-end; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; margin-bottom: var(--space-4); }
+.tabs { display: flex; gap: var(--space-6); }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink-muted); cursor: pointer; font: 600 14px/20px var(--font-sans); padding: 0 0 var(--space-2); }
+.tab:hover { border-bottom-color: var(--primary); color: var(--ink); }
+.tab.active { border-bottom-color: var(--primary); color: var(--link); }
+.search { margin-bottom: var(--space-4); max-width: 560px; }
+.input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font: 400 16px/24px var(--font-sans); padding: 8px 12px; width: 100%; }
+
+.songs { border-top: 1px solid var(--line); list-style: none; margin: 0; max-width: 800px; padding: 0; }
+.song { border-bottom: 1px solid var(--line); }
+.song:hover { background: var(--surface-alt); }
+.song.chosen { background: var(--purple-soft); }
+.song-main { align-items: center; cursor: pointer; display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-2); }
+.song-main.disabled { cursor: default; opacity: 0.6; }
+.song-main input { accent-color: var(--primary); flex: none; height: 18px; margin: 0; width: 18px; }
+.art { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-sm); flex: none; object-fit: cover; width: 40px; }
+.song-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.song-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { color: var(--ink-muted); flex: none; font: 600 12px/16px var(--font-sans); }
+
+.action-bar { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: space-between; margin-bottom: var(--space-4); max-width: 800px; }
 </style>
