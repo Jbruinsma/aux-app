@@ -189,6 +189,30 @@
                   <span v-if="artistName(track)" class="track-artist">{{ artistName(track) }}</span>
                 </span>
               </button>
+
+              <div v-if="canEdit" class="menu-wrap track-menu-wrap">
+                <button
+                  type="button"
+                  class="track-more"
+                  :aria-label="`More options for ${track.name}`"
+                  aria-haspopup="true"
+                  :aria-expanded="trackMenuFor === track.musicPieceId ? 'true' : 'false'"
+                  :aria-controls="`track-menu-${track.musicPieceId}`"
+                  @click="toggleTrackMenu(track)"
+                >
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />
+                  </svg>
+                </button>
+                <ul v-if="trackMenuFor === track.musicPieceId" :id="`track-menu-${track.musicPieceId}`" class="menu track-menu">
+                  <li>
+                    <button type="button" class="menu-item" :disabled="!!removingId" @click="removeTrack(track)">
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M8 12h8" /></svg>
+                      {{ removingId === track.musicPieceId ? 'Removing…' : 'Remove from playlist' }}
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </li>
           </ol>
 
@@ -247,6 +271,7 @@ import {
   fetchPendingInvites,
   fetchPlaylist,
   fetchPlaylistPieces,
+  removePieceFromPlaylist,
   setPlaylistSaved,
 } from '@/utils/playlist.js'
 import { useMusicStore } from '@/stores/music.js'
@@ -414,10 +439,46 @@ const menuWrap = ref(null)
 
 function closeMenuOnOutside(event) {
   if (menuOpen.value && !menuWrap.value?.contains(event.target)) menuOpen.value = false
+  if (trackMenuFor.value && !event.target.closest?.('.track-menu-wrap')) trackMenuFor.value = null
 }
 
 function closeMenuOnEscape(event) {
-  if (event.key === 'Escape') menuOpen.value = false
+  if (event.key !== 'Escape') return
+  menuOpen.value = false
+  trackMenuFor.value = null
+}
+
+/* Each song's ⋯ menu, for owners and editors. One open at a time, keyed by musicPieceId */
+
+const trackMenuFor = ref(null)
+const removingId = ref(null)
+
+function toggleTrackMenu(track) {
+  trackMenuFor.value = trackMenuFor.value === track.musicPieceId ? null : track.musicPieceId
+}
+
+// Later songs keep their positions on the backend, so the next-page cursor stays valid after a removal
+async function removeTrack(track) {
+  if (removingId.value) return
+  const current = playlist.value
+  removingId.value = track.musicPieceId
+  try {
+    await removePieceFromPlaylist(current.playlistId, track.musicPieceId)
+    trackMenuFor.value = null
+    if (playlist.value !== current) return
+    const index = current.musicPieces.indexOf(track)
+    if (index !== -1) current.musicPieces.splice(index, 1)
+    current.totalPieces = Math.max(0, current.totalPieces - 1)
+    notification.success(`Removed "${track.name}" from this playlist.`)
+  } catch (err) {
+    if (err.sessionEnded || playlist.value !== current) return
+    trackMenuFor.value = null
+    // The caller lost edit access (or the playlist is gone) since the page loaded
+    if (err.code === 'PLAYLIST_NOT_FOUND') await loadPlaylist()
+    else notification.error(`We couldn't remove "${track.name}". Check that the server is running, then try again.`)
+  } finally {
+    removingId.value = null
+  }
 }
 
 onMounted(() => {
@@ -530,6 +591,11 @@ p.page-state { display: block; }
 .track-name { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playing .track-name { color: var(--link); }
 .track-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-menu-wrap { flex: none; margin-right: var(--space-2); }
+.track-more { align-items: center; background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink-muted); cursor: pointer; display: grid; height: 36px; padding: 0; place-items: center; transition: color var(--dur-fast) var(--ease); width: 36px; }
+.track-more:hover, .track-more[aria-expanded="true"] { color: var(--ink); }
+.track-menu { left: auto; right: 0; }
+.menu-item[disabled] { cursor: not-allowed; opacity: .4; }
 
 @media (hover: hover) {
   .track:hover .rank-number, .track-main:focus-visible .rank-number { opacity: 0; }

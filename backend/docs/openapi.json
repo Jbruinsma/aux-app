@@ -4586,6 +4586,100 @@
         }
       }
     },
+    "/api/playlists/{playlistId}/pieces/{pieceId}" : {
+      "delete" : {
+        "tags" : [ "playlist-controller" ],
+        "summary" : "Remove a music piece from a playlist",
+        "description" : "Owner or accepted editor only. Removes the piece from the playlist; the piece itself stays in its\nuploader's uploads. Track-list and play-queue cursors handed out before the removal stay valid.\n",
+        "operationId" : "removeMusicPieceFromPlaylist",
+        "parameters" : [ {
+          "name" : "playlistId",
+          "in" : "path",
+          "description" : "Public id of the playlist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "p_7c2dK1"
+        }, {
+          "name" : "pieceId",
+          "in" : "path",
+          "description" : "Public id of the music piece",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "m_7c2dK1"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Piece removed"
+          },
+          "404" : {
+            "description" : "Playlist not found or caller can't edit it (PLAYLIST_NOT_FOUND), or piece not in the playlist (MUSIC_PIECE_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/playlists/{playlistId}/membership" : {
       "delete" : {
         "tags" : [ "playlist-controller" ],

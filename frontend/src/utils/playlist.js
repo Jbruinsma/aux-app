@@ -20,6 +20,18 @@ export function fetchPlaylistPieces(playlistId, cursor) {
   return fetchAPI(`${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/pieces?${query}`)
 }
 
+// Owner or editor only; anyone else gets 404 PLAYLIST_NOT_FOUND. Returns nothing (204). A 404 MUSIC_PIECE_NOT_FOUND
+// means the song is already gone (e.g. removed in another tab), which is the state the caller wants, so treat it as
+// success. Doesn't notify on errors: the caller says which song failed
+export async function removePieceFromPlaylist(playlistId, musicPieceId) {
+  const url = `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/pieces/${encodeURIComponent(musicPieceId)}`
+  try {
+    await request('DELETE', url, undefined, { notifyOnError: false })
+  } catch (err) {
+    if (err.code !== 'MUSIC_PIECE_NOT_FOUND') throw err
+  }
+}
+
 // { invites: [{ playlistId, playlistName, playlistCoverUrl, permission: LISTENER | EDITOR, invitedBy }] }, newest first
 export function fetchPendingInvites(options) {
   return fetchAPI(`${API_BASE_URL}/api/playlists/invites`, options)

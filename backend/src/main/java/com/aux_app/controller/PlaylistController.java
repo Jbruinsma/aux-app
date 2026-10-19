@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
@@ -142,6 +143,24 @@ public class PlaylistController {
             @Valid @RequestBody PlaylistMusicPieceAddition details
     ) {
         return playlists.addMusicPiecesToPlaylist(playlistId, user, details);
+    }
+
+    @DeleteMapping("/{playlistId}/pieces/{pieceId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Remove a music piece from a playlist",
+            description = """
+                    Owner or accepted editor only. Removes the piece from the playlist; the piece itself stays in its
+                    uploader's uploads. Track-list and play-queue cursors handed out before the removal stay valid.
+                    """)
+    @ApiResponse(responseCode = "204", description = "Piece removed")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or caller can't edit it (PLAYLIST_NOT_FOUND), or piece not in the playlist (MUSIC_PIECE_NOT_FOUND)")
+    public void removeMusicPieceFromPlaylist(
+            @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId,
+            @Parameter(description = "Public id of the music piece", example = "m_7c2dK1") @PathVariable("pieceId") String pieceId,
+            @CurrentUser UserEntity user
+    ) {
+        playlists.removeMusicPieceFromPlaylist(playlistId, user, pieceId);
     }
 
     @PutMapping("/{playlistId}/save")

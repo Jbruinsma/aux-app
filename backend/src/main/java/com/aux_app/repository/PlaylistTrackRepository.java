@@ -32,6 +32,12 @@ public interface PlaylistTrackRepository extends JpaRepository<PlaylistTrackEnti
             """, nativeQuery = true)
     List<TrackIdRow> findTrackIdsInOrder(@Param("publicId") String publicId);
 
+    // Highest position in the playlist, -1 when empty. Positions can have gaps where tracks were removed.
+    @Query(value = """
+            SELECT COALESCE(MAX(playlist_position), -1) FROM playlist_tracks WHERE playlist_id = :playlistId
+            """, nativeQuery = true)
+    int findLastPosition(@Param("playlistId") String playlistId);
+
     interface TrackIdRow {
         String getMusicPieceId();
         Integer getPlaylistPosition();

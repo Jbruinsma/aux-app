@@ -50,7 +50,12 @@ public abstract class PlaylistService {
     }
 
     public PlaylistOverview retrievePlaylist(String username, String playlistId, UserEntity user) {
-        PlaylistRepository.PlaylistPage playlist = playlists.findPlaylistWithTracks(playlistId, user.getUserId(), -1, TRACK_PAGE_SIZE);
+        PlaylistRepository.PlaylistPage playlist = playlists.findPlaylistWithTracks(
+                playlistId,
+                user.getUserId(),
+                -1,
+                TRACK_PAGE_SIZE
+        );
 
         if (playlist == null) {
             throw playlistNotFound("playlistId");
@@ -183,7 +188,8 @@ public abstract class PlaylistService {
         List<MusicPieceEntity> existing = tracks.findTracksInOrder(playlist.getPlaylistId());
         Set<String> alreadyInPlaylist = existing.stream().map(MusicPieceEntity::getMusicPieceId).collect(Collectors.toSet());
 
-        int nextPosition = existing.size();
+        // Removing a track leaves a gap in the positions, so append after the last one rather than at the count
+        int nextPosition = tracks.findLastPosition(playlist.getPlaylistId()) + 1;
         List<PlaylistTrackEntity> newTracks = new ArrayList<>();
 
         // A private piece needs its uploader to add it, and a playlist that is not public or that they own,
@@ -198,7 +204,7 @@ public abstract class PlaylistService {
                 continue;
             }
 
-            if (nextPosition >= PlaylistConfig.MAX_PLAYLIST_SIZE) {
+            if (existing.size() + newTracks.size() >= PlaylistConfig.MAX_PLAYLIST_SIZE) {
                 break;
             }
             newTracks.add(new PlaylistTrackEntity(playlist.getPlaylistId(), musicPiece.getMusicPieceId(), nextPosition++));
@@ -212,8 +218,39 @@ public abstract class PlaylistService {
                 new CorePlaylist(playlist.getPublicId(), playlist.getPlaylistName(), playlist.getPlaylistCoverUrl()),
                 newTracks.size(),
                 requested - newTracks.size(),
-                nextPosition
+                existing.size() + newTracks.size()
         );
+    }
+
+    @Transactional
+    public void removeMusicPieceFromPlaylist(String playlistId, UserEntity user, String pieceId) {
+        String userId = user.getUserId();
+
+        PlaylistRepository.PlaylistWithTrack found = playlists.findPlaylistWithTrack(
+                playlistId,
+                userId,
+                pieceId
+        );
+
+        // Only owner and accepted editors may change tracks. Anyone else gets 404, same as addMusicPiecesToPlaylist.
+        if (found == null || !(found.caller().isOwner(userId) || found.caller().isEditor())) {
+            throw playlistNotFound("playlistId");
+        }
+
+        PlaylistTrackEntity track = found.track();
+
+        if (track == null) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "MUSIC_PIECE_NOT_FOUND",
+                    "Music piece is not in this playlist",
+                    "pieceId"
+            );
+        }
+
+        // Later tracks keep their positions. Track-list and queue cursors are positions, so renumbering would
+        // make a client that already holds one skip a track.
+        tracks.delete(track);
     }
 
     public SavedPlaylistResponse savePlaylist(String playlistId, UserEntity user) {
