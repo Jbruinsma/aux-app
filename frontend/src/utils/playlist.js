@@ -39,8 +39,8 @@ export function fetchPlaylistPieces(playlistId, cursor) {
 }
 
 // { invites: [{ playlistId, playlistName, playlistCoverUrl, permission: LISTENER | EDITOR, invitedBy }] }, newest first
-export function fetchPendingInvites() {
-  return fetchAPI(`${API_BASE_URL}/api/playlists/invites`)
+export function fetchPendingInvites(options) {
+  return fetchAPI(`${API_BASE_URL}/api/playlists/invites`, options)
 }
 
 export function acceptInvite(playlistId) {
@@ -71,4 +71,24 @@ export async function deletePlaylist(playlistId) {
   if (!PLAYLIST_DELETE_MOCKED) return request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}`)
   await wait()
   return null
+}
+
+// Members are owner-only: anyone else gets 404 PLAYLIST_NOT_FOUND.
+// [{ user: { userId, username, pfpUrl }, permission: LISTENER | EDITOR, status: PENDING | ACCEPTED, invitedAt, respondedAt }]
+export function fetchMembers(playlistId, options) {
+  return fetchAPI(`${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/members`, options)
+}
+
+// 403 USER_ALREADY_INVITED, 400 INVALID_FIELD (inviting yourself), 404 USER_NOT_FOUND
+export function inviteMember(playlistId, userId, permission, options) {
+  return request('POST', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/members`, { userId, permission }, options)
+}
+
+export function updateMember(playlistId, userId, permission) {
+  return request('PUT', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/members`, { userId, permission })
+}
+
+// Removes an accepted member, or cancels a pending invite
+export function removeMember(playlistId, userId) {
+  return request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/members`, { userId })
 }

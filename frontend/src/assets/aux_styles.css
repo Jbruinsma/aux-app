@@ -160,6 +160,11 @@ html:has(.aux-page) #app {
   cursor: not-allowed;
 }
 
+/* Dropdowns: wrap the <select class="select"> in <span class="select-wrap"> for an arrow set in from the border */
+.aux-page .select-wrap { display: inline-block; position: relative; }
+.aux-page .select-wrap .select { appearance: none; cursor: pointer; padding-right: 36px; width: 100%; -webkit-appearance: none; }
+.aux-page .select-wrap::after { background: var(--ink-muted); content: ''; height: 12px; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; pointer-events: none; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 12px; }
+
 @media (prefers-reduced-motion: reduce) {
   .aux-page * {
     transition: none !important;

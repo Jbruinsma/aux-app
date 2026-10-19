@@ -41,7 +41,7 @@
 
         <div class="side">
           <form v-if="step === 'NAME'" class="step" @submit.prevent="toCoverStep">
-            <p class="eyebrow">Step 1 of 2</p>
+            <p class="eyebrow">Step 1 of 3</p>
             <h1 ref="heading" tabindex="-1">Name your playlist</h1>
             <p class="lead">You can change the name and who can see it later.</p>
 
@@ -65,7 +65,7 @@
               Make this playlist public
             </label>
             <p id="public-hint" class="hint">
-              {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you can see it.' }}
+              {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you and the people you invite can see it.' }}
             </p>
 
             <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -76,22 +76,53 @@
             </div>
           </form>
 
-          <form v-else class="step" @submit.prevent="createPlaylist">
+          <form v-else-if="step === 'COVER'" class="step" @submit.prevent="toPeopleStep">
             <p ref="nameEl" class="title">
               <span class="title-text">{{ name.trim() }}</span>
               <svg class="icon" viewBox="0 0 24 24" aria-label="Name set"><path d="M20 6 9 17l-5-5" /></svg>
             </p>
-            <p class="eyebrow">Step 2 of 2</p>
+            <p class="eyebrow">Step 2 of 3</p>
             <h1 ref="heading" tabindex="-1">Add a cover</h1>
             <p id="cover-hint" class="lead">A JPEG or PNG, at least 256 × 256 pixels and up to 5MB. We'll crop it to a square.</p>
 
             <p v-if="error" class="error" role="alert">{{ error }}</p>
 
             <div class="actions">
-              <button type="submit" class="btn primary" :disabled="!coverFile || creating">
-                {{ creating ? 'Creating…' : 'Create playlist' }}
+              <button type="submit" class="btn primary" :disabled="!coverFile">Next</button>
+              <button type="button" class="btn text" @click="toNameStep">Back</button>
+            </div>
+          </form>
+
+          <form v-else class="step" @submit.prevent="createPlaylist">
+            <p class="eyebrow">Step 3 of 3</p>
+            <h1 ref="heading" tabindex="-1">Invite people</h1>
+            <p class="lead">Optional. Listeners can play the playlist; editors can also add songs and change its name and cover. Invites go out once the playlist is created.</p>
+
+            <PeoplePicker :exclude="excludedPeople" @pick="addPerson" />
+
+            <ul v-if="people.length" class="chosen" aria-label="People to invite">
+              <li v-for="person in people" :key="person.userId" class="chosen-row">
+                <img v-if="person.profilePictureUrl" class="avatar" :src="resolveCoverURL(person.profilePictureUrl)" alt="" />
+                <span v-else class="avatar avatar-initial" aria-hidden="true">{{ person.username.charAt(0).toUpperCase() }}</span>
+                <span class="chosen-name">{{ person.username }}</span>
+                <label class="visually-hidden" :for="`invite-${person.userId}`">Access for {{ person.username }}</label>
+                <span class="select-wrap permission-wrap">
+                  <select :id="`invite-${person.userId}`" v-model="person.permission" class="input select permission">
+                    <option value="LISTENER">Listener</option>
+                    <option value="EDITOR">Editor</option>
+                  </select>
+                </span>
+                <button type="button" class="btn text remove" :aria-label="`Don't invite ${person.username}`" @click="removePerson(person)">Remove</button>
+              </li>
+            </ul>
+
+            <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+            <div class="actions">
+              <button type="submit" class="btn primary" :disabled="creating">
+                {{ creating ? 'Creating…' : people.length ? 'Create and send invites' : 'Create playlist' }}
               </button>
-              <button type="button" class="btn text" :disabled="creating" @click="toNameStep">Back</button>
+              <button type="button" class="btn text" :disabled="creating" @click="toCoverStep">Back</button>
             </div>
           </form>
         </div>
@@ -105,11 +136,14 @@
 <script setup>
 import { useNotificationStore } from '@/stores/notification.js'
 
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import StepBanner from '@/components/StepBanner.vue'
+import PeoplePicker from '@/components/PeoplePicker.vue'
+import { resolveCoverURL } from '@/utils/display.js'
+import { inviteMember } from '@/utils/playlist.js'
 import { postToAPI } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
@@ -138,6 +172,8 @@ const coverPreview = ref('')
 const dragOver = ref(false)
 const creating = ref(false)
 const error = ref('')
+const people = ref([])
+const excludedPeople = computed(() => [userStore.userData?.userId, ...people.value.map((person) => person.userId)])
 
 onMounted(() => {
   if (!userStore.loggedIn) router.replace({ name: 'Login' })
@@ -148,11 +184,42 @@ onBeforeUnmount(() => URL.revokeObjectURL(coverPreview.value))
 async function toCoverStep() {
   if (!name.value.trim()) return
   error.value = ''
-  const from = nameEl.value.getBoundingClientRect()
+  const from = step.value === 'NAME' ? nameEl.value.getBoundingClientRect() : null
   step.value = 'COVER'
   await nextTick()
   heading.value?.focus()
-  slideFrom(nameEl.value, from, 16)
+  if (from) slideFrom(nameEl.value, from, 16)
+}
+
+async function toPeopleStep() {
+  if (!coverFile.value) return
+  error.value = ''
+  step.value = 'PEOPLE'
+  await nextTick()
+  heading.value?.focus()
+}
+
+function addPerson(user) {
+  people.value.push({ ...user, permission: 'LISTENER' })
+}
+
+function removePerson(person) {
+  people.value = people.value.filter((item) => item.userId !== person.userId)
+}
+
+// Invites need the new playlist's id, so they go out one by one after it exists. Failures don't undo the playlist;
+// the owner can retry from Manage access
+async function sendInvites(playlistId) {
+  const failed = []
+  for (const person of people.value) {
+    try {
+      await inviteMember(playlistId, person.userId, person.permission, { notifyOnError: false })
+    } catch (err) {
+      if (err.sessionEnded) throw err
+      failed.push(person.username)
+    }
+  }
+  return failed
 }
 
 async function toNameStep() {
@@ -192,14 +259,20 @@ async function createPlaylist() {
     form.append('isPublic', isPublic.value)
     form.append('playlistCover', coverFile.value)
     const playlist = await postToAPI(`${API_BASE_URL}/api/playlists`, form)
-    notification.success('Playlist created.')
+    const failed = await sendInvites(playlist.playlistId)
+    if (failed.length) notification.error(`Playlist created, but the invite to ${failed.join(', ')} didn't send. Try again from Manage access.`)
+    else if (people.value.length) notification.success(people.value.length === 1 ? 'Playlist created and invite sent.' : 'Playlist created and invites sent.')
+    else notification.success('Playlist created.')
     finishing.value = true
     await nextTick()
     await animationsDone(banner.value.$el)
     await router.push({ name: 'Playlist', params: { username: playlist.playlistOwner.username, id: playlist.playlistId } })
   } catch (err) {
     if (err.sessionEnded) return
-    if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
+    if (PHOTO_ERRORS[err.code]) {
+      await toCoverStep()
+      error.value = PHOTO_ERRORS[err.code]
+    }
     else if (err.code === 'INVALID_FIELD') {
       await toNameStep()
       error.value = `Give your playlist a name of 1 to ${NAME_MAX} characters.`
@@ -236,6 +309,14 @@ h1:focus { outline: none; }
 .actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
 
 .title { align-items: center; color: var(--link); display: flex; font: 700 20px/28px var(--font-sans); gap: var(--space-2); margin: 0 0 var(--space-2); min-width: 0; transform-origin: left center; }
+.chosen { border-top: 1px solid var(--line); list-style: none; margin: var(--space-2) 0 0; padding: 0; }
+.chosen-row { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: var(--space-3); padding: var(--space-2) 0; }
+.avatar { border-radius: var(--radius-pill); flex: none; height: 32px; object-fit: cover; width: 32px; }
+.avatar-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 14px/1 var(--font-sans); place-items: center; }
+.chosen-name { flex: 1; font: 600 16px/24px var(--font-sans); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.permission-wrap { flex: none; }
+.permission { font-size: 14px; padding-bottom: 6px; padding-left: 10px; padding-top: 6px; }
+.remove { flex: none; font-size: 14px; }
 .title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .title .icon { color: var(--success); height: 20px; width: 20px; }
 .icon { fill: none; flex: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
