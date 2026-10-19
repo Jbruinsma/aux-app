@@ -131,7 +131,8 @@ public class UserController {
     @Operation(
             summary = "Get the caller's playlist library",
             description = """
-                    Playlists the caller owns (public and private) plus playlists they saved from others (public only).
+                    Playlists the caller owns (public and private), playlists they're an accepted listener or editor of
+                    (public and private), plus playlists they saved from others (public only).
                     `isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")

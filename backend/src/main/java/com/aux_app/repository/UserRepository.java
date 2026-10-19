@@ -121,7 +121,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                 .toList();
     }
 
-    // Library = playlists the user owns + playlists they saved. Saved ones from others only while still public.
+    // Library = playlists the user owns + playlists they're an accepted listener/editor of
+    // + playlists they saved. Saved ones from others only while still public (or they're a member).
     // Saved first, most recently saved first; the rest newest created first.
     @Query(value = """
             SELECT p.public_id AS playlistId,
@@ -133,7 +134,9 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
             FROM playlists p
             JOIN users o ON o.user_id = p.owner_id
             LEFT JOIN user_saved_playlists usp ON usp.playlist_id = p.playlist_id AND usp.user_id = :userId
+            LEFT JOIN playlist_members pm ON pm.playlist_id = p.playlist_id AND pm.user_id = :userId
             WHERE p.owner_id = :userId
+               OR pm.status = 'ACCEPTED'
                OR (usp.user_id IS NOT NULL AND p.is_public = 1)
             ORDER BY (usp.user_id IS NOT NULL) DESC, usp.saved_at DESC, p.created_at DESC
             """, nativeQuery = true)

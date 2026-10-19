@@ -3628,7 +3628,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Get the caller's playlist library",
-        "description" : "Playlists the caller owns (public and private) plus playlists they saved from others (public only).\n`isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.\n",
+        "description" : "Playlists the caller owns (public and private), playlists they're an accepted listener or editor of\n(public and private), plus playlists they saved from others (public only).\n`isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.\n",
         "operationId" : "retrieveLibrary",
         "responses" : {
           "200" : {
