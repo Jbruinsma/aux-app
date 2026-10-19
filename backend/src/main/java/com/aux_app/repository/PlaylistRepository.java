@@ -9,6 +9,7 @@ import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.PlaylistMemberEntity;
+import com.aux_app.entity.PlaylistTrackEntity;
 import com.aux_app.entity.UserEntity;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -236,6 +237,24 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     record PlaylistPieceRow(PlaylistEntity playlist, PlaylistMemberEntity member, MusicPieceEntity piece) {}
 
     record PlaylistWithPieces(PlaylistWithCaller caller, List<MusicPieceEntity> pieces) {}
+
+    // Null if playlist doesn't exist. `member` is the caller's own row, null if they have none.
+    // `track` is null if no piece has that public id or the piece isn't in this playlist.
+    @Query("""
+            SELECT new com.aux_app.repository.PlaylistRepository$PlaylistWithTrack(p, m, t)
+            FROM PlaylistEntity p
+            LEFT JOIN PlaylistMemberEntity m ON m.playlistId = p.playlistId AND m.userId = :userId
+            LEFT JOIN MusicPieceEntity mp ON mp.publicId = :piecePublicId
+            LEFT JOIN PlaylistTrackEntity t ON t.playlistId = p.playlistId AND t.musicPieceId = mp.musicPieceId
+            WHERE p.publicId = :playlistPublicId
+            """)
+    PlaylistWithTrack findPlaylistWithTrack(
+            @Param("playlistPublicId") String playlistPublicId, @Param("userId") String userId,
+            @Param("piecePublicId") String piecePublicId);
+
+    record PlaylistWithTrack(PlaylistEntity playlist, PlaylistMemberEntity member, PlaylistTrackEntity track) {
+        public PlaylistWithCaller caller() { return new PlaylistWithCaller(playlist, member); }
+    }
 
     // Search by name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
     // Private playlists only show up for their owner (`userId` may be null).

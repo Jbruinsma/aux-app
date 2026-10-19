@@ -2,7 +2,7 @@
 // While this is true they replace the account's own rows; set it to false to show real data. Shapes match
 // GET /api/users/recent-listening and GET /api/users/top-artists. Artwork is hotlinked from Deezer's CDN for local
 // previews only, so turn this off before deploying
-export const DASHBOARD_PREVIEW = true
+export const DASHBOARD_PREVIEW = false
 
 const art = (path) => `https://cdn-images.dzcdn.net/images/${path}/500x500-000000-80-0-0.jpg`
 

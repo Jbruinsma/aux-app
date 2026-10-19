@@ -95,3 +95,28 @@ it('loads the next page of songs with the cursor it was given until there are no
   expect(wrapper.findAll('.track')).toHaveLength(3)
   expect(wrapper.find('.more').exists()).toBe(false)
 })
+
+it("removes a song from an editor's row menu without touching the next-page cursor", async () => {
+  fetchAPI
+    .mockResolvedValueOnce(playlist({ access: 'EDITOR', totalPieces: 3, musicPieces: [track(1), track(2)], nextCursor: 'c1' }))
+    .mockResolvedValueOnce({ musicPieces: [track(3)], nextCursor: null })
+  request.mockResolvedValue(null)
+  await render()
+  expect(wrapper.text()).toContain('3 songs')
+  await wrapper.get('button[aria-label="More options for Song 1"]').trigger('click')
+  await wrapper.get('#track-menu-m1 button').trigger('click')
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringContaining('/api/playlists/p1/pieces/m1'), undefined, { notifyOnError: false })
+  expect(wrapper.findAll('.track-name').map((name) => name.text())).toEqual(['Song 2'])
+  expect(wrapper.text()).toContain('2 songs')
+  expect(wrapper.find('#track-menu-m1').exists()).toBe(false)
+  observe()
+  await flushPromises()
+  expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('/api/playlists/p1/pieces?cursor=c1'))
+})
+
+it('hides the row menu from listeners', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER' }))
+  await render()
+  expect(wrapper.find('.track-more').exists()).toBe(false)
+})

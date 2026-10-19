@@ -22,24 +22,7 @@ Response `204`, no body.
 
 Errors: `404 PLAYLIST_NOT_FOUND` (missing, or not the caller's; same as the other owner-only endpoints).
 
-## 2. Remove a song from a playlist
-
-### DELETE /api/playlists/{playlistId}/pieces/{musicPieceId}
-
-Not built on the frontend yet: the edit pages can add songs but not take them out.
-
-Owner or accepted editor, the same rule as `POST /api/playlists/{playlistId}/pieces`. Removes one song from the
-playlist; the song itself stays in the uploader's uploads. Later tracks move up, so `playlist_position` stays gapless.
-
-Response `204`, no body.
-
-Errors: `404 PLAYLIST_NOT_FOUND` (missing, or the caller can't edit it), `404 MUSIC_PIECE_NOT_FOUND` (not in this
-playlist).
-
-Question: should editors be able to reorder songs too? If so, something like `PUT /api/playlists/{playlistId}/order`
-with `{ "musicPieceIds": [...] }` in the new order.
-
-## 3. Notifications
+## 2. Notifications
 
 The header has a notification bell. Today it can only list pending playlist invites (`GET /api/playlists/invites`),
 and which ones the user has seen is kept in the browser's localStorage, so the red badge comes back on another device
@@ -87,7 +70,7 @@ the caller's notifications. Ids that aren't the caller's are ignored.
 
 Response `204`, no body.
 
-## 4. Delete account
+## 3. Delete account
 
 ### DELETE /api/users/me
 
@@ -105,7 +88,7 @@ Questions:
   `{ "currentPassword": "…" }` and a wrong one a `403 WRONG_PASSWORD` (not 401: the frontend logs out on 401).
 - What happens to the caller's songs that sit in other people's playlists: removed from them, or kept?
 
-## 5. Dashboard
+## 4. Dashboard
 
 ### GET /api/users/matches
 
@@ -135,7 +118,7 @@ caller has played nothing.
   `playlistOwnerUsername`, null when `playlistId` is null). Playlist page URLs need the owner's username, so recent
   songs can't link to the playlist they were played from yet.
 
-## 6. Smaller fixes
+## 5. Smaller fixes
 
 - **Search response has examples but no schema.** `GET /api/core/search` documents its `200` body only through one
   example per category, so the docs' schema view doesn't list the fields, their types or which can be null
@@ -146,7 +129,11 @@ caller has played nothing.
   name, cover, who invited them and the permission. Including those in the error body (or a `GET
   /api/playlists/{playlistId}/invite`) would save that call.
 
-## Open question
+## Open questions
 
 - Should a password change end the user's other sessions? Tokens are stateless JWTs, so they stay valid until they
   expire.
+- Should editors be able to reorder songs? If so, something like `PUT /api/playlists/{playlistId}/order` with
+  `{ "musicPieceIds": [...] }` in the new order. Removing a song leaves a gap in `playlist_position` (cursors are
+  positions, so renumbering would make a client holding one skip a song); a reorder would need its own answer for
+  cursors handed out before it.
