@@ -1,272 +1,251 @@
 <template>
-  <div class="aux-page with-player add-friends-page">
-    <nav class="navbar">
-      <div class="nav-content">
-        <router-link to="/" class="site-name">Unchained</router-link>
-        <div class="nav-links">
-          <router-link to="/dashboard" class="nav-link">Playlists</router-link>
-          <router-link :to="{ name: 'Settings', params: { username: currentUser } }" class="nav-link">Settings</router-link>
-        </div>
-      </div>
-    </nav>
+  <div class="aux-page with-player">
+    <AppHeader />
 
-    <div class="container">
-      <div class="upload-section">
-        <div class="title-row">
-          <div class="back-arrow" @click="attemptBack">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                 viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-            </svg>
+    <main class="wrap">
+      <router-link :to="playlistRoute" class="back">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        {{ playlist ? playlist.playlistName : 'Back to playlist' }}
+      </router-link>
+      <h1>Manage access</h1>
+
+      <p v-if="status === 'loading'" class="meta">Loading…</p>
+
+      <section v-else-if="status === 'forbidden'" class="page-state">
+        <p class="meta">Only the playlist's owner can manage who has access.</p>
+        <router-link :to="playlistRoute" class="btn secondary">Back to playlist</router-link>
+      </section>
+
+      <section v-else-if="status === 'error'" class="page-state">
+        <p class="meta">We couldn't load who has access. Check that the server is running, then try again.</p>
+        <button type="button" class="btn secondary" @click="load">Try again</button>
+      </section>
+
+      <div v-else class="layout">
+        <section class="panel" aria-labelledby="invite-heading">
+          <h2 id="invite-heading">Invite people</h2>
+          <p class="meta">
+            {{ playlist.isPublic
+              ? 'Anyone can already listen to this public playlist. Invite people you want to help edit it.'
+              : 'This playlist is private, so only you and the people you invite can open it.' }}
+          </p>
+
+          <div class="field">
+            <label class="label" for="invite-permission">Access for new invites</label>
+            <span class="select-wrap field-select">
+              <select id="invite-permission" v-model="invitePermission" class="input select" aria-describedby="permission-hint">
+                <option value="LISTENER">Listener</option>
+                <option value="EDITOR">Editor</option>
+              </select>
+            </span>
+            <p id="permission-hint" class="hint">Listeners can play the playlist. Editors can also add songs and change its name and cover.</p>
           </div>
-          <div class="title-row">
-          <h1>Add Friends to "{{playlistName}}"</h1>
-          <p>Even if "{{playlistName}}" is not public, these friends will still have access.</p>
-            </div>
-        </div>
 
-        <div class="friend-input">
-          <span class="at-symbol">@</span>
-          <input
-            type="text"
-            v-model="newFriend"
-            placeholder="username"
-            @keyup.enter="addFriend"
-          />
-          <button class="add-btn" @click="addFriend">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                 viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="m12.75 15 3-3m0 0-3-3m3 3h-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-          </button>
-        </div>
+          <PeoplePicker :exclude="excluded" @pick="invite" />
+          <p v-if="inviting" class="meta" aria-live="polite">Sending the invite…</p>
+          <p v-if="inviteError" class="error" role="alert">{{ inviteError }}</p>
+        </section>
 
-        <div v-if="usernameError" class="username-error">{{ usernameError }}</div>
-
-
-        <div v-if="friendList.length" class="friend-stack">
-          <div
-            v-for="(friend, index) in friendList"
-            :key="friend.username + index"
-            class="friend-item"
-          >
-            <div class="friend-info">
-              <svg v-if="friend.isNew" xmlns="http://www.w3.org/2000/svg" fill="none"
-                   viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-              </svg>
-
-              <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none"
-                   viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-              </svg>
-
-              {{ friend.username }}
-            </div>
-            <div class="toggle-permission">
-              <label class="toggle-label">
-                <input type="checkbox" v-model="friend.canEdit"
-                       @change="togglePermission( friend.username, friend.canEdit)"
-                />
-                <span class="slider"></span>
-                <span class="toggle-text">{{ friend.canEdit ? 'Edit' : 'Read-Only' }}</span>
-              </label>
-            </div>
-            <div class="friend-delete" @click="removeFriend(index)">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                   viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <button
-          class="upload-btn"
-          @click="submitFriends"
-        >
-          Save
-        </button>
+        <section aria-labelledby="people-heading">
+          <h2 id="people-heading">People with access</h2>
+          <ul class="people">
+            <li class="person">
+              <Avatar :user="playlist.playlistOwner" />
+              <span class="person-text">
+                <span class="person-name">{{ playlist.playlistOwner.username }}</span>
+                <span class="person-meta">You</span>
+              </span>
+              <span class="role">Owner</span>
+            </li>
+            <li v-for="member in members" :key="member.user.userId" class="person">
+              <Avatar :user="member.user" />
+              <span class="person-text">
+                <span class="person-name">{{ member.user.username }}</span>
+                <span class="person-meta">{{ member.status === 'PENDING' ? 'Invite pending' : 'Accepted' }}</span>
+              </span>
+              <label class="visually-hidden" :for="`permission-${member.user.userId}`">Access for {{ member.user.username }}</label>
+              <span class="select-wrap permission-wrap">
+                <select
+                  :id="`permission-${member.user.userId}`"
+                  class="input select permission"
+                  :value="member.permission"
+                  :disabled="busy[member.user.userId]"
+                  @change="changePermission(member, $event.target)"
+                >
+                  <option value="LISTENER">Listener</option>
+                  <option value="EDITOR">Editor</option>
+                </select>
+              </span>
+              <button
+                type="button"
+                class="btn text remove"
+                :disabled="busy[member.user.userId]"
+                @click="remove(member)"
+              >{{ member.status === 'PENDING' ? 'Cancel invite' : 'Remove' }}</button>
+            </li>
+          </ul>
+          <p v-if="!members.length" class="meta">No one else has access yet.</p>
+          <p v-if="memberError" class="error" role="alert">{{ memberError }}</p>
+        </section>
       </div>
-    </div>
+    </main>
 
-    <div v-if="showExitModal" class="modal-overlay" @click.self="showExitModal = false">
-      <div class="modal-content">
-        <h2>Are you sure?</h2>
-        <p>If you exit now, your added friends will not be saved.</p>
-        <div class="modal-actions">
-          <button class="modal-btn cancel" @click="showExitModal = false">Cancel</button>
-          <button class="modal-btn exit" @click="confirmExit">Exit Anyway</button>
-        </div>
-      </div>
-    </div>
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
+import { computed, defineComponent, h, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
+import PeoplePicker from '@/components/PeoplePicker.vue'
+import { resolveCoverURL } from '@/utils/display.js'
+import { fetchMembers, fetchPlaylist, inviteMember, removeMember, updateMember } from '@/utils/playlist.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
-const notification = useNotificationStore()
-
-import { API_BASE_URL } from '@/utils/variables.js'
-
-const testUsername = 'test_user'
-const testPlaylistUUID = 'test_playlist_1'
-
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchAPI, postToAPI } from '@/utils/api.js'
-import { useUserStore } from '@/stores/user.js'
-
-const userStore = useUserStore()
-const currentUser = ref(userStore.userData?.username)
-
-const router = useRouter()
-const newFriend = ref('')
-const friendList = ref([])
-const showExitModal = ref(false)
-const usernameError = ref('')
-
-const playlistName = ref(null)
-const owner = ref('')
-const { username, id } = useRoute().params
-
-
-
-onMounted(async () => {
-  const url = `${API_BASE_URL}/api/playlists/${username}/${id}`
-  const playlistInfo = await fetchAPI(url)
-  owner.value = playlistInfo.owner
-
-  if (currentUser.value !== owner.value) {
-    await router.push('/dashboard')
-    return
-  }
-
-  playlistName.value = playlistInfo.name
-  friendList.value = playlistInfo.sharedWith
+const Avatar = defineComponent({
+  props: { user: { type: Object, required: true } },
+  setup: (props) => () => props.user.pfpUrl
+    ? h('img', { class: 'avatar', src: resolveCoverURL(props.user.pfpUrl), alt: '' })
+    : h('span', { class: 'avatar avatar-initial', 'aria-hidden': 'true' }, props.user.username.charAt(0).toUpperCase()),
 })
 
-async function addFriend() {
-  const trimmed = newFriend.value.trim()
-  if (!trimmed) return
-  if (owner.value === trimmed) {
-    usernameError.value = `You are the owner of this playlist.`
-    return
-  }
+const route = useRoute()
+const notification = useNotificationStore()
+const { username, id } = route.params
+const playlistRoute = { name: 'Playlist', params: { username, id } }
 
+const status = ref('loading')
+const playlist = ref(null)
+const members = ref([])
+const invitePermission = ref('LISTENER')
+const inviting = ref(false)
+const inviteError = ref('')
+const memberError = ref('')
+const busy = reactive({})
+
+const excluded = computed(() => [playlist.value?.playlistOwner.userId, ...members.value.map((m) => m.user.userId)])
+
+async function load() {
+  status.value = 'loading'
   try {
-    const url = `${API_BASE_URL}/api/users/check-username/${trimmed}`
-    const data = await fetchAPI(url)
-
-    if (data.exists) {
-      friendList.value.push({ username: trimmed, canEdit: false, isNew: true })
-      newFriend.value = ''
-      usernameError.value = ''
-    } else { usernameError.value = `User @${trimmed} does not exist.` }
-  } catch (err) { console.error("Error checking username:", err) }
-}
-
-function togglePermission(username, canEdit) {
-  console.log(canEdit)
-  console.log(`User ${username} now has permission:`, canEdit ? "Edit" : "Read-Only")
-}
-
-function removeFriend(index) {
-  friendList.value.splice(index, 1)
-}
-
-async function submitFriends() {
-  console.log("Adding friends:", friendList.value)
-
-  for (const friend of friendList.value) { delete friend.isNew }
-
-  const url = `${API_BASE_URL}/api/playlists/${username}/${id}/add/friends`
-  await postToAPI(url, {
-    friends: friendList.value
-  })
-  notification.success('Playlist sharing is updated.')
-  await router.push(`/playlist/${username}/${id}`)
-}
-
-function attemptBack() {
-  if (friendList.value.length) {
-    showExitModal.value = true
-  } else {
-    router.back()
+    const result = await fetchPlaylist(username, id, { ignoredErrorCodes: ['PLAYLIST_NOT_FOUND', 'PLAYLIST_INVITE_PENDING'] })
+    if (result.access !== 'OWNER') {
+      status.value = 'forbidden'
+      return
+    }
+    playlist.value = result
+    members.value = await fetchMembers(result.playlistId)
+    status.value = 'ready'
+  } catch (err) {
+    if (err.sessionEnded) return
+    status.value = err.code === 'PLAYLIST_NOT_FOUND' || err.code === 'PLAYLIST_INVITE_PENDING' ? 'forbidden' : 'error'
   }
 }
 
-function confirmExit() {
-  showExitModal.value = false
-  router.back()
+load()
+
+async function invite(user) {
+  if (inviting.value) return
+  inviteError.value = ''
+  inviting.value = true
+  try {
+    const member = await inviteMember(playlist.value.playlistId, user.userId, invitePermission.value, {
+      ignoredErrorCodes: ['USER_ALREADY_INVITED', 'USER_NOT_FOUND', 'INVALID_FIELD'],
+    })
+    members.value.push(member)
+    notification.success(`Invite sent to ${user.username}.`)
+  } catch (err) {
+    if (err.sessionEnded) return
+    if (err.code === 'USER_ALREADY_INVITED') {
+      inviteError.value = `${user.username} already has access or an invite.`
+      members.value = await fetchMembers(playlist.value.playlistId).catch(() => members.value)
+    } else if (err.code === 'USER_NOT_FOUND') inviteError.value = `We couldn't find ${user.username}. They may have changed their username.`
+    else if (err.code === 'INVALID_FIELD') inviteError.value = "You can't invite yourself."
+    else inviteError.value = "We couldn't send the invite. Check that the server is running, then try again."
+  } finally {
+    inviting.value = false
+  }
+}
+
+async function changePermission(member, select) {
+  const permission = select.value
+  if (permission === member.permission) return
+  const userId = member.user.userId
+  memberError.value = ''
+  busy[userId] = true
+  try {
+    const updated = await updateMember(playlist.value.playlistId, userId, permission)
+    Object.assign(member, updated)
+    notification.success(`${member.user.username} is now ${permission === 'EDITOR' ? 'an editor' : 'a listener'}.`)
+  } catch (err) {
+    if (err.sessionEnded) return
+    memberError.value = `We couldn't change ${member.user.username}'s access. Check that the server is running, then try again.`
+    select.value = member.permission
+  } finally {
+    busy[userId] = false
+  }
+}
+
+async function remove(member) {
+  const userId = member.user.userId
+  memberError.value = ''
+  busy[userId] = true
+  try {
+    await removeMember(playlist.value.playlistId, userId)
+    members.value = members.value.filter((m) => m.user.userId !== userId)
+    notification.success(member.status === 'PENDING'
+      ? `Invite to ${member.user.username} canceled.`
+      : `${member.user.username} no longer has access.`)
+  } catch (err) {
+    if (err.sessionEnded) return
+    memberError.value = `We couldn't remove ${member.user.username}. Check that the server is running, then try again.`
+  } finally {
+    busy[userId] = false
+  }
 }
 </script>
 
 <style scoped>
+.wrap { padding: var(--space-8) var(--page-gutter); width: 100%; }
+.back { align-items: center; color: var(--link); display: inline-flex; font: 600 14px/20px var(--font-sans); gap: var(--space-1); margin-bottom: var(--space-2); text-decoration: none; }
+.back:hover { text-decoration: underline; }
+h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-6); }
+h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }
+.meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
+.error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: var(--space-3) 0 0; }
+.hint { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; }
+.label { font: 600 14px/20px var(--font-sans); }
+.icon { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
+.page-state { align-items: flex-start; display: flex; flex-direction: column; gap: var(--space-3); }
 
-.add-btn{background:var(--surface-alt);border:none;border-radius:var(--radius-md);color:var(--ink);cursor:pointer;padding:0.5rem;transition:background 0.3s;}
-.add-btn:hover svg { color: var(--link); }
-.add-btn svg { height:24px; width:24px; }
-.add-friends-page { background:var(--surface); color:var(--ink); min-height:100vh; }
-.back-arrow { align-items:center; color:var(--ink); cursor:pointer; display:flex; }
-.back-arrow:hover { color:var(--danger); }
-.back-arrow svg { height:24px; width:24px; }
-.container { background:var(--surface-alt); border-radius:var(--radius-md); margin:2rem auto; max-width:600px; padding:2rem; }
-.friend-delete { cursor:pointer; transition:transform 0.2s; }
-.friend-delete:hover { transform:scale(1.2); }
-.friend-info { align-items:center; display:flex; gap:0.5rem; }
-.friend-input { display:flex; gap:0.5rem; margin:0 auto 1rem auto; max-width:400px; }
-.friend-input { background:var(--surface-alt); }
-.friend-input .at-symbol { align-items:center; border-radius:var(--radius-md); color:var(--ink-muted); display:flex; font-size:1.1rem; justify-content:center; padding:0 0.75rem; }
-.friend-input input { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); flex:1; font-size:1rem; padding:0.75rem 1rem; transition:background 0.3s; }
-.friend-input input:focus { background:var(--purple-soft); outline:2px solid var(--focus-ring); outline-offset:2px; }
-.friend-item { align-items:center; background:var(--surface-alt); border-radius:var(--radius-md); display:flex; gap:1rem; justify-content:space-between; margin-bottom:0.5rem; padding:0.75rem 1rem; }
-.friend-item svg { flex-shrink:0; height:20px; width:20px; }
-.modal-actions { display:flex; gap:1rem; justify-content:center; }
-.modal-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; font-size:1rem; padding:0.75rem 1.5rem; transition:background 0.3s; }
-.modal-btn.cancel:hover { background:var(--line-strong); }
-.modal-btn.exit { background:var(--primary); }
-.modal-btn.exit:hover { background:var(--purple-hover); }
-.modal-content { background:var(--surface); border:2px solid var(--danger); border-radius:var(--radius-md); max-width:400px; padding:2rem; text-align:center; width:90%; }
-.modal-content h2 { font-size:1.5rem; margin-bottom:1rem; }
-.modal-content p { color:var(--ink-muted); margin-bottom:2rem; }
-.modal-overlay { align-items:center; background:var(--scrim); display:flex; height:100vh; justify-content:center; left:0; position:fixed; top:0; width:100vw; z-index:1000; }
-.nav-content { align-items:center; display:flex; justify-content:space-between; margin:0 auto; max-width:1200px; padding:0 1rem; }
-.nav-link { color:var(--ink); font-weight:500; text-decoration:none; transition:color 0.3s; }
-.nav-link:hover { color:var(--ink-muted); }
-.nav-links { display:flex; gap:2rem; }
-.navbar { background:var(--surface); padding:1rem 0; }
-.site-name { color:var(--ink); font-family:var(--font-sans); font-size:1.8rem; text-decoration:none; }
-.title-row { display:flex; flex-direction:column; gap:0.5rem; justify-content:center; margin-bottom:1.5rem; text-align:center; }
-.title-row h1 { font-family:var(--font-sans); font-size:2rem; }
-.title-row p { color:var(--ink-muted); font-size:0.95rem; font-weight:400; line-height:1.4; }
-.toggle-permission .toggle-label { align-items:center; cursor:pointer; display:flex; gap:0.5rem; }
-.toggle-permission .toggle-label input { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; width: 1px; }
-.toggle-permission input:focus-visible + .slider { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.toggle-permission .slider { background:var(--line-strong); border-radius:20px; height:20px; position:relative; transition:background 0.3s; width:40px; }
-.toggle-permission .slider::before { background:var(--white); border-radius:50%; bottom:3px; content:""; height:14px; left:3px; position:absolute; transition:transform 0.3s; width:14px; }
-.toggle-permission input:checked + .slider { background:var(--primary); }
-.toggle-permission input:checked + .slider::before { transform:translateX(20px); }
-.toggle-permission .toggle-text { color:var(--ink); font-size:0.9rem; }
-.upload-btn { background:var(--surface-alt); border:none; border-radius:var(--radius-md); color:var(--ink); cursor:pointer; display:block; font-size:1rem; margin:2rem auto 0 auto; padding:0.75rem 2rem; transition:background 0.3s; }
-.upload-btn:disabled { background:var(--surface-alt); cursor:not-allowed; }
-.upload-btn:hover:not(:disabled) { background:var(--purple-soft); }
-.username-error { color: var(--danger); font-size: 0.9rem; margin-bottom: 0.5rem; margin-top: 0.5rem; text-align: center; }
+.layout { align-items: start; display: grid; gap: var(--space-8); grid-template-columns: minmax(0, 400px) minmax(0, 1fr); }
+.panel { background: var(--surface-alt); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+.panel h2 { margin: 0; }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font: 400 16px/24px var(--font-sans); padding: 8px 12px; }
 
-button, input { font-family: var(--font-sans); }
-.upload-btn, .modal-btn.exit { background: var(--primary); color: var(--on-primary); }
-.upload-btn:hover:not(:disabled), .modal-btn.exit:hover { background: var(--purple-hover); }
-.upload-btn:disabled { background: var(--primary); opacity: 0.4; }
-.modal-content, .friend-input { border: 1px solid var(--line-strong); }
-.container { box-sizing: border-box; width: min(100%, 600px); }
-.friend-input input { min-width: 0; }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; }
+.people { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
+.person { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: var(--space-3); padding: var(--space-3) 0; }
+.person :deep(.avatar) { border-radius: var(--radius-pill); flex: none; height: 40px; object-fit: cover; width: 40px; }
+.person :deep(.avatar-initial) { background: var(--primary); color: var(--on-primary); display: grid; font: 700 16px/1 var(--font-sans); place-items: center; }
+.person-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.person-name { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); }
+.role { color: var(--ink-muted); font: 600 14px/20px var(--font-sans); padding: 0 var(--space-3); }
+.field-select { display: block; }
+.permission-wrap { flex: none; }
+.permission { font-size: 14px; padding-bottom: 6px; padding-left: 10px; padding-top: 6px; }
+.remove { flex: none; font-size: 14px; }
+.visually-hidden { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .person { flex-wrap: wrap; }
+  .person-text { flex-basis: calc(100% - 52px); }
+  .permission-wrap { margin-left: 52px; }
 }
 </style>

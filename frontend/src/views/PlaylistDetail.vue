@@ -17,6 +17,30 @@
         <button type="button" class="btn secondary" @click="loadPlaylist">Try again</button>
       </section>
 
+      <section v-else-if="status === 'invite'" class="head invite" aria-labelledby="invite-title">
+        <div class="cover-wrap">
+          <img v-if="invite?.playlistCoverUrl" class="cover" :src="resolveCoverURL(invite.playlistCoverUrl)" alt="" />
+          <div v-else class="cover cover-empty" aria-hidden="true">
+            <svg class="note" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+          </div>
+        </div>
+
+        <div class="head-text">
+          <p class="eyebrow">Playlist invitation</p>
+          <h1 id="invite-title">{{ invite ? `You're invited to ${invite.playlistName}` : "You're invited to this playlist" }}</h1>
+          <p class="meta">{{ inviteText }}</p>
+          <div class="actions">
+            <button type="button" class="btn primary" :disabled="!!responding" @click="respondToInvite(true)">
+              {{ responding === 'accept' ? 'Accepting…' : 'Accept invitation' }}
+            </button>
+            <button type="button" class="btn secondary" :disabled="!!responding" @click="respondToInvite(false)">
+              {{ responding === 'decline' ? 'Declining…' : 'Decline' }}
+            </button>
+          </div>
+          <p v-if="inviteError" class="error action-error" role="alert">{{ inviteError }}</p>
+        </div>
+      </section>
+
       <template v-else>
         <header class="head">
           <div class="cover-wrap">
@@ -38,6 +62,19 @@
               <span aria-hidden="true">·</span>
               <span>{{ songCount }}</span>
             </p>
+            <p v-if="editors.length" class="meta editors">
+              <span>Editors</span>
+              <router-link
+                v-for="editor in editors"
+                :key="editor.userId"
+                :to="{ name: 'Profile', params: { username: editor.username } }"
+                class="owner"
+              >
+                <img v-if="editor.pfpUrl" class="owner-pfp" :src="resolveCoverURL(editor.pfpUrl)" alt="" />
+                <span v-else class="owner-pfp owner-initial" aria-hidden="true">{{ editor.username.charAt(0).toUpperCase() }}</span>
+                {{ editor.username }}
+              </router-link>
+            </p>
 
             <div class="actions">
               <button type="button" class="btn primary" :disabled="!tracks.length" @click="playFrom(0)">
@@ -53,7 +90,7 @@
               </button>
 
               <button
-                v-if="!isOwner"
+                v-if="access === null"
                 type="button"
                 class="btn secondary"
                 :aria-pressed="playlist.isSaved ? 'true' : 'false'"
@@ -65,7 +102,7 @@
                 {{ playlist.isSaved ? 'Saved' : 'Save' }}
               </button>
 
-              <div v-else ref="menuWrap" class="menu-wrap">
+              <div v-else-if="canEdit" ref="menuWrap" class="menu-wrap">
                 <button
                   type="button"
                   class="btn secondary icon-btn"
@@ -94,7 +131,7 @@
                       Edit playlist
                     </router-link>
                   </li>
-                  <li>
+                  <li v-if="isOwner">
                     <router-link class="menu-item" :to="{ name: 'AddFriends', params: { username: owner.username, id } }">
                       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" />
@@ -102,7 +139,7 @@
                       Manage access
                     </router-link>
                   </li>
-                  <li class="menu-sep">
+                  <li v-if="isOwner" class="menu-sep">
                     <button type="button" class="menu-item" @click="openDeleteDialog">
                       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -124,9 +161,9 @@
           <template v-if="!tracks.length">
             <EmptyState
               title="No songs yet"
-              :text="isOwner ? 'Upload an MP3 to start this playlist.' : `@${owner.username} hasn't added any songs yet.`"
+              :text="canEdit ? 'Upload an MP3 to start this playlist.' : `@${owner.username} hasn't added any songs yet.`"
             />
-            <router-link v-if="isOwner" class="btn primary empty-action" :to="{ name: 'Add', params: { username: owner.username, id } }">
+            <router-link v-if="canEdit" class="btn primary empty-action" :to="{ name: 'Add', params: { username: owner.username, id } }">
               Add music
             </router-link>
           </template>
@@ -153,7 +190,7 @@
                 </span>
               </button>
               <router-link
-                v-if="isOwner"
+                v-if="canEdit"
                 class="edit"
                 :aria-label="`Edit ${track.name}`"
                 :to="{ name: 'EditMP3', params: { username: owner.username, playlist_id: id, index, uuid: track.musicPieceId } }"
@@ -164,6 +201,14 @@
               </router-link>
             </li>
           </ol>
+
+          <div v-if="playlist.nextCursor" ref="moreSentinel" class="more">
+            <template v-if="moreError">
+              <p class="error" role="alert">{{ moreError }}</p>
+              <button type="button" class="btn secondary" @click="loadMore">Try again</button>
+            </template>
+            <p v-else class="meta">Loading more songs…</p>
+          </div>
         </section>
       </template>
     </main>
@@ -204,13 +249,20 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { resolveCoverURL } from '@/utils/display.js'
-import { PLAYLIST_DELETE_MOCKED, deletePlaylist, fetchPlaylist, setPlaylistSaved } from '@/utils/playlist.js'
-import { useUserStore } from '@/stores/user.js'
+import {
+  PLAYLIST_DELETE_MOCKED,
+  acceptInvite,
+  declineInvite,
+  deletePlaylist,
+  fetchPendingInvites,
+  fetchPlaylist,
+  fetchPlaylistPieces,
+  setPlaylistSaved,
+} from '@/utils/playlist.js'
 import { useMusicStore } from '@/stores/music.js'
 
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
 const notification = useNotificationStore()
 const musicStore = useMusicStore()
 
@@ -222,9 +274,10 @@ const actionError = ref('')
 const id = computed(() => route.params.id)
 const owner = computed(() => playlist.value?.playlistOwner ?? { username: route.params.username })
 const tracks = computed(() => playlist.value?.musicPieces ?? [])
-const isOwner = computed(
-  () => owner.value.username?.toLowerCase() === userStore.userData?.username?.toLowerCase(),
-)
+const editors = computed(() => playlist.value?.editors ?? [])
+const access = computed(() => playlist.value?.access ?? null)
+const isOwner = computed(() => access.value === 'OWNER')
+const canEdit = computed(() => access.value === 'OWNER' || access.value === 'EDITOR')
 const songCount = computed(() => {
   const total = playlist.value?.totalPieces ?? tracks.value.length
   return total === 1 ? '1 song' : `${total} songs`
@@ -234,18 +287,104 @@ async function loadPlaylist() {
   const { username, id: playlistId } = route.params
   status.value = 'loading'
   actionError.value = ''
+  moreError.value = ''
   try {
-    const result = await fetchPlaylist(username, playlistId)
+    const result = await fetchPlaylist(username, playlistId, {
+      ignoredErrorCodes: ['PLAYLIST_NOT_FOUND', 'PLAYLIST_INVITE_PENDING'],
+    })
     if (route.params.id !== playlistId) return
     playlist.value = result
     status.value = 'ready'
   } catch (err) {
-    if (err.sessionEnded) return
-    status.value = err.status === 404 ? 'missing' : 'error'
+    if (err.sessionEnded || route.params.id !== playlistId) return
+    if (err.code === 'PLAYLIST_INVITE_PENDING') await showInvite(playlistId)
+    else status.value = err.status === 404 ? 'missing' : 'error'
   }
 }
 
-watch(() => [route.params.username, route.params.id], loadPlaylist, { immediate: true })
+/* Invitation: a private playlist the caller was invited to but hasn't accepted. The invite list has its name, cover
+   and who sent it; without it the page still offers Accept and Decline */
+
+const invite = ref(null)
+const inviteError = ref('')
+const responding = ref('')
+
+const inviteText = computed(() => {
+  if (!invite.value) return 'Accept to open this private playlist.'
+  const what = invite.value.permission === 'EDITOR' ? 'listen to and edit' : 'listen to'
+  return `@${invite.value.invitedBy.username} invited you to ${what} this private playlist.`
+})
+
+async function showInvite(playlistId) {
+  invite.value = null
+  inviteError.value = ''
+  status.value = 'invite'
+  try {
+    const { invites } = await fetchPendingInvites()
+    if (route.params.id === playlistId) invite.value = invites.find((item) => item.playlistId === playlistId) ?? null
+  } catch {
+    invite.value = null
+  }
+}
+
+async function respondToInvite(accept) {
+  if (responding.value) return
+  inviteError.value = ''
+  responding.value = accept ? 'accept' : 'decline'
+  try {
+    if (accept) {
+      await acceptInvite(id.value)
+      notification.success('Invitation accepted.')
+      await loadPlaylist()
+    } else {
+      await declineInvite(id.value)
+      notification.neutral('Invitation declined.')
+      await router.push({ name: 'Dashboard' })
+    }
+  } catch (err) {
+    if (err.sessionEnded) return
+    if (err.code === 'INVITE_NOT_FOUND') await loadPlaylist()
+    else inviteError.value = `We couldn't ${accept ? 'accept' : 'decline'} the invitation. Check that the server is running, then try again.`
+  } finally {
+    responding.value = ''
+  }
+}
+
+/* Songs past the first 50 load in pages of 50 as the end of the list scrolls into view */
+
+const moreSentinel = ref(null)
+const loadingMore = ref(false)
+const moreError = ref('')
+let moreObserver = null
+
+async function loadMore() {
+  const current = playlist.value
+  if (!current?.nextCursor || loadingMore.value) return
+  loadingMore.value = true
+  moreError.value = ''
+  try {
+    const page = await fetchPlaylistPieces(current.playlistId, current.nextCursor)
+    if (playlist.value !== current) return
+    current.musicPieces.push(...page.musicPieces)
+    current.nextCursor = page.nextCursor
+  } catch (err) {
+    if (err.sessionEnded || playlist.value !== current) return
+    if (err.code === 'PLAYLIST_NOT_FOUND' || err.code === 'PLAYLIST_INVITE_PENDING') await loadPlaylist()
+    else moreError.value = "We couldn't load more songs."
+  } finally {
+    loadingMore.value = false
+  }
+  // Observing again re-checks the sentinel, so a short page that leaves it on screen loads the next one too
+  if (moreSentinel.value && !moreError.value) {
+    moreObserver?.unobserve(moreSentinel.value)
+    moreObserver?.observe(moreSentinel.value)
+  }
+}
+
+watch(moreSentinel, (element, previous) => {
+  if (previous) moreObserver?.unobserve(previous)
+  if (element) moreObserver?.observe(element)
+})
 
 function artistName(track) {
   return track.artistSummary?.artistName ?? ''
@@ -297,6 +436,10 @@ function closeMenuOnEscape(event) {
 }
 
 onMounted(() => {
+  moreObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) loadMore()
+  }, { rootMargin: '400px 0px' })
+  if (moreSentinel.value) moreObserver.observe(moreSentinel.value)
   document.addEventListener('pointerdown', closeMenuOnOutside)
   document.addEventListener('keydown', closeMenuOnEscape)
 })
@@ -317,6 +460,7 @@ function onDeleteDialogClose() {
 }
 
 onBeforeUnmount(() => {
+  moreObserver?.disconnect()
   document.removeEventListener('pointerdown', closeMenuOnOutside)
   document.removeEventListener('keydown', closeMenuOnEscape)
   onDeleteDialogClose()
@@ -343,6 +487,8 @@ async function confirmDelete() {
     deleting.value = false
   }
 }
+
+watch(() => [route.params.username, route.params.id], loadPlaylist, { immediate: true })
 </script>
 
 <style scoped>
@@ -367,6 +513,7 @@ p.page-state { display: block; }
 .owner { align-items: center; color: var(--ink); display: inline-flex; font-weight: 600; gap: var(--space-2); text-decoration: none; }
 .owner:hover { text-decoration: underline; }
 .owner-pfp { border-radius: var(--radius-pill); height: 24px; object-fit: cover; width: 24px; }
+.editors { margin-top: var(--space-2); }
 .owner-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 12px/1 var(--font-sans); place-items: center; }
 
 .actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
@@ -382,6 +529,7 @@ p.page-state { display: block; }
 
 .songs { padding-top: var(--space-6); }
 .empty-action { align-self: flex-start; margin-top: var(--space-4); }
+.more { align-items: flex-start; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) 0; }
 .tracks { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
 .track { align-items: center; border-bottom: 1px solid var(--line); display: flex; transition: background var(--dur-fast) var(--ease); }
 .track:hover { background: var(--surface-alt); }
