@@ -13,6 +13,8 @@ import com.aux_app.repository.UserSavedPlaylistRepository;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -251,6 +253,28 @@ public abstract class PlaylistService {
         // Later tracks keep their positions. Track-list and queue cursors are positions, so renumbering would
         // make a client that already holds one skip a track.
         tracks.delete(track);
+    }
+
+    @Transactional
+    public void deletePlaylist(String playlistId, UserEntity user) {
+        PlaylistEntity playlist = findOwnedPlaylist(playlistId, user.getUserId());
+        String id = playlist.getPlaylistId();
+
+        playlists.deleteTracks(id);
+        playlists.deleteSaves(id);
+        playlists.deleteTags(id);
+        playlists.detachPlayEvents(id);
+        playlists.delete(playlist);
+
+        // After commit, so a rollback never leaves a live playlist with a missing cover. If the delete fails,
+        // the cover is just orphaned in R2.
+        String coverUrl = playlist.getPlaylistCoverUrl();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                uploads.deleteImage(coverUrl);
+            }
+        });
     }
 
     public SavedPlaylistResponse savePlaylist(String playlistId, UserEntity user) {

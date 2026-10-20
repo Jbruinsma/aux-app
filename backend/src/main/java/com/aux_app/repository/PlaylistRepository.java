@@ -13,6 +13,7 @@ import com.aux_app.entity.PlaylistTrackEntity;
 import com.aux_app.entity.UserEntity;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -277,5 +278,24 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             WHERE (p.is_public = 1 OR p.owner_id = :userId) AND p.playlist_name LIKE :pattern ESCAPE '\\'
             """, nativeQuery = true)
     int countSearchPlaylists(@Param("pattern") String pattern, @Param("userId") String userId);
+
+    // Clear the rows that block deleting a playlist (foreign_keys is on). playlist_members cascades on its own.
+    // Play events keep the play and lose the playlist, so listening history and stats don't change.
+    @Modifying
+    @Query(value = "DELETE FROM playlist_tracks WHERE playlist_id = :playlistId", nativeQuery = true)
+    void deleteTracks(@Param("playlistId") String playlistId);
+
+    @Modifying
+    @Query(value = "DELETE FROM user_saved_playlists WHERE playlist_id = :playlistId", nativeQuery = true)
+    void deleteSaves(@Param("playlistId") String playlistId);
+
+    @Modifying
+    @Query(value = "DELETE FROM playlist_tags WHERE playlist_id = :playlistId", nativeQuery = true)
+    void deleteTags(@Param("playlistId") String playlistId);
+
+    @Modifying
+    @Query(value = "UPDATE play_events SET context_playlist_id = NULL WHERE context_playlist_id = :playlistId",
+            nativeQuery = true)
+    void detachPlayEvents(@Param("playlistId") String playlistId);
 
 }

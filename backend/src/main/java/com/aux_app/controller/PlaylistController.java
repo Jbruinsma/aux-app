@@ -124,6 +124,24 @@ public class PlaylistController {
         );
     }
 
+    @DeleteMapping("/{playlistId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Delete a playlist",
+            description = """
+                    Owner only. Deletes the playlist with its tracks, members, pending invites and saves, and its cover.
+                    The music pieces stay in their uploaders' uploads. Plays from the playlist stay in listening
+                    history, with no playlist. Deleting it again returns 404.
+                    """)
+    @ApiResponse(responseCode = "204", description = "Playlist deleted")
+    @ApiResponse(responseCode = "404", description = "Playlist not found or caller is not its owner (code PLAYLIST_NOT_FOUND)")
+    public void deletePlaylist(
+            @Parameter(description = "Public id of the playlist", example = "p_7c2dK1") @PathVariable("playlistId") String playlistId,
+            @CurrentUser UserEntity user
+    ) {
+        playlists.deletePlaylist(playlistId, user);
+    }
+
     @PostMapping("/{playlistId}/pieces")
     @Operation(
             summary = "Add music pieces to a playlist",
@@ -361,7 +379,6 @@ public class PlaylistController {
     }
 
     // TODO POST /{username}/create                        multipart: uuid, owner, name, isPublic, cover
-    // TODO POST /{username}/{playlistId}/delete
     // TODO POST /{username}/{playlistId}/edit            multipart: name, isPublic, musicDeleted (JSON string), cover
     // TODO POST /{username}/{playlistId}/add             multipart: mp3s (files), uuids (JSON string)
     // TODO POST /{username}/{playlistId}/add/friends     json: friends

@@ -284,6 +284,13 @@ public class UploadService {
         deleteQuietly(audioR2, audioBucket, key);
     }
 
+    // Takes a public image URL. Only objects we own; skips the bundled default picture
+    public void deleteImage(String url) {
+        if (url != null && url.startsWith(publicBaseUrl + "/")) {
+            deleteQuietly(r2, bucket, url.substring(publicBaseUrl.length() + 1));
+        }
+    }
+
     // 404, not 403, so a private piece looks the same as a missing one (same as private playlists)
     public String signedAudioUrl(MusicPieceEntity piece, String userId) {
         if (!piece.isPlayableBy(userId)) {
@@ -427,10 +434,7 @@ public class UploadService {
             throw e;
         }
 
-        // Only objects we own; skips the bundled default picture
-        if (oldUrl != null && oldUrl.startsWith(publicBaseUrl + "/")) {
-            deleteQuietly(r2, bucket, oldUrl.substring(publicBaseUrl.length() + 1));
-        }
+        deleteImage(oldUrl);
         return newUrl;
     }
 
