@@ -10,6 +10,7 @@ public final class PublicId {
     public static final String PLAYLIST = "p_";
     public static final String ARTIST = "a_";
     public static final String MUSIC_PIECE = "m_";
+    public static final String NOTIFICATION = "n_";
 
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final int LENGTH = 6;
@@ -20,7 +21,9 @@ public final class PublicId {
     public static String generate(String prefix) {
         StringBuilder id = new StringBuilder(prefix);
         for (int i = 0; i < LENGTH; i++) {
-            id.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
+            int nextInt = RANDOM.nextInt(ALPHABET.length());
+            char chosenVal = ALPHABET.charAt(nextInt);
+            id.append(chosenVal);
         }
         return id.toString();
     }

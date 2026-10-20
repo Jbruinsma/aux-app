@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -16,6 +17,7 @@ import com.aux_app.entity.*;
 import com.aux_app.repository.*;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +51,7 @@ public class PlaybackEventService {
     private final PlaylistTrackRepository tracks;
     private final PlaylistMemberRepository members;
     private final PlayEventRepository playEvents;
+    private final ApplicationEventPublisher events;
 
     public PlaybackEventService(
             @Value("${aux.jwt-secret}") String secret,
@@ -56,7 +59,8 @@ public class PlaybackEventService {
             PlaylistRepository playlists,
             PlaylistTrackRepository tracks,
             PlaylistMemberRepository members,
-            PlayEventRepository playEvents
+            PlayEventRepository playEvents,
+            ApplicationEventPublisher events
     ) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.musicPieces = musicPieces;
@@ -64,6 +68,7 @@ public class PlaybackEventService {
         this.tracks = tracks;
         this.members = members;
         this.playEvents = playEvents;
+        this.events = events;
     }
 
     public @Nullable LastPlayback retrieveMostRecentPlayback(String userId) {
@@ -143,6 +148,12 @@ public class PlaybackEventService {
         PlayEventEntity event = new PlayEventEntity(claims.getId(), user.getUserId(), piece.getMusicPieceId(), seconds);
         event.setContextPlaylistId(playlist == null ? null : playlist.getPlaylistId());
         playEvents.save(event);
+
+        // Live-refreshes the caller's recents and top artists once this transaction commits (see LiveEventService)
+        events.publishEvent(new LiveEventService.Update(
+                Set.of(user.getUserId()),
+                Set.of(LiveEventService.Section.RECENTS, LiveEventService.Section.TOP_ARTISTS)
+        ));
     }
 
     // The listen is the window [now - credited, now]. It must fit after the token was issued, inside the piece's

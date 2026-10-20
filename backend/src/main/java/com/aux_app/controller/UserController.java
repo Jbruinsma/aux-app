@@ -3,7 +3,9 @@ package com.aux_app.controller;
 import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.users.*;
 import com.aux_app.repository.ProfileDetailsRepository;
+import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
+import com.aux_app.services.SessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,12 +16,16 @@ import com.aux_app.entity.ProfileDetailsEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +44,8 @@ public class UserController {
     private final OnboardingService onboarding;
     private final UsernameService usernames;
     private final PlaybackEventService playbackEventService;
+    private final SessionService sessions;
+    private final LiveEventService liveEvents;
 
     public UserController(
             UserRepository users,
@@ -45,7 +53,9 @@ public class UserController {
             UploadService uploads,
             OnboardingService onboarding,
             UsernameService usernames,
-            PlaybackEventService playbackEventService
+            PlaybackEventService playbackEventService,
+            SessionService sessions,
+            LiveEventService liveEvents
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
@@ -53,6 +63,8 @@ public class UserController {
         this.onboarding = onboarding;
         this.usernames = usernames;
         this.playbackEventService = playbackEventService;
+        this.sessions = sessions;
+        this.liveEvents = liveEvents;
     }
 
     @GetMapping("/check-username/{username}")
@@ -322,6 +334,30 @@ public class UserController {
         return lastPlayback == null
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.ok(lastPlayback);
+    }
+
+    @GetMapping(value = "/me/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(
+            summary = "Stream the caller's live updates",
+            description = """
+                    Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with
+                    `EventSource` (it can't send headers, and the token must not go in the URL).
+                    On connect, sends one event per section with its current data: `invites`, `recents`, `top-artists`,
+                    `library`, `uploads`. After that, re-sends a whole section whenever it changes. A `: ping` comment
+                    arrives every ~25 seconds. The server closes the stream when the token expires; reconnect with a
+                    current token and the snapshot is sent again.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK; stays open")
+    public SseEmitter streamEvents(
+            @CurrentUser UserEntity user,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            HttpServletResponse response
+    ) {
+        // CurrentUserResolver has already checked this token, so this can't throw
+        Instant expiresAt = sessions.expiresAt(authorization.substring("Bearer ".length()));
+        // Stops nginx-style proxies from holding events back in a buffer
+        response.setHeader("X-Accel-Buffering", "no");
+        return liveEvents.connect(user.getUserId(), expiresAt);
     }
 
 }

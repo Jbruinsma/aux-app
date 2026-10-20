@@ -15,18 +15,20 @@ import com.aux_app.error.AuxException;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserRepository;
+import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -38,19 +40,22 @@ public class MusicPieceController {
     private final ArtistRepository artists;
     private final MusicPieceRepository musicPieces;
     private final PlaybackEventService playbackEvents;
+    private final ApplicationEventPublisher events;
 
     public MusicPieceController(
             UserRepository users,
             UploadService uploads,
             ArtistRepository artists,
             MusicPieceRepository musicPieces,
-            PlaybackEventService playbackEvents
+            PlaybackEventService playbackEvents,
+            ApplicationEventPublisher events
     ) {
         this.users = users;
         this.uploads = uploads;
         this.artists = artists;
         this.musicPieces = musicPieces;
         this.playbackEvents = playbackEvents;
+        this.events = events;
     }
 
     @GetMapping("")
@@ -65,36 +70,7 @@ public class MusicPieceController {
     public UploadedMusicPiecesResponse getMusicPieces(
             @CurrentUser UserEntity user
     ) {
-        List<MusicPieceRepository.MusicPieceWithArtist> uploadsWithArtist = musicPieces.findUploadsWithArtist(
-                user.getUserId()
-        );
-
-        List<MusicPieceOverview> uploadedMusicPieces = new ArrayList<>();
-
-        for (MusicPieceRepository.MusicPieceWithArtist uploadedPiece : uploadsWithArtist) {
-            MusicPieceEntity musicPiece = uploadedPiece.piece();
-            ArtistEntity artist = uploadedPiece.artist();
-            boolean isFavorite = uploadedPiece.isFavorite();
-
-            uploadedMusicPieces.add(
-                    new MusicPieceOverview(
-                            musicPiece.getPublicId(),
-                            musicPiece.getName(),
-                            musicPiece.getCoverUrl(),
-                            new ArtistSummary(
-                                    artist.getPublicId(),
-                                    artist.getArtistName(),
-                                    artist.getArtistPfpUrl()
-                            ),
-                            isFavorite
-                    )
-            );
-        }
-
-        return new UploadedMusicPiecesResponse(
-                uploadedMusicPieces.size(),
-                uploadedMusicPieces
-        );
+        return UploadedMusicPiecesResponse.of(musicPieces.findUploadsWithArtist(user.getUserId()));
     }
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -161,6 +137,9 @@ public class MusicPieceController {
             this.uploads.deleteTrack(newMusicPiece.getMp3FileUrl());
             throw e;
         }
+
+        // Live-refreshes the caller's uploads row (see LiveEventService)
+        events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.UPLOADS)));
 
         return new MusicPieceOverview(
                 newMusicPiece.getPublicId(),

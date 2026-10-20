@@ -20,6 +20,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String> {
 
@@ -279,7 +280,23 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             """, nativeQuery = true)
     int countSearchPlaylists(@Param("pattern") String pattern, @Param("userId") String userId);
 
-    // Clear the rows that block deleting a playlist (foreign_keys is on). playlist_members cascades on its own.
+    // Internal ids of everyone who sees this playlist on their dashboard: the owner, members (pending invitees
+    // too, their invite shows the name and cover) and savers. Who gets a live update when it changes.
+    @Query(value = """
+            SELECT owner_id FROM playlists WHERE playlist_id = :playlistId
+            UNION SELECT user_id FROM playlist_members WHERE playlist_id = :playlistId
+            UNION SELECT user_id FROM user_saved_playlists WHERE playlist_id = :playlistId
+            """, nativeQuery = true)
+    Set<String> findAudience(@Param("playlistId") String playlistId);
+
+    // Internal ids of the owner and accepted members (listeners and editors). Who hears about new tracks.
+    @Query(value = """
+            SELECT owner_id FROM playlists WHERE playlist_id = :playlistId
+            UNION SELECT user_id FROM playlist_members WHERE playlist_id = :playlistId AND status = 'ACCEPTED'
+            """, nativeQuery = true)
+    Set<String> findCollaborators(@Param("playlistId") String playlistId);
+
+    // Clear the rows that block deleting a playlist (foreign_keys is on). playlist_members and notifications cascade on their own.
     // Play events keep the play and lose the playlist, so listening history and stats don't change.
     @Modifying
     @Query(value = "DELETE FROM playlist_tracks WHERE playlist_id = :playlistId", nativeQuery = true)

@@ -2,11 +2,13 @@ package com.aux_app.services;
 
 import com.aux_app.dto.playlist.*;
 import com.aux_app.dto.users.PlaylistOwner;
+import com.aux_app.entity.NotificationEntity;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.PlaylistMemberEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.MusicPieceRepository;
+import com.aux_app.repository.NotificationRepository;
 import com.aux_app.repository.PlaylistMemberRepository;
 import com.aux_app.repository.PlaylistRepository;
 import com.aux_app.repository.PlaylistTrackRepository;
@@ -14,6 +16,8 @@ import com.aux_app.repository.UserSavedPlaylistRepository;
 import com.aux_app.repository.PlaylistRepository.PlaylistWithMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.aux_app.services.LiveEventService.Section;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -35,9 +39,11 @@ public class PlaylistMembersService extends PlaylistService {
             PlaylistTrackRepository tracks,
             UploadService uploads,
             PlaylistMemberRepository members,
-            EmailService emails
+            EmailService emails,
+            ApplicationEventPublisher events,
+            NotificationRepository notifications
     ) {
-        super(playlists, savedPlaylists, musicPieces, tracks, uploads);
+        super(playlists, savedPlaylists, musicPieces, tracks, uploads, events, notifications);
         this.members = members;
         this.emails = emails;
     }
@@ -79,29 +85,42 @@ public class PlaylistMembersService extends PlaylistService {
                 "INVITE_NOT_FOUND", "You have no pending invite to this playlist");
 
         member.accept();
-        return PlaylistMemberResponse.of(members.save(member), user);
+        PlaylistMemberResponse accepted = PlaylistMemberResponse.of(members.save(member), user);
+
+        // The invite is answered, so its notification goes; the owner hears it was accepted
+        PlaylistEntity playlist = playlists.findByPublicId(playlistId);
+        notifications.deleteInvite(user.getUserId(), member.getPlaylistId());
+        notifications.save(NotificationEntity.inviteAccepted(playlist.getOwnerId(), user.getUserId(), member.getPlaylistId()));
+
+        publishTo(user.getUserId(), Section.INVITES, Section.LIBRARY, Section.NOTIFICATIONS);
+        publishTo(playlist.getOwnerId(), Section.NOTIFICATIONS);
+        return accepted;
     }
 
     // Declines a PENDING invite.
     public PlaylistMemberRemovalResponse declineInvite(String playlistId, UserEntity user) {
-        return removeOwnRow(
+        PlaylistMemberRemovalResponse declined = removeOwnRow(
                 playlistId,
                 user,
                 PlaylistMemberStatus.PENDING,
                 "INVITE_NOT_FOUND",
                 "You have no pending invite to this playlist"
         );
+        publishTo(user.getUserId(), Section.INVITES, Section.NOTIFICATIONS);
+        return declined;
     }
 
     // Leaves a playlist the caller accepted. The owner has no member row, so they can't leave.
     public PlaylistMemberRemovalResponse leave(String playlistId, UserEntity user) {
-        return removeOwnRow(
+        PlaylistMemberRemovalResponse left = removeOwnRow(
                 playlistId,
                 user,
                 PlaylistMemberStatus.ACCEPTED,
                 "MEMBERSHIP_NOT_FOUND",
                 "You are not a member of this playlist"
         );
+        publishTo(user.getUserId(), Section.LIBRARY, Section.NOTIFICATIONS);
+        return left;
     }
 
     private PlaylistMemberRemovalResponse removeOwnRow(
@@ -114,6 +133,8 @@ public class PlaylistMembersService extends PlaylistService {
         PlaylistMemberEntity member = requireOwnRow(playlistId, user, required, errorCode, message);
 
         members.delete(member);
+        // They lose the playlist, so its notifications go too (the invite one, when declining)
+        notifications.deleteForPlaylist(user.getUserId(), member.getPlaylistId());
 
         return new PlaylistMemberRemovalResponse(
                 new PlaylistOwner(
@@ -175,6 +196,9 @@ public class PlaylistMembersService extends PlaylistService {
                         details.permission()
                 )
         );
+        notifications.save(NotificationEntity.playlistInvite(
+                invitee.getUserId(), owner.getUserId(), member.getPlaylistId(), member.getPermission()));
+        publishTo(invitee.getUserId(), Section.INVITES, Section.NOTIFICATIONS);
 
         // The invite row is saved, so a mail failure must not fail the request.
         try {
@@ -208,7 +232,11 @@ public class PlaylistMembersService extends PlaylistService {
         }
 
         member.setPermission(details.permission());
-        return PlaylistMemberResponse.of(members.save(member), found.invitee());
+        PlaylistMemberResponse updated = PlaylistMemberResponse.of(members.save(member), found.invitee());
+        // A pending invite shows its permission, in the invites list and in its notification
+        notifications.updateInvitePermission(found.invitee().getUserId(), member.getPlaylistId(), member.getPermission());
+        publishTo(found.invitee().getUserId(), Section.INVITES, Section.NOTIFICATIONS);
+        return updated;
     }
 
     public PlaylistMemberRemovalResponse remove(
@@ -226,6 +254,10 @@ public class PlaylistMembersService extends PlaylistService {
 
         members.delete(member);
         UserEntity user = found.invitee();
+        // A removed invite leaves their bell, a removed member loses it from their library. Either way they
+        // lose the playlist, so its notifications go too
+        notifications.deleteForPlaylist(user.getUserId(), member.getPlaylistId());
+        publishTo(user.getUserId(), Section.INVITES, Section.LIBRARY, Section.NOTIFICATIONS);
         return new PlaylistMemberRemovalResponse(
                 new PlaylistOwner(
                         user.getPublicId(),

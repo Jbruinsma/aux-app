@@ -1,5 +1,6 @@
 package com.aux_app.services;
 import com.aux_app.dto.auth.SessionToken;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
@@ -39,8 +40,16 @@ public class SessionService {
 
     // Returns the user id ('sub'). Throws JwtException on a bad signature, wrong issuer, or expired token
     public String verify(String token) {
-        return Jwts.parser().verifyWith(key).requireIssuer("aux").build()
-                .parseSignedClaims(token).getPayload().getSubject();
+        return claims(token).getSubject();
     }
 
+    // When the token stops working ('exp'), so long-lived connections can close with it. Same checks and throws as verify
+    public Instant expiresAt(String token) {
+        return claims(token).getExpiration().toInstant();
+    }
+
+    private Claims claims(String token) {
+        return Jwts.parser().verifyWith(key).requireIssuer("aux").build()
+                .parseSignedClaims(token).getPayload();
+    }
 }
