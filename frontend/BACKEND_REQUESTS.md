@@ -8,21 +8,7 @@ Last checked against `main` on 2026-10-18.
 
 ______________________________________________________
 
-## 1. Delete a playlist
-
-### DELETE /api/playlists/{playlistId}
-
-Mocked: `PLAYLIST_DELETE_MOCKED` in `src/utils/playlist.js`. Used by ⋯ → Delete playlist on the playlist page, which
-only the owner sees.
-
-Owner only. Deletes the playlist along with its members, pending invites, saves and track list. The songs stay in their
-uploaders' uploads and in any other playlist.
-
-Response `204`, no body.
-
-Errors: `404 PLAYLIST_NOT_FOUND` (missing, or not the caller's; same as the other owner-only endpoints).
-
-## 2. Notifications
+## 1. Notifications
 
 The header has a notification bell. Today it can only list pending playlist invites (`GET /api/playlists/invites`),
 and which ones the user has seen is kept in the browser's localStorage, so the red badge comes back on another device
@@ -70,16 +56,16 @@ the caller's notifications. Ids that aren't the caller's are ignored.
 
 Response `204`, no body.
 
-## 3. Delete account
+## 2. Delete account
 
 ### DELETE /api/users/me
 
 Mocked: `ACCOUNT_MOCKED` in `src/utils/account.js` (only `deleteAccount` still uses it). Used by Settings → Account →
 Delete your account, after a 6-second confirmation.
 
-Deletes the caller's account and wipes their data: profile details, picture and banner, playlists (as in request 1),
-memberships and invites, uploaded MP3s including the files in R2, favorites, follows and play history. The token stops
-working afterwards.
+Deletes the caller's account and wipes their data: profile details, picture and banner, playlists (as
+`DELETE /api/playlists/{playlistId}` does), memberships and invites, uploaded MP3s including the files in R2, favorites,
+follows and play history. The token stops working afterwards.
 
 Response `204`, no body.
 
@@ -88,7 +74,7 @@ Questions:
   `{ "currentPassword": "…" }` and a wrong one a `403 WRONG_PASSWORD` (not 401: the frontend logs out on 401).
 - What happens to the caller's songs that sit in other people's playlists: removed from them, or kept?
 
-## 4. Dashboard
+## 3. Dashboard
 
 ### GET /api/users/matches
 
@@ -118,7 +104,7 @@ caller has played nothing.
   `playlistOwnerUsername`, null when `playlistId` is null). Playlist page URLs need the owner's username, so recent
   songs can't link to the playlist they were played from yet.
 
-## 5. Smaller fixes
+## 4. Smaller fixes
 
 - **Search response has examples but no schema.** `GET /api/core/search` documents its `200` body only through one
   example per category, so the docs' schema view doesn't list the fields, their types or which can be null
