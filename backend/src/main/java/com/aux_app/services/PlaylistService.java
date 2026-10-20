@@ -7,10 +7,13 @@ import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.*;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.MusicPieceRepository;
+import com.aux_app.repository.NotificationRepository;
 import com.aux_app.repository.PlaylistRepository;
 import com.aux_app.repository.PlaylistTrackRepository;
 import com.aux_app.repository.UserSavedPlaylistRepository;
 import org.jspecify.annotations.Nullable;
+import com.aux_app.services.LiveEventService.Section;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -36,19 +39,37 @@ public abstract class PlaylistService {
     protected final MusicPieceRepository musicPieces;
     protected final PlaylistTrackRepository tracks;
     protected final UploadService uploads;
+    protected final ApplicationEventPublisher events;
+    protected final NotificationRepository notifications;
 
     protected PlaylistService(
             PlaylistRepository playlists,
             UserSavedPlaylistRepository savedPlaylists,
             MusicPieceRepository musicPieces,
             PlaylistTrackRepository tracks,
-            UploadService uploads
+            UploadService uploads,
+            ApplicationEventPublisher events,
+            NotificationRepository notifications
     ) {
         this.playlists = playlists;
         this.savedPlaylists = savedPlaylists;
         this.musicPieces = musicPieces;
         this.tracks = tracks;
         this.uploads = uploads;
+        this.events = events;
+        this.notifications = notifications;
+    }
+
+    // Live updates (see LiveEventService). Each is delivered after the surrounding transaction commits, or right
+    // away when there is none, so publish after the last write.
+    protected void publishTo(String userId, Section... sections) {
+        events.publishEvent(new LiveEventService.Update(Set.of(userId), Set.of(sections)));
+    }
+
+    // Everyone on the playlist (PlaylistRepository.findAudience). The audience is read now, so on a delete call
+    // this before removing rows; delivery still waits for the commit.
+    protected void publishToAudience(String internalPlaylistId, Section... sections) {
+        events.publishEvent(new LiveEventService.Update(playlists.findAudience(internalPlaylistId), Set.of(sections)));
     }
 
     public PlaylistOverview retrievePlaylist(String username, String playlistId, UserEntity user) {
@@ -111,6 +132,8 @@ public abstract class PlaylistService {
                 playlistCreationDetails.playlistCover()
         );
 
+        publishTo(owner.getUserId(), Section.LIBRARY);
+
         return new PlaylistOverview(
                 new CorePlaylist(
                         newPlaylist.getPublicId(),
@@ -164,6 +187,8 @@ public abstract class PlaylistService {
             playlists.save(playlist);
         }
 
+        publishToAudience(playlist.getPlaylistId(), Section.LIBRARY, Section.INVITES, Section.NOTIFICATIONS);
+
         return new CorePlaylist(
                 playlist.getPublicId(),
                 playlist.getPlaylistName(),
@@ -214,6 +239,20 @@ public abstract class PlaylistService {
 
         tracks.saveAll(newTracks);
 
+        if (!newTracks.isEmpty()) {
+            // totalPieces shows in everyone's library
+            publishToAudience(playlist.getPlaylistId(), Section.LIBRARY);
+
+            // TRACKS_ADDED for the owner and accepted members, not the one who added them. Pending invitees
+            // and savers aren't collaborators, so they don't get one
+            Set<String> recipients = new HashSet<>(playlists.findCollaborators(playlist.getPlaylistId()));
+            recipients.remove(userId);
+            notifications.saveAll(recipients.stream()
+                    .map(recipient -> NotificationEntity.tracksAdded(recipient, userId, playlist.getPlaylistId(), newTracks.size()))
+                    .toList());
+            events.publishEvent(new LiveEventService.Update(recipients, Set.of(Section.NOTIFICATIONS)));
+        }
+
         int requested = new HashSet<>(details.musicPieceIds()).size();
 
         return new PlaylistMusicPieceAdditionResponse(
@@ -253,12 +292,18 @@ public abstract class PlaylistService {
         // Later tracks keep their positions. Track-list and queue cursors are positions, so renumbering would
         // make a client that already holds one skip a track.
         tracks.delete(track);
+
+        publishToAudience(found.caller().playlist().getPlaylistId(), Section.LIBRARY);
     }
 
     @Transactional
     public void deletePlaylist(String playlistId, UserEntity user) {
         PlaylistEntity playlist = findOwnedPlaylist(playlistId, user.getUserId());
         String id = playlist.getPlaylistId();
+
+        // Before the deletes: afterwards there are no members or savers left to find
+        // Its notifications cascade away with it
+        publishToAudience(id, Section.LIBRARY, Section.INVITES, Section.NOTIFICATIONS);
 
         playlists.deleteTracks(id);
         playlists.deleteSaves(id);
@@ -296,6 +341,7 @@ public abstract class PlaylistService {
         UserSavedPlaylistId id = new UserSavedPlaylistId(userId, selectedPlaylist.getPlaylistId());
         if (!savedPlaylists.existsById(id)) {
             savedPlaylists.save(new UserSavedPlaylistEntity(userId, selectedPlaylist.getPlaylistId()));
+            publishTo(userId, Section.LIBRARY);
         }
 
         return new SavedPlaylistResponse(
@@ -333,6 +379,7 @@ public abstract class PlaylistService {
         }
 
         savedPlaylists.deleteSaved(userId, selectedPlaylist.getPlaylistId());
+        publishTo(userId, Section.LIBRARY);
 
         return new SavedPlaylistResponse(
                 new CorePlaylist(

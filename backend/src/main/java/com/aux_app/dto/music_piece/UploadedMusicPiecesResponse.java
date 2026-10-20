@@ -1,5 +1,9 @@
 package com.aux_app.dto.music_piece;
 
+import com.aux_app.dto.artist.ArtistSummary;
+import com.aux_app.entity.ArtistEntity;
+import com.aux_app.entity.MusicPieceEntity;
+import com.aux_app.repository.MusicPieceRepository;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -9,4 +13,23 @@ public record UploadedMusicPiecesResponse(
         @Schema(description = "Number of pieces in `uploadedMusicPieces`", example = "4") Integer uploadedPiecesCount,
         @Schema(description = "Public and private uploads, newest first; empty if the caller has uploaded nothing. `isFavorite` is whether the caller favorited the piece") List<MusicPieceOverview> uploadedMusicPieces
 ) {
+
+    // Shared by GET /api/music-pieces and the `uploads` live event
+    public static UploadedMusicPiecesResponse of(List<MusicPieceRepository.MusicPieceWithArtist> uploads) {
+        List<MusicPieceOverview> pieces = uploads.stream()
+                .map(upload -> {
+                    MusicPieceEntity piece = upload.piece();
+                    ArtistEntity artist = upload.artist();
+                    return new MusicPieceOverview(
+                            piece.getPublicId(),
+                            piece.getName(),
+                            piece.getCoverUrl(),
+                            new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl()),
+                            upload.isFavorite()
+                    );
+                })
+                .toList();
+
+        return new UploadedMusicPiecesResponse(pieces.size(), pieces);
+    }
 }
