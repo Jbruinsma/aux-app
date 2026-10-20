@@ -7,6 +7,7 @@ import org.sqlite.SQLiteException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -72,7 +73,10 @@ public class AuxErrorHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), "INTERNAL_ERROR", "Something went wrong", null));
     }
 
+    // Content-Type is set, not negotiated: errors are always JSON, even when the client only accepts
+    // something else (e.g. text/event-stream on GET /api/users/me/events). Negotiating there fails and
+    // turns the error into an empty 500
     private static ResponseEntity<AuxServerError> respond(HttpStatus status, ErrorDetails details) {
-        return ResponseEntity.status(status).body(new AuxServerError(details));
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(new AuxServerError(details));
     }
 }

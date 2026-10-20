@@ -8,6 +8,10 @@ import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.SessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.auth.OnboardingUser;
@@ -341,16 +345,67 @@ public class UserController {
             summary = "Stream the caller's live updates",
             description = """
                     Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with
-                    `EventSource` (it can't send headers, and the token must not go in the URL).
-                    On connect, sends one event per section with its current data: `invites`, `recents`, `top-artists`,
-                    `library`, `uploads`. After that, re-sends a whole section whenever it changes. A `: ping` comment
-                    arrives every ~25 seconds. The server closes the stream when the token expires; reconnect with a
-                    current token and the snapshot is sent again.
+                    `EventSource`: it can't send headers, and the token must not go in the URL.
+
+                    **On connect** the server sends every event below once, with the current data. **After that** it
+                    sends an event again, whole, each time its data changes; replace what you have, there are no diffs.
+                    Each `data` is one line of JSON, the same body the listed endpoint returns:
+
+                    | `event` | `data` | Same as |
+                    |---|---|---|
+                    | `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |
+                    | `recents` | `RecentListeningResponse` | `GET /api/users/recent-listening` |
+                    | `top-artists` | `TopArtistsResponse` | `GET /api/users/top-artists` |
+                    | `library` | array of `LibraryPlaylist` | `GET /api/users/library` |
+                    | `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |
+                    | `notifications` | `NotificationPage`, first page | `GET /api/notifications` |
+
+                    **Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space
+                    after the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.
+                    A `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.
+
+                    **End of stream.** The server ends the response normally when the token expires (tokens last
+                    1 hour). Reconnect with a current token, backing off on repeated failures; the first events after
+                    a reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.
+
+                    **Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.
                     """)
-    @ApiResponse(responseCode = "200", description = "OK; stays open")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Stream open. Stays open until the token expires or the client disconnects",
+            headers = @Header(name = "X-Accel-Buffering", description = "Always `no`, so nginx-style proxies pass events through unbuffered", schema = @Schema(type = "string")),
+            content = @Content(
+                    mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
+                    schema = @Schema(type = "string", description = "A stream of events in the wire format above"),
+                    examples = @ExampleObject(name = "Snapshot, then a ping and an update", value = """
+                            event:invites
+                            data:{"invites":[]}
+
+                            event:recents
+                            data:{"recents":[]}
+
+                            event:top-artists
+                            data:{"artists":[]}
+
+                            event:library
+                            data:[{"playlistId":"p_8F1eB5","playlistName":"Alice's Mix","playlistCoverUrl":null,"ownerUsername":"alice","totalPieces":3,"isSaved":false}]
+
+                            event:uploads
+                            data:{"uploadedPiecesCount":0,"uploadedMusicPieces":[]}
+
+                            event:notifications
+                            data:{"notifications":[],"unreadCount":0,"nextCursor":null}
+
+                            :ping
+
+                            event:library
+                            data:[{"playlistId":"p_8F1eB5","playlistName":"Road Trip","playlistCoverUrl":null,"ownerUsername":"alice","totalPieces":3,"isSaved":false}]
+
+                            """)))
     public SseEmitter streamEvents(
             @CurrentUser UserEntity user,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            // Already covered by the bearer security scheme; hidden so it isn't listed twice
+            @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             HttpServletResponse response
     ) {
         // CurrentUserResolver has already checked this token, so this can't throw

@@ -1299,6 +1299,155 @@
         } ]
       }
     },
+    "/api/notifications/read" : {
+      "put" : {
+        "tags" : [ "notification-controller" ],
+        "summary" : "Mark notifications as read",
+        "description" : "Already read, unknown, or other users' ids are ignored.",
+        "operationId" : "markRead",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NotificationReadRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Done"
+          },
+          "400" : {
+            "description" : "No ids, or more than 100 (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/notifications/read-all" : {
+      "put" : {
+        "tags" : [ "notification-controller" ],
+        "summary" : "Mark every notification as read",
+        "operationId" : "markAllRead",
+        "responses" : {
+          "204" : {
+            "description" : "Done"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/artists/{artistId}/pfp" : {
       "put" : {
         "tags" : [ "artist-controller" ],
@@ -3707,6 +3856,94 @@
         } ]
       }
     },
+    "/api/users/me/events" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Stream the caller's live updates",
+        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON, the same body the listed endpoint returns:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | `GET /api/users/recent-listening` |\n| `top-artists` | `TopArtistsResponse` | `GET /api/users/top-artists` |\n| `library` | array of `LibraryPlaylist` | `GET /api/users/library` |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
+        "operationId" : "streamEvents",
+        "responses" : {
+          "200" : {
+            "description" : "Stream open. Stays open until the token expires or the client disconnects",
+            "headers" : {
+              "X-Accel-Buffering" : {
+                "description" : "Always `no`, so nginx-style proxies pass events through unbuffered",
+                "style" : "simple",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "text/event-stream" : {
+                "schema" : {
+                  "type" : "string",
+                  "description" : "A stream of events in the wire format above"
+                },
+                "examples" : {
+                  "Snapshot, then a ping and an update" : {
+                    "description" : "Snapshot, then a ping and an update",
+                    "value" : "event:invites\ndata:{\"invites\":[]}\n\nevent:recents\ndata:{\"recents\":[]}\n\nevent:top-artists\ndata:{\"artists\":[]}\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Alice's Mix\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\nevent:uploads\ndata:{\"uploadedPiecesCount\":0,\"uploadedMusicPieces\":[]}\n\nevent:notifications\ndata:{\"notifications\":[],\"unreadCount\":0,\"nextCursor\":null}\n\n:ping\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Road Trip\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\n"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/library" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -4083,6 +4320,97 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PendingPlaylistInvites"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/notifications" : {
+      "get" : {
+        "tags" : [ "notification-controller" ],
+        "summary" : "List the caller's notifications",
+        "description" : "Newest first, 20 per page, with `unreadCount` for the badge. Types: PLAYLIST_INVITE (accept or\ndecline it with the playlist invite endpoints; it disappears once answered), INVITE_ACCEPTED,\nTRACKS_ADDED. Notifications about a playlist go away when it's deleted, or when the caller\ndeclines, leaves or is removed from it.\nThe first page also arrives as the `notifications` event on GET /api/users/me/events, and again\nwhenever it changes. Path is `GET /api/notifications`, no trailing slash.\n",
+        "operationId" : "getNotifications",
+        "parameters" : [ {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` from the previous page; omit for the first",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationPage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad cursor (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
                 }
               }
             }
@@ -5206,6 +5534,23 @@
           }
         }
       },
+      "NotificationReadRequest" : {
+        "type" : "object",
+        "description" : "Notifications to mark as read",
+        "properties" : {
+          "notificationIds" : {
+            "type" : "array",
+            "description" : "Public ids, 1 to 100. Ids that aren't the caller's are ignored",
+            "example" : [ "n_4Gk2Zq" ],
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 100,
+            "minItems" : 0
+          }
+        },
+        "required" : [ "notificationIds" ]
+      },
       "PlaylistCreationDetails" : {
         "type" : "object",
         "description" : "Multipart form for creating a playlist",
@@ -5872,6 +6217,75 @@
             "items" : {
               "$ref" : "#/components/schemas/PendingPlaylistInvite"
             }
+          }
+        }
+      },
+      "NotificationPage" : {
+        "type" : "object",
+        "description" : "One page of the caller's notifications, newest first",
+        "properties" : {
+          "notifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationResponse"
+            }
+          },
+          "unreadCount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Unread notifications in total, not just on this page; the bell badge",
+            "example" : 2
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Pass as `cursor` for the next page; null on the last page"
+          }
+        }
+      },
+      "NotificationResponse" : {
+        "type" : "object",
+        "description" : "One entry in the caller's notifications",
+        "properties" : {
+          "notificationId" : {
+            "type" : "string",
+            "description" : "Public id; send it to PUT /api/notifications/read",
+            "example" : "n_4Gk2Zq"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "PLAYLIST_INVITE: someone invited the caller to a playlist. INVITE_ACCEPTED: someone accepted the caller's invite.\nTRACKS_ADDED: someone else added songs to a playlist the caller owns or is a member of.",
+            "enum" : [ "PLAYLIST_INVITE", "INVITE_ACCEPTED", "TRACKS_ADDED" ]
+          },
+          "actor" : {
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "Who did it: the inviter, the user who accepted, or the user who added songs"
+          },
+          "playlist" : {
+            "$ref" : "#/components/schemas/CorePlaylist",
+            "description" : "The playlist it's about"
+          },
+          "playlistOwnerUsername" : {
+            "type" : "string",
+            "description" : "Username of the playlist's owner, for the link /playlist/{ownerUsername}/{playlistId}",
+            "example" : "justin"
+          },
+          "permission" : {
+            "type" : [ "string", "null" ],
+            "description" : "Access the invite grants; PLAYLIST_INVITE only",
+            "enum" : [ "LISTENER", "EDITOR" ]
+          },
+          "trackCount" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "How many songs were added; TRACKS_ADDED only",
+            "example" : 3
+          },
+          "isRead" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         }
       },
