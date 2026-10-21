@@ -180,7 +180,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                 .toList();
     }
 
-    // The user's 4 most played artists, all time. Ties go to the artist played most recently.
+    // The user's 20 most played artists, all time. Ties go to the artist played most recently.
     @Query(value = """
             SELECT a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
             FROM play_events pe
@@ -189,7 +189,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
             WHERE pe.user_id = :userId
             GROUP BY a.artist_id
             ORDER BY COUNT(*) DESC, MAX(pe.played_at) DESC
-            LIMIT 4
+            LIMIT 20
             """, nativeQuery = true)
     List<TopArtistRow> findTopArtistRows(@Param("userId") String userId);
 

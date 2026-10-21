@@ -3,7 +3,7 @@
 Work top to bottom: finish P0 before picking up P1. Tick each box as you finish it. When every box in a task is
 ticked, delete the task (git history keeps it). Exact request and response shapes are in the OpenAPI docs
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
-add it to `./BACKEND_REQUESTS.md`.
+add it to `../backend/BACKEND_REQUESTS.md`.
 
 Last updated 2026-10-21.
 
@@ -53,13 +53,16 @@ One connection to the server that keeps the header and the Dashboard up to date 
 
 ### 3. Move the Dashboard onto the event store
 
-Once this ships, the backend removes `GET /api/users/recent-listening`, `/top-artists` and `/library`.
+The backend has removed `GET /api/users/recent-listening`, `/top-artists` and `/library`, so the Recent listening,
+Top artists and Library rows fail until this ships.
 
 **Files:** `src/views/Dashboard.vue`
 **Needs:** task 2
 
 - [ ] Replace the `recent-listening`, `top-artists`, `library` and uploads fetches in `onMounted` with the store.
 - [ ] Show each row as loading until its event arrives, and as an error if the stream can't connect.
+- [ ] `recents` and `top-artists` now carry up to 20 items. Show the first 4 in the Dashboard rows and all of them on
+      each one's own tab.
 - [ ] Keep `GET /api/music-pieces` in `AddMusic.vue`; that one isn't going away.
 
 **Done when:** Dashboard makes none of those four REST calls, and a new play shows up in Recent listening without a
@@ -67,7 +70,7 @@ reload.
 
 ### 4. Move the notification bell onto the event store
 
-**Files:** `src/components/NotificationBell.vue`, `src/components/AppHeader.vue`
+**Files:** `src/components/NotificationBell.vue`, `src/components/AppHeader.vue`, `src/views/PlaylistDetail.vue`
 **Needs:** task 2
 **API:** `GET /api/notifications`, `PUT /api/notifications/read-all`, `PUT /api/notifications/read`
 
@@ -76,6 +79,8 @@ reload.
 - [ ] Link each notification to its playlist using `playlistOwnerUsername`, **not** `actor.username`.
 - [ ] Show `unreadCount` on the badge, and mark notifications read when the bell opens.
 - [ ] Remove the 60-second polling, the refresh on focus and the localStorage list of seen invites.
+- [ ] On the `403 PLAYLIST_INVITE_PENDING` page in `PlaylistDetail.vue`, read the invite from the store's `invites`
+      field instead of calling `GET /api/playlists/invites` again.
 
 **Done when:** a new invite appears in the bell within a second, with no polling in the network tab.
 
@@ -152,9 +157,9 @@ The endpoint is live; the UI still runs on a mock.
 Don't start these until the endpoint is in the OpenAPI docs.
 
 - [ ] **Delete account.** Turn off `ACCOUNT_MOCKED` in `src/utils/account.js` once `DELETE /api/users/me` exists
-      (`BACKEND_REQUESTS.md` §2).
+      (`../backend/BACKEND_REQUESTS.md` §1).
 - [ ] **People who hear it too.** Fill the Dashboard section once `GET /api/users/matches` exists
-      (`BACKEND_REQUESTS.md` §3).
+      (`../backend/BACKEND_REQUESTS.md` §2).
 - [ ] **Follow.** Enable the profile's follow button once there's a follow endpoint. Not requested yet.
 - [ ] **Landing page.** Replace the hardcoded top albums in `LandingPage.vue` once `GET /api/core/top` returns real
       data. Not requested yet.

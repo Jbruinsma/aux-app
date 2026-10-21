@@ -1,7 +1,7 @@
 import { fetchAPI } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// GET /api/users/matches isn't on the backend yet (BACKEND_REQUESTS.md, Dashboard). Until it ships the dashboard shows
+// GET /api/users/matches isn't on the backend yet (backend/BACKEND_REQUESTS.md, Dashboard). Until it ships the dashboard shows
 // sample listeners labeled as a preview; flip this off once it does, since the real call already uses the requested shape
 export const MATCHES_MOCKED = true
 

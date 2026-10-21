@@ -1,6 +1,5 @@
 package com.aux_app.controller;
 
-import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.users.*;
 import com.aux_app.repository.ProfileDetailsRepository;
 import com.aux_app.repository.UserPlayPreferencesRepository;
@@ -32,7 +31,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import com.aux_app.repository.UserRepository;
@@ -119,46 +117,6 @@ public class UserController {
             @Parameter(description = "Username for the USERNAME step; ignored for PFP", example = "justin") @RequestParam(required = false) String username
     ) {
         return UserSummary.of(onboarding.completeStep(user, step, file, username));
-    }
-
-    @GetMapping("/recent-listening")
-    @Operation(
-            summary = "Get the caller's recently played music pieces",
-            description = """
-                    Up to 4 distinct pieces from plays recorded with `POST /api/music-pieces/{musicPieceId}/plays`,
-                    most recently played first. A piece played several times appears once, with the `playlistId` of its
-                    latest play. Same rules as `GET /me/last-playback`: plays of pieces made private since are skipped,
-                    and `playlistId` is null when the piece wasn't played from a playlist or the caller can no longer see it.
-                    `recents` is empty when the caller has played nothing they can still play.
-                    """)
-    @ApiResponse(responseCode = "200", description = "OK")
-    public RecentListeningResponse getRecentListening(@CurrentUser UserEntity user) {
-        return new RecentListeningResponse(playbackEventService.retrieveRecentPlaybacks(user.getUserId()));
-    }
-
-    @GetMapping("/top-artists")
-    @Operation(
-            summary = "Get the caller's most played artists",
-            description = """
-                    Up to 4 artists ranked by how many plays the caller has recorded of their pieces, all time.
-                    Ties go to the artist played most recently. `artists` is empty when the caller has played nothing.
-                    """)
-    @ApiResponse(responseCode = "200", description = "OK")
-    public TopArtistsResponse getTopArtists(@CurrentUser UserEntity user) {
-        return new TopArtistsResponse(users.findTopArtists(user.getUserId()));
-    }
-
-    @GetMapping("/library")
-    @Operation(
-            summary = "Get the caller's playlist library",
-            description = """
-                    Playlists the caller owns (public and private), playlists they're an accepted listener or editor of
-                    (public and private), plus playlists they saved from others (public only).
-                    `isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.
-                    """)
-    @ApiResponse(responseCode = "200", description = "OK")
-    public List<LibraryPlaylist> retrieveLibrary(@CurrentUser UserEntity user) {
-        return users.findLibrary(user.getUserId());
     }
 
     @GetMapping("/profile/{username}")
@@ -386,16 +344,30 @@ public class UserController {
 
                     **On connect** the server sends every event below once, with the current data. **After that** it
                     sends an event again, whole, each time its data changes; replace what you have, there are no diffs.
-                    Each `data` is one line of JSON, the same body the listed endpoint returns:
+                    Each `data` is one line of JSON: the same body the listed endpoint returns, or, for the events only
+                    the stream sends, the body described below the table:
 
                     | `event` | `data` | Same as |
                     |---|---|---|
                     | `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |
-                    | `recents` | `RecentListeningResponse` | `GET /api/users/recent-listening` |
-                    | `top-artists` | `TopArtistsResponse` | `GET /api/users/top-artists` |
-                    | `library` | array of `LibraryPlaylist` | `GET /api/users/library` |
+                    | `recents` | `RecentListeningResponse` | stream only |
+                    | `top-artists` | `TopArtistsResponse` | stream only |
+                    | `library` | array of `LibraryPlaylist` | stream only |
                     | `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |
                     | `notifications` | `NotificationPage`, first page | `GET /api/notifications` |
+
+                    - `recents`: up to 20 distinct pieces from plays recorded with
+                      `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several
+                      times appears once, with the `playlistId` of its latest play. Same rules as `GET /me/last-playback`:
+                      plays of pieces made private since are skipped, and `playlistId` is null when the piece wasn't
+                      played from a playlist or the caller can no longer see it. Empty when the caller has played
+                      nothing they can still play.
+                    - `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,
+                      all time. Ties go to the artist played most recently. Empty when the caller has played nothing.
+                    - `library`: playlists the caller owns (public and private), playlists they're an accepted listener
+                      or editor of (public and private), plus playlists they saved from others (public only). `isSaved`
+                      is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,
+                      newest created first.
 
                     **Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space
                     after the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.

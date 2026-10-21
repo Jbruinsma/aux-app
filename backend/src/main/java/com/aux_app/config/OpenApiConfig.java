@@ -1,11 +1,15 @@
 package com.aux_app.config;
 
 import java.util.Arrays;
+import java.util.List;
 
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.auth.OnboardingUser;
 import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.dto.base.AuxServerError;
+import com.aux_app.dto.playlist.LibraryPlaylist;
+import com.aux_app.dto.users.RecentListeningResponse;
+import com.aux_app.dto.users.TopArtistsResponse;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.headers.Header;
@@ -22,7 +26,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-// Adds what springdoc can't infer: the Bearer scheme and the shared AuxServerError body on error responses.
+// Adds what springdoc can't infer: the Bearer scheme, the shared AuxServerError body on error responses, and the
+// bodies only GET /api/users/me/events sends (no endpoint returns them, so springdoc would leave them out).
 // Endpoint-specific codes (404, 409, ...) go on the method as @ApiResponse(responseCode, description);
 // the body is filled in here.
 @Configuration
@@ -37,8 +42,9 @@ public class OpenApiConfig {
             openApi.getComponents().addSecuritySchemes(BEARER, new SecurityScheme()
                     .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
                     .description("Token from /api/auth/login or /api/auth/register"));
-            ModelConverters.getInstance().readAll(AuxServerError.class)
-                    .forEach(openApi.getComponents()::addSchemas);
+            for (Class<?> type : List.of(AuxServerError.class, RecentListeningResponse.class, TopArtistsResponse.class, LibraryPlaylist.class)) {
+                ModelConverters.getInstance().readAll(type).forEach(openApi.getComponents()::addSchemas);
+            }
         };
     }
 

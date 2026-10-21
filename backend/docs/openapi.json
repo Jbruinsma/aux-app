@@ -3514,78 +3514,6 @@
         } ]
       }
     },
-    "/api/users/top-artists" : {
-      "get" : {
-        "tags" : [ "user-controller" ],
-        "summary" : "Get the caller's most played artists",
-        "description" : "Up to 4 artists ranked by how many plays the caller has recorded of their pieces, all time.\nTies go to the artist played most recently. `artists` is empty when the caller has played nothing.\n",
-        "operationId" : "getTopArtists",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TopArtistsResponse"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "429" : {
-            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
-            "headers" : {
-              "Retry-After" : {
-                "description" : "Seconds until the next request is allowed",
-                "schema" : {
-                  "type" : "integer",
-                  "format" : "int32"
-                }
-              }
-            },
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Unexpected server error (code INTERNAL_ERROR)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          }
-        },
-        "security" : [ {
-          "bearerAuth" : [ ]
-        } ]
-      }
-    },
     "/api/users/settings" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -3599,78 +3527,6 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UserSettings"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "429" : {
-            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
-            "headers" : {
-              "Retry-After" : {
-                "description" : "Seconds until the next request is allowed",
-                "schema" : {
-                  "type" : "integer",
-                  "format" : "int32"
-                }
-              }
-            },
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Unexpected server error (code INTERNAL_ERROR)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          }
-        },
-        "security" : [ {
-          "bearerAuth" : [ ]
-        } ]
-      }
-    },
-    "/api/users/recent-listening" : {
-      "get" : {
-        "tags" : [ "user-controller" ],
-        "summary" : "Get the caller's recently played music pieces",
-        "description" : "Up to 4 distinct pieces from plays recorded with `POST /api/music-pieces/{musicPieceId}/plays`,\nmost recently played first. A piece played several times appears once, with the `playlistId` of its\nlatest play. Same rules as `GET /me/last-playback`: plays of pieces made private since are skipped,\nand `playlistId` is null when the piece wasn't played from a playlist or the caller can no longer see it.\n`recents` is empty when the caller has played nothing they can still play.\n",
-        "operationId" : "getRecentListening",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/RecentListeningResponse"
                 }
               }
             }
@@ -3942,7 +3798,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Stream the caller's live updates",
-        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON, the same body the listed endpoint returns:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | `GET /api/users/recent-listening` |\n| `top-artists` | `TopArtistsResponse` | `GET /api/users/top-artists` |\n| `library` | array of `LibraryPlaylist` | `GET /api/users/library` |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
+        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON: the same body the listed endpoint returns, or, for the events only\nthe stream sends, the body described below the table:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | stream only |\n| `top-artists` | `TopArtistsResponse` | stream only |\n| `library` | array of `LibraryPlaylist` | stream only |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n\n- `recents`: up to 20 distinct pieces from plays recorded with\n  `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several\n  times appears once, with the `playlistId` of its latest play. Same rules as `GET /me/last-playback`:\n  plays of pieces made private since are skipped, and `playlistId` is null when the piece wasn't\n  played from a playlist or the caller can no longer see it. Empty when the caller has played\n  nothing they can still play.\n- `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,\n  all time. Ties go to the artist played most recently. Empty when the caller has played nothing.\n- `library`: playlists the caller owns (public and private), playlists they're an accepted listener\n  or editor of (public and private), plus playlists they saved from others (public only). `isSaved`\n  is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,\n  newest created first.\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
         "operationId" : "streamEvents",
         "responses" : {
           "200" : {
@@ -3966,81 +3822,6 @@
                   "Snapshot, then a ping and an update" : {
                     "description" : "Snapshot, then a ping and an update",
                     "value" : "event:invites\ndata:{\"invites\":[]}\n\nevent:recents\ndata:{\"recents\":[]}\n\nevent:top-artists\ndata:{\"artists\":[]}\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Alice's Mix\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\nevent:uploads\ndata:{\"uploadedPiecesCount\":0,\"uploadedMusicPieces\":[]}\n\nevent:notifications\ndata:{\"notifications\":[],\"unreadCount\":0,\"nextCursor\":null}\n\n:ping\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Road Trip\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\n"
-                  }
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Missing or invalid token (code INVALID_TOKEN)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "429" : {
-            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
-            "headers" : {
-              "Retry-After" : {
-                "description" : "Seconds until the next request is allowed",
-                "schema" : {
-                  "type" : "integer",
-                  "format" : "int32"
-                }
-              }
-            },
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Unexpected server error (code INTERNAL_ERROR)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          }
-        },
-        "security" : [ {
-          "bearerAuth" : [ ]
-        } ]
-      }
-    },
-    "/api/users/library" : {
-      "get" : {
-        "tags" : [ "user-controller" ],
-        "summary" : "Get the caller's playlist library",
-        "description" : "Playlists the caller owns (public and private), playlists they're an accepted listener or editor of\n(public and private), plus playlists they saved from others (public only).\n`isSaved` is true for saved playlists. Saved ones come first, most recently saved first; the rest follow, newest created first.\n",
-        "operationId" : "retrieveLibrary",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/LibraryPlaylist"
                   }
                 }
               }
@@ -5528,7 +5309,6 @@
         }
       },
       "CorePlaylist" : {
-        "type" : "object",
         "description" : "The basic identity of a playlist",
         "properties" : {
           "playlistId" : {
@@ -5676,7 +5456,6 @@
         "required" : [ "playlistCover", "playlistName" ]
       },
       "ArtistSummary" : {
-        "type" : "object",
         "description" : "The short form of an artist, shown on cards and next to music pieces",
         "properties" : {
           "artistId" : {
@@ -5697,7 +5476,6 @@
         }
       },
       "MusicPieceOverview" : {
-        "type" : "object",
         "description" : "A music piece as shown in a track list",
         "properties" : {
           "musicPieceId" : {
@@ -5716,8 +5494,7 @@
             "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistSummary" : {
-            "$ref" : "#/components/schemas/ArtistSummary",
-            "description" : "The artist"
+            "$ref" : "#/components/schemas/ArtistSummary"
           },
           "isFavorite" : {
             "type" : "boolean",
@@ -6067,19 +5844,6 @@
         },
         "required" : [ "artistName" ]
       },
-      "TopArtistsResponse" : {
-        "type" : "object",
-        "description" : "The caller's most played artists",
-        "properties" : {
-          "artists" : {
-            "type" : "array",
-            "description" : "Up to 4 artists, most played first",
-            "items" : {
-              "$ref" : "#/components/schemas/ArtistSummary"
-            }
-          }
-        }
-      },
       "UserSettings" : {
         "type" : "object",
         "description" : "Everything the caller's settings page needs",
@@ -6107,34 +5871,6 @@
           "profileDetails" : {
             "$ref" : "#/components/schemas/ProfileDetails",
             "description" : "Optional profile fields"
-          }
-        }
-      },
-      "LastPlayback" : {
-        "type" : "object",
-        "description" : "The last music piece the caller played",
-        "properties" : {
-          "musicPiece" : {
-            "$ref" : "#/components/schemas/MusicPieceOverview",
-            "description" : "The music piece"
-          },
-          "playlistId" : {
-            "type" : "string",
-            "description" : "Public id of the playlist it was played from, or null",
-            "example" : "p_8sK2mQ"
-          }
-        }
-      },
-      "RecentListeningResponse" : {
-        "type" : "object",
-        "description" : "The caller's most recently played music pieces",
-        "properties" : {
-          "recents" : {
-            "type" : "array",
-            "description" : "Up to 4 distinct pieces, most recently played first; each with the playlist of its latest play",
-            "items" : {
-              "$ref" : "#/components/schemas/LastPlayback"
-            }
           }
         }
       },
@@ -6228,43 +5964,6 @@
           "playPreferences" : {
             "$ref" : "#/components/schemas/PlayPreferences",
             "description" : "Shuffle and repeat; the defaults if never saved"
-          }
-        }
-      },
-      "LibraryPlaylist" : {
-        "type" : "object",
-        "description" : "A playlist in the caller's library",
-        "properties" : {
-          "playlistId" : {
-            "type" : "string",
-            "description" : "Public id of the playlist",
-            "example" : "p_7c2dK1"
-          },
-          "playlistName" : {
-            "type" : "string",
-            "description" : "Display name, 1-36 chars",
-            "example" : "Late Night Drive"
-          },
-          "playlistCoverUrl" : {
-            "type" : "string",
-            "description" : "Square WebP cover, at most 1024x1024",
-            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-          },
-          "ownerUsername" : {
-            "type" : "string",
-            "description" : "Username of the playlist owner",
-            "example" : "justin"
-          },
-          "totalPieces" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Number of tracks in the playlist",
-            "example" : 12
-          },
-          "isSaved" : {
-            "type" : "boolean",
-            "description" : "Whether the caller has saved the playlist; false for the caller's own unsaved playlists",
-            "example" : true
           }
         }
       },
@@ -6586,6 +6285,79 @@
           "parameter" : {
             "type" : "string",
             "description" : "Name of the offending field or parameter; null when none applies"
+          }
+        }
+      },
+      "LastPlayback" : {
+        "description" : "The last music piece the caller played",
+        "properties" : {
+          "musicPiece" : {
+            "$ref" : "#/components/schemas/MusicPieceOverview"
+          },
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist it was played from, or null",
+            "example" : "p_8sK2mQ"
+          }
+        }
+      },
+      "RecentListeningResponse" : {
+        "description" : "The caller's most recently played music pieces",
+        "properties" : {
+          "recents" : {
+            "type" : "array",
+            "description" : "Up to 20 distinct pieces, most recently played first; each with the playlist of its latest play",
+            "items" : {
+              "$ref" : "#/components/schemas/LastPlayback"
+            }
+          }
+        }
+      },
+      "TopArtistsResponse" : {
+        "description" : "The caller's most played artists",
+        "properties" : {
+          "artists" : {
+            "type" : "array",
+            "description" : "Up to 20 artists, most played first",
+            "items" : {
+              "$ref" : "#/components/schemas/ArtistSummary"
+            }
+          }
+        }
+      },
+      "LibraryPlaylist" : {
+        "description" : "A playlist in the caller's library",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist",
+            "example" : "p_7c2dK1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "description" : "Display name, 1-36 chars",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover, at most 1024x1024",
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "ownerUsername" : {
+            "type" : "string",
+            "description" : "Username of the playlist owner",
+            "example" : "justin"
+          },
+          "totalPieces" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Number of tracks in the playlist",
+            "example" : 12
+          },
+          "isSaved" : {
+            "type" : "boolean",
+            "description" : "Whether the caller has saved the playlist; false for the caller's own unsaved playlists",
+            "example" : true
           }
         }
       }
