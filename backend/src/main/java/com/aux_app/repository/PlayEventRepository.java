@@ -34,7 +34,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             """, nativeQuery = true)
     LastPlaybackRow findLastPlayback(@Param("userId") String userId);
 
-    // The user's 4 most recently played distinct pieces they can still play, newest first, one row per piece from its
+    // The user's 20 most recently played distinct pieces they can still play, newest first, one row per piece from its
     // latest play. Same visibility rules as findLastPlayback.
     @Query(value = """
             WITH latest AS (
@@ -57,7 +57,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             WHERE l.rn = 1
               AND (mp.is_public = 1 OR mp.uploader_user_id = :userId)
             ORDER BY l.played_at DESC
-            LIMIT 4
+            LIMIT 20
             """, nativeQuery = true)
     List<LastPlaybackRow> findRecentPlaybacks(@Param("userId") String userId);
 

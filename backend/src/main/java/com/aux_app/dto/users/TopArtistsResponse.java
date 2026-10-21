@@ -7,6 +7,6 @@ import java.util.List;
 
 @Schema(description = "The caller's most played artists")
 public record TopArtistsResponse(
-        @Schema(description = "Up to 4 artists, most played first") List<ArtistSummary> artists
+        @Schema(description = "Up to 20 artists, most played first") List<ArtistSummary> artists
 ) {
 }
