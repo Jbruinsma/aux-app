@@ -16,3 +16,6 @@ If the frontend requires data, endpoints, or structure updates that are not yet 
 2. Mock the data locally to unblock the frontend UI work.
 3. Open or append to `./BACKEND_REQUESTS.md`.
 4. Document the exact HTTP method, required route, expected request payload, and desired response shape so the backend developer knows exactly what to build.
+
+## 4. Roadmap
+What's left to build lives in `./ROADMAP.md`. Tick an item's box when the work is done, and keep request and response details in the OpenAPI docs rather than in the roadmap.

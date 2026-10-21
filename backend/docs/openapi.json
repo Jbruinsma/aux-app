@@ -322,6 +322,98 @@
         } ]
       }
     },
+    "/api/users/me/play-preferences" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Replace the caller's play preferences",
+        "description" : "Full replace. JSON body: `shuffleEnabled`, `repeatPreference` (`PLAYLIST`, `PIECE` or `OFF`).\nBoth are required. Returns the saved preferences. Read them back with `GET /me/last-playback`.\n",
+        "operationId" : "updatePlayPreferences",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlayPreferences"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayPreferences"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "A field is missing or `repeatPreference` is unknown (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/me/banner" : {
       "put" : {
         "tags" : [ "user-controller" ],
@@ -3777,8 +3869,8 @@
     "/api/users/me/last-playback" : {
       "get" : {
         "tags" : [ "user-controller" ],
-        "summary" : "Get the caller's last played music piece",
-        "description" : "The most recent play recorded with `POST /api/music-pieces/{musicPieceId}/plays`, for the player\nto show on load. Plays of pieces made private since are skipped. `playlistId` is null when the\npiece wasn't played from a playlist, or the caller can no longer see that playlist.\n",
+        "summary" : "Get the caller's last played music piece and play preferences",
+        "description" : "Everything the player needs on load. `musicPiece` is the most recent play recorded with\n`POST /api/music-pieces/{musicPieceId}/plays`; plays of pieces made private since are skipped, and\nit is null when the caller has never played anything they can still play. `playlistId` is null\nwhen the piece wasn't played from a playlist, or the caller can no longer see that playlist.\n`playPreferences` is shuffle and repeat, kept across devices; the defaults (shuffle off, repeat\n`OFF`) until `PUT /me/play-preferences` is called. Volume is not stored; it stays on the device.\n",
         "operationId" : "getLastPlayback",
         "responses" : {
           "200" : {
@@ -3786,17 +3878,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/LastPlayback"
-                }
-              }
-            }
-          },
-          "204" : {
-            "description" : "The caller has never played anything they can still play",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/LastPlayback"
+                  "$ref" : "#/components/schemas/LastPlaybackResponse"
                 }
               }
             }
@@ -5393,6 +5475,24 @@
           }
         }
       },
+      "PlayPreferences" : {
+        "type" : "object",
+        "description" : "The caller's player settings, kept across devices",
+        "properties" : {
+          "shuffleEnabled" : {
+            "type" : "boolean",
+            "description" : "Shuffle on or off",
+            "example" : false
+          },
+          "repeatPreference" : {
+            "type" : "string",
+            "description" : "PLAYLIST repeats the queue, PIECE repeats the current piece, OFF stops when the queue ends",
+            "enum" : [ "PLAYLIST", "PIECE", "OFF" ],
+            "example" : "OFF"
+          }
+        },
+        "required" : [ "repeatPreference", "shuffleEnabled" ]
+      },
       "BannerUpdate" : {
         "type" : "object",
         "description" : "The new banner",
@@ -6109,6 +6209,25 @@
             "type" : "boolean",
             "description" : "Whether this user follows the caller",
             "example" : false
+          }
+        }
+      },
+      "LastPlaybackResponse" : {
+        "type" : "object",
+        "description" : "What the player needs on load: the last music piece the caller played and their play preferences",
+        "properties" : {
+          "musicPiece" : {
+            "$ref" : "#/components/schemas/MusicPieceOverview",
+            "description" : "The music piece, or null if the caller has never played anything they can still play"
+          },
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist it was played from, or null",
+            "example" : "p_8sK2mQ"
+          },
+          "playPreferences" : {
+            "$ref" : "#/components/schemas/PlayPreferences",
+            "description" : "Shuffle and repeat; the defaults if never saved"
           }
         }
       },

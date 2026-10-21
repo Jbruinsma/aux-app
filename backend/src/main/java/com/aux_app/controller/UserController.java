@@ -3,6 +3,7 @@ package com.aux_app.controller;
 import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.users.*;
 import com.aux_app.repository.ProfileDetailsRepository;
+import com.aux_app.repository.UserPlayPreferencesRepository;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.SessionService;
@@ -18,6 +19,7 @@ import com.aux_app.auth.OnboardingUser;
 import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.entity.ProfileDetailsEntity;
 import com.aux_app.entity.UserEntity;
+import com.aux_app.entity.UserPlayPreferencesEntity;
 import com.aux_app.error.AuxException;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,6 +46,7 @@ public class UserController {
 
     private final UserRepository users;
     private final ProfileDetailsRepository profileDetails;
+    private final UserPlayPreferencesRepository playPreferences;
     private final UploadService uploads;
     private final OnboardingService onboarding;
     private final UsernameService usernames;
@@ -54,6 +57,7 @@ public class UserController {
     public UserController(
             UserRepository users,
             ProfileDetailsRepository profileDetails,
+            UserPlayPreferencesRepository playPreferences,
             UploadService uploads,
             OnboardingService onboarding,
             UsernameService usernames,
@@ -63,6 +67,7 @@ public class UserController {
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
+        this.playPreferences = playPreferences;
         this.uploads = uploads;
         this.onboarding = onboarding;
         this.usernames = usernames;
@@ -322,22 +327,54 @@ public class UserController {
 
     @GetMapping("/me/last-playback")
     @Operation(
-            summary = "Get the caller's last played music piece",
+            summary = "Get the caller's last played music piece and play preferences",
             description = """
-                    The most recent play recorded with `POST /api/music-pieces/{musicPieceId}/plays`, for the player
-                    to show on load. Plays of pieces made private since are skipped. `playlistId` is null when the
-                    piece wasn't played from a playlist, or the caller can no longer see that playlist.
+                    Everything the player needs on load. `musicPiece` is the most recent play recorded with
+                    `POST /api/music-pieces/{musicPieceId}/plays`; plays of pieces made private since are skipped, and
+                    it is null when the caller has never played anything they can still play. `playlistId` is null
+                    when the piece wasn't played from a playlist, or the caller can no longer see that playlist.
+                    `playPreferences` is shuffle and repeat, kept across devices; the defaults (shuffle off, repeat
+                    `OFF`) until `PUT /me/play-preferences` is called. Volume is not stored; it stays on the device.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "204", description = "The caller has never played anything they can still play")
-    public ResponseEntity<LastPlayback> getLastPlayback(
+    public LastPlaybackResponse getLastPlayback(
             @CurrentUser UserEntity user
     ) {
         LastPlayback lastPlayback = playbackEventService.retrieveMostRecentPlayback(user.getUserId());
+        UserPlayPreferencesEntity preferences = findPlayPreferences(user.getUserId());
 
-        return lastPlayback == null
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.ok(lastPlayback);
+        return new LastPlaybackResponse(
+                lastPlayback == null ? null : lastPlayback.musicPiece(),
+                lastPlayback == null ? null : lastPlayback.playlistId(),
+                new PlayPreferences(preferences.isShuffleEnabled(), preferences.getRepeatPreference())
+        );
+    }
+
+    @PutMapping("/me/play-preferences")
+    @Operation(
+            summary = "Replace the caller's play preferences",
+            description = """
+                    Full replace. JSON body: `shuffleEnabled`, `repeatPreference` (`PLAYLIST`, `PIECE` or `OFF`).
+                    Both are required. Returns the saved preferences. Read them back with `GET /me/last-playback`.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "A field is missing or `repeatPreference` is unknown (codes INVALID_FIELD, MALFORMED_BODY)")
+    public PlayPreferences updatePlayPreferences(
+            @CurrentUser UserEntity user,
+            @Valid @RequestBody PlayPreferences update
+    ) {
+        UserPlayPreferencesEntity preferences = findPlayPreferences(user.getUserId());
+
+        preferences.setShuffleEnabled(update.shuffleEnabled());
+        preferences.setRepeatPreference(update.repeatPreference());
+        playPreferences.save(preferences);
+
+        return update;
+    }
+
+    // No row until the first PUT: a new entity carries the defaults, and save() inserts it
+    private UserPlayPreferencesEntity findPlayPreferences(String userId) {
+        return playPreferences.findById(userId).orElseGet(() -> new UserPlayPreferencesEntity(userId));
     }
 
     @GetMapping(value = "/me/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
