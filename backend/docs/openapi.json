@@ -1540,6 +1540,137 @@
         } ]
       }
     },
+    "/api/music-pieces/{musicPieceId}" : {
+      "put" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Edit a music piece's details",
+        "description" : "Partial update of a piece the caller uploaded. Every multipart field is optional; a missing or\nblank field leaves that value unchanged.\n- `name`: at most 200 chars, trimmed.\n- `artistId`: id of an existing artist.\n- `isPublic`: `true` or `false`. Making a piece private marks it unavailable on public playlists\n  and on playlists where the caller is no longer a collaborator; it stays in those playlists.\n- `coverImage`: same rules as on upload. Replaces the old cover.\nThe MP3 can't be replaced; upload a new piece instead. Returns the piece after the update.\n",
+        "operationId" : "editMusicPiece",
+        "parameters" : [ {
+          "name" : "musicPieceId",
+          "in" : "path",
+          "description" : "Public id of the music piece",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "m_92kd0Z"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MusicPieceDetailsUpdate"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPieceOverview"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Music piece not found or not the caller's (code MUSIC_PIECE_NOT_FOUND), or artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/artists/{artistId}/pfp" : {
       "put" : {
         "tags" : [ "artist-controller" ],
@@ -2373,7 +2504,7 @@
       "post" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "Add music pieces to a playlist",
-        "description" : "Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.\nA piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, it is private,\nor the playlist already has 10,000 tracks.\nA private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.\nSkipped pieces do not fail the request.\n",
+        "description" : "Owner or accepted editor only. Appends the pieces to the end of the playlist, in the order the server finds them.\nA piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, it is private,\nor the playlist already has 10,000 tracks.\nA private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.\nOther collaborators can play it while the playlist is private and the uploader is still the owner or an\naccepted member; otherwise it shows with `isAvailable` false.\nSkipped pieces do not fail the request.\n",
         "operationId" : "addPieceToPlaylist",
         "parameters" : [ {
           "name" : "playlistId",
@@ -2697,7 +2828,7 @@
       "post" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Upload a music piece",
-        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. Only the uploader can play a private piece,\n  whatever playlists it is in.\n- `mp3File` (required): an MP3, at most 25MB, 5 seconds to 10 minutes long. Counts toward the\n  caller's 2GB storage quota.\n- `coverImage` (required): same rules as a playlist cover. Send the original image; the server\n  crops it to a square and stores it as WebP.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
+        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its\n  uploader, and by the other collaborators on private playlists the uploader adds it to.\n- `mp3File` (required): an MP3, at most 25MB, 5 seconds to 10 minutes long. Counts toward the\n  caller's 2GB storage quota.\n- `coverImage` (required): same rules as a playlist cover. Send the original image; the server\n  crops it to a square and stores it as WebP.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
         "operationId" : "createMusicPiece",
         "requestBody" : {
           "content" : {
@@ -4046,7 +4177,7 @@
       "get" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "Get a page of a playlist's play queue",
-        "description" : "First call: pass `start` (optional) and `shuffle`. Without shuffle the queue runs in playlist order from `start`\n(earlier tracks are not queued). With shuffle `start` plays first, then every other track once in random order.\nLater calls: pass only the `nextCursor`\nfrom the previous page as `cursor`. Stop when `nextCursor` is null.\nStream each track with `/music-pieces/{id}/stream?playlistId=...`.\n",
+        "description" : "First call: pass `start` (optional) and `shuffle`. Without shuffle the queue runs in playlist order from `start`\n(earlier tracks are not queued). With shuffle `start` plays first, then every other track once in random order.\nLater calls: pass only the `nextCursor`\nfrom the previous page as `cursor`. Stop when `nextCursor` is null.\nOnly pieces the caller can play are queued; unavailable ones are left out.\nStream each track with `/music-pieces/{id}/stream?playlistId=...`.\n",
         "operationId" : "playPlaylist",
         "parameters" : [ {
           "name" : "playlistId",
@@ -4409,7 +4540,7 @@
       "get" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Get a playable URL for a music piece",
-        "description" : "Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.\nFetch a new one when it runs out. A private piece is only playable by its uploader.\nAlso returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`\nwhen playing from a playlist; the playlist must contain the piece and be visible to the caller.\n",
+        "description" : "Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.\nFetch a new one when it runs out. A private piece is only playable by its uploader, or from a\nprivate playlist whose owner or accepted member uploaded it (pass that `playlistId`).\nAlso returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`\nwhen playing from a playlist; the playlist must contain the piece and be visible to the caller.\n",
         "operationId" : "getMusicPieceStream",
         "parameters" : [ {
           "name" : "musicPieceId",
@@ -4439,7 +4570,7 @@
             }
           },
           "404" : {
-            "description" : "Music piece not found, or private and not the caller's (code MUSIC_PIECE_NOT_FOUND), or playlist not found, not visible, or without this piece (code PLAYLIST_NOT_FOUND)",
+            "description" : "Music piece not found, or not playable by the caller (code MUSIC_PIECE_NOT_FOUND), or playlist not found, not visible, or without this piece (code PLAYLIST_NOT_FOUND)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -4864,7 +4995,7 @@
       "delete" : {
         "tags" : [ "playlist-controller" ],
         "summary" : "Remove a music piece from a playlist",
-        "description" : "Owner or accepted editor only. Removes the piece from the playlist; the piece itself stays in its\nuploader's uploads. Track-list and play-queue cursors handed out before the removal stay valid.\n",
+        "description" : "Owner or accepted editor only. Removes the piece from the playlist; the piece itself stays in its\nuploader's uploads. Works on unavailable pieces (`isAvailable` false) too.\nTrack-list and play-queue cursors handed out before the removal stay valid.\n",
         "operationId" : "removeMusicPieceFromPlaylist",
         "parameters" : [ {
           "name" : "playlistId",
@@ -5430,29 +5561,33 @@
         },
         "required" : [ "notificationIds" ]
       },
-      "PlaylistCreationDetails" : {
+      "MusicPieceDetailsUpdate" : {
         "type" : "object",
-        "description" : "Multipart form for creating a playlist",
+        "description" : "Multipart form for editing a music piece; a missing field leaves that value unchanged",
         "properties" : {
-          "playlistName" : {
+          "name" : {
             "type" : "string",
-            "description" : "Name, 1-36 chars",
-            "example" : "Chill Beats",
-            "maxLength" : 36,
+            "description" : "New title, at most 200 chars. Profanity is masked. Omit or leave blank to keep the current title",
+            "example" : "Dark Fantasy",
+            "maxLength" : 200,
             "minLength" : 0
+          },
+          "artistId" : {
+            "type" : "string",
+            "description" : "Public id of an existing artist. Omit or leave blank to keep the current artist",
+            "example" : "a_8f3k2Q"
           },
           "isPublic" : {
             "type" : "boolean",
-            "description" : "Whether anyone can open the playlist; defaults to false",
+            "description" : "New visibility; omit to keep the current value",
             "example" : true
           },
-          "playlistCover" : {
+          "coverImage" : {
             "type" : "string",
             "format" : "binary",
-            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes"
+            "description" : "New cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Omit to keep the current cover"
           }
-        },
-        "required" : [ "playlistCover", "playlistName" ]
+        }
       },
       "ArtistSummary" : {
         "description" : "The short form of an artist, shown on cards and next to music pieces",
@@ -5502,8 +5637,37 @@
             "type" : "boolean",
             "description" : "Whether the caller has favorited the piece",
             "example" : true
+          },
+          "isAvailable" : {
+            "type" : "boolean",
+            "description" : "Whether the caller can play the piece. Only false in a playlist's track list: the piece is private and the playlist is public, or its uploader is no longer the owner or an accepted member. Show it grayed out; it never appears in the play queue",
+            "example" : true
           }
         }
+      },
+      "PlaylistCreationDetails" : {
+        "type" : "object",
+        "description" : "Multipart form for creating a playlist",
+        "properties" : {
+          "playlistName" : {
+            "type" : "string",
+            "description" : "Name, 1-36 chars",
+            "example" : "Chill Beats",
+            "maxLength" : 36,
+            "minLength" : 0
+          },
+          "isPublic" : {
+            "type" : "boolean",
+            "description" : "Whether anyone can open the playlist; defaults to false",
+            "example" : true
+          },
+          "playlistCover" : {
+            "type" : "string",
+            "format" : "binary",
+            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes"
+          }
+        },
+        "required" : [ "playlistCover", "playlistName" ]
       },
       "PlaylistEditor" : {
         "type" : "object",
@@ -5683,7 +5847,7 @@
           },
           "isPublic" : {
             "type" : "boolean",
-            "description" : "Whether anyone can play the piece; defaults to false. A private piece can only be played by its uploader",
+            "description" : "Whether anyone can play the piece; defaults to false. A private piece can only be played by its uploader, and by collaborators on private playlists the uploader adds it to",
             "example" : true
           },
           "coverImage" : {
@@ -5986,7 +6150,7 @@
         "properties" : {
           "musicPieces" : {
             "type" : "array",
-            "description" : "Next tracks to play, in play order",
+            "description" : "Next tracks, in order. Track-list pages include unavailable pieces (`isAvailable` false); the play queue leaves them out",
             "items" : {
               "$ref" : "#/components/schemas/MusicPieceOverview"
             }

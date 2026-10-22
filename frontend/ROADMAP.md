@@ -104,6 +104,8 @@ The endpoint is live; the UI still runs on a mock.
 **Files:** `src/stores/music.js`
 
 - [ ] When `/stream` returns 404 `MUSIC_PIECE_NOT_FOUND`, skip to the next piece. The notification already shows.
+      The `/play` queue now leaves out pieces the caller can't play, so this only happens when a piece becomes
+      unavailable mid-session (see task 12).
 
 ### 7. Play Recently played cards on click
 
@@ -158,9 +160,42 @@ goes unused.
 **Done when:** the player and playlist track rows show who uploaded the piece, and clicking the name opens their
 profile.
 
+### 12. Gray out unavailable pieces
+
+Private pieces can now be shared inside private playlists. A private piece is playable by its uploader, and by
+everyone on a private playlist while its uploader is still the owner or an accepted member. When the uploader is
+removed or leaves, or the playlist goes public, the piece stays in the playlist but becomes unavailable.
+Every music piece now has `isAvailable`. It is only ever false in a playlist's track list (the overview and
+`/pieces`); the `/play` queue, `last-playback` and `recents` leave unavailable pieces out.
+
+**Files:** `src/views/PlaylistDetail.vue`, `src/stores/music.js`
+
+- [ ] Gray out rows where `isAvailable` is false and label them "UNAVAILABLE". Keep the title, cover and uploader.
+- [ ] Don't let an unavailable row start playback.
+- [ ] Keep the remove-track action on unavailable rows for the owner and editors; the endpoint allows it.
+- [ ] When starting playback from a row, pass that row's piece as `start` only if it's available.
+- [ ] Add `isAvailable: true` to the mock pieces in `src/utils/dashboardPreview.js` and the tests.
+
+**Done when:** after an editor is removed from a private playlist, their private pieces show grayed out to everyone
+else, can't be played, and the owner can remove them.
+
+### 13. Edit music pieces
+
+**Files:** `src/views/Dashboard.vue` (My uploads), new edit dialog
+**API:** `PUT /api/music-pieces/{musicPieceId}` (multipart: `name`, `artistId`, `isPublic`, `coverImage`, all optional)
+
+- [ ] Add an Edit action to each piece in My uploads, opening a dialog with name, artist (reuse `ArtistPicker.vue`),
+      public/private and cover.
+- [ ] Send only the fields that changed. Send the original cover image; the server crops it.
+- [ ] When switching a piece to private, warn that it becomes unavailable on public playlists and on playlists
+      the uploader no longer collaborates on.
+- [ ] The response is the updated piece; the `uploads` event also refreshes the row.
+
+**Done when:** an uploader can rename, re-artist, re-cover and change the visibility of a piece from My uploads.
+
 ## P2: Later
 
-### 12. Build the artist page
+### 14. Build the artist page
 
 **API:** `GET /api/artists/{artistId}`, `PUT`/`DELETE .../favorite`, `PUT .../pfp`, `PUT .../banner`,
 `GET /api/artists/favorites/{username}`
@@ -170,7 +205,7 @@ profile.
 - [ ] Link artist names in track rows, search results and Top artists to the page.
 - [ ] Show favourite artists on the profile.
 
-### 13. Autoplay (not decided)
+### 15. Autoplay (not decided)
 
 - [ ] Decide whether to play recommended music when the queue ends with repeat `OFF`, like Apple Music's infinity
       button. The backend has nothing for it yet.

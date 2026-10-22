@@ -150,6 +150,8 @@ public class PlaylistController {
                     A piece is skipped (counted in `failedCount`) when its id is unknown, it is already in the playlist, it is private,
                     or the playlist already has 10,000 tracks.
                     A private piece is only accepted from its uploader, and only into a non-public playlist or one the uploader owns.
+                    Other collaborators can play it while the playlist is private and the uploader is still the owner or an
+                    accepted member; otherwise it shows with `isAvailable` false.
                     Skipped pieces do not fail the request.
                     """)
     @ApiResponse(responseCode = "200", description = "OK, even if every piece was skipped")
@@ -169,7 +171,8 @@ public class PlaylistController {
             summary = "Remove a music piece from a playlist",
             description = """
                     Owner or accepted editor only. Removes the piece from the playlist; the piece itself stays in its
-                    uploader's uploads. Track-list and play-queue cursors handed out before the removal stay valid.
+                    uploader's uploads. Works on unavailable pieces (`isAvailable` false) too.
+                    Track-list and play-queue cursors handed out before the removal stay valid.
                     """)
     @ApiResponse(responseCode = "204", description = "Piece removed")
     @ApiResponse(responseCode = "404", description = "Playlist not found or caller can't edit it (PLAYLIST_NOT_FOUND), or piece not in the playlist (MUSIC_PIECE_NOT_FOUND)")
@@ -362,6 +365,7 @@ public class PlaylistController {
                     (earlier tracks are not queued). With shuffle `start` plays first, then every other track once in random order.
                     Later calls: pass only the `nextCursor`
                     from the previous page as `cursor`. Stop when `nextCursor` is null.
+                    Only pieces the caller can play are queued; unavailable ones are left out.
                     Stream each track with `/music-pieces/{id}/stream?playlistId=...`.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")

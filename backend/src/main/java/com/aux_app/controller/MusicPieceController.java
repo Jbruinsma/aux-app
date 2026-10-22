@@ -3,6 +3,7 @@ package com.aux_app.controller;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceCreationDetails;
+import com.aux_app.dto.music_piece.MusicPieceDetailsUpdate;
 import com.aux_app.dto.base.Message;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.music_piece.MusicPieceStream;
@@ -81,8 +82,8 @@ public class MusicPieceController {
                     Multipart fields:
                     - `name` (required): at most 200 chars, trimmed.
                     - `artistId` (required): id of an existing artist.
-                    - `isPublic`: `true` or `false`, defaults to `false`. Only the uploader can play a private piece,
-                      whatever playlists it is in.
+                    - `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its
+                      uploader, and by the other collaborators on private playlists the uploader adds it to.
                     - `mp3File` (required): an MP3, at most 25MB, 5 seconds to 10 minutes long. Counts toward the
                       caller's 2GB storage quota.
                     - `coverImage` (required): same rules as a playlist cover. Send the original image; the server
@@ -156,8 +157,78 @@ public class MusicPieceController {
                         user.getProfilePictureUrl(),
                         user.getUsername()
                 ),
-                false
+                false,
+                true
         );
+    }
+
+    @PutMapping(value = "/{musicPieceId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Edit a music piece's details",
+            description = """
+                    Partial update of a piece the caller uploaded. Every multipart field is optional; a missing or
+                    blank field leaves that value unchanged.
+                    - `name`: at most 200 chars, trimmed.
+                    - `artistId`: id of an existing artist.
+                    - `isPublic`: `true` or `false`. Making a piece private marks it unavailable on public playlists
+                      and on playlists where the caller is no longer a collaborator; it stays in those playlists.
+                    - `coverImage`: same rules as on upload. Replaces the old cover.
+                    The MP3 can't be replaced; upload a new piece instead. Returns the piece after the update.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "404", description = "Music piece not found or not the caller's (code MUSIC_PIECE_NOT_FOUND), or artist not found (code ARTIST_NOT_FOUND)")
+    @ApiResponse(responseCode = "413", description = "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
+    @ApiResponse(responseCode = "415", description = "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
+    public MusicPieceOverview editMusicPiece(
+            @CurrentUser UserEntity user,
+            @Parameter(description = "Public id of the music piece", example = "m_92kd0Z") @PathVariable String musicPieceId,
+            @Valid @ModelAttribute MusicPieceDetailsUpdate details
+    ) {
+        MusicPieceEntity piece = this.musicPieces.findByPublicId(musicPieceId);
+
+        // Someone else's piece looks missing, same as on /stream
+        if (piece == null || !piece.getUploaderUserId().equals(user.getUserId())) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "MUSIC_PIECE_NOT_FOUND",
+                    "Music piece not found",
+                    "musicPieceId"
+            );
+        }
+
+        if (details.artistId() != null) {
+            ArtistEntity artist = this.artists.findByPublicId(details.artistId());
+            if (artist == null) {
+                throw new AuxException(
+                        HttpStatus.NOT_FOUND,
+                        "ARTIST_NOT_FOUND",
+                        "Artist not found",
+                        "artistId"
+                );
+            }
+            piece.setArtistId(artist.getArtistId());
+        }
+        if (details.name() != null) {
+            piece.setName(details.name());
+        }
+        if (details.isPublic() != null) {
+            piece.setIsPublic(details.isPublic());
+        }
+
+        if (details.coverImage() != null) {
+            this.uploads.replaceMusicPieceCover(piece, details.coverImage());
+        } else {
+            this.musicPieces.save(piece);
+        }
+
+        // ponytail: only the uploader's rows refresh live; other listeners' recents catch up on their next refresh
+        events.publishEvent(new LiveEventService.Update(
+                Set.of(user.getUserId()),
+                Set.of(LiveEventService.Section.UPLOADS, LiveEventService.Section.RECENTS, LiveEventService.Section.TOP_ARTISTS)
+        ));
+
+        return this.musicPieces.findOverviews(List.of(piece.getPublicId()), user.getUserId()).getFirst();
     }
 
     @GetMapping("/{musicPieceId}/stream")
@@ -165,12 +236,13 @@ public class MusicPieceController {
             summary = "Get a playable URL for a music piece",
             description = """
                     Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.
-                    Fetch a new one when it runs out. A private piece is only playable by its uploader.
+                    Fetch a new one when it runs out. A private piece is only playable by its uploader, or from a
+                    private playlist whose owner or accepted member uploaded it (pass that `playlistId`).
                     Also returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`
                     when playing from a playlist; the playlist must contain the piece and be visible to the caller.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "404", description = "Music piece not found, or private and not the caller's (code MUSIC_PIECE_NOT_FOUND), or playlist not found, not visible, or without this piece (code PLAYLIST_NOT_FOUND)")
+    @ApiResponse(responseCode = "404", description = "Music piece not found, or not playable by the caller (code MUSIC_PIECE_NOT_FOUND), or playlist not found, not visible, or without this piece (code PLAYLIST_NOT_FOUND)")
     public MusicPieceStream getMusicPieceStream(
             @CurrentUser UserEntity user,
             @PathVariable String musicPieceId,
@@ -187,12 +259,13 @@ public class MusicPieceController {
             );
         }
 
-        String url = this.uploads.signedAudioUrl(piece, user.getUserId());
+        // Checks the caller can play the piece before any URL is signed
+        String playToken = this.playbackEvents.issuePlayToken(user, piece, playlistId);
 
         return new MusicPieceStream(
-                url,
+                this.uploads.signedAudioUrl(piece),
                 (int) UploadService.SIGNED_URL_TTL.toSeconds(),
-                this.playbackEvents.issuePlayToken(user, piece, playlistId)
+                playToken
         );
     }
 

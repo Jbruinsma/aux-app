@@ -37,7 +37,8 @@ public record UploadedMusicPiecesResponse(
                                     uploader.getProfilePictureUrl(),
                                     uploader.getUsername()
                             ),
-                            upload.isFavorite()
+                            upload.isFavorite(),
+                            true
                     );
                 })
                 .toList();

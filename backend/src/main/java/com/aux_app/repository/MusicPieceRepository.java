@@ -60,7 +60,8 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
     int countSearchMusicPieces(@Param("pattern") String pattern, @Param("userId") String userId);
 
     // Track-list view of the given pieces. `userId` is the internal user id, for `isFavorite`.
-    // Rows come back in no particular order; reorder them yourself.
+    // Rows come back in no particular order; reorder them yourself. Only pass pieces the user can play:
+    // every row is marked available.
     default List<MusicPieceOverview> findOverviews(List<String> publicIds, String userId) {
         if (publicIds.isEmpty()) {
             return List.of();
@@ -72,7 +73,8 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
                         row.getCoverUrl(),
                         new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
                         new PlaylistOwner(row.getUploaderId(), row.getUploaderPfpUrl(), row.getUploaderUsername()),
-                        Integer.valueOf(1).equals(row.getIsFavorite())))
+                        Integer.valueOf(1).equals(row.getIsFavorite()),
+                        true))
                 .toList();
     }
 

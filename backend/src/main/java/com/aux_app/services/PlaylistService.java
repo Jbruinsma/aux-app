@@ -219,8 +219,8 @@ public abstract class PlaylistService {
         int nextPosition = tracks.findLastPosition(playlist.getPlaylistId()) + 1;
         List<PlaylistTrackEntity> newTracks = new ArrayList<>();
 
-        // A private piece needs its uploader to add it, and a playlist that is not public or that they own,
-        // so its title never shows up on someone else's public playlist.
+        // A private piece needs its uploader to add it, and a playlist that is not public or that they own.
+        // Who can then play it is PlaybackEventService.isPlayable; everyone else sees it as unavailable.
         boolean canAddPrivate = !playlist.getIsPublic() || found.caller().isOwner(userId);
 
         for (MusicPieceEntity musicPiece : found.pieces()) {
@@ -416,7 +416,7 @@ public abstract class PlaylistService {
     ) {
         requireViewable(playlists.findPlaylistWithCaller(playlistId, user.getUserId()), user.getUserId());
 
-        List<PlaylistTrackRepository.TrackIdRow> rows = tracks.findTrackIdsInOrder(playlistId);
+        List<PlaylistTrackRepository.TrackIdRow> rows = tracks.findPlayableTrackIdsInOrder(playlistId, user.getUserId());
 
         QueueSlice slice;
         if (cursor == null) {
@@ -472,7 +472,7 @@ public abstract class PlaylistService {
         return new QueueCursor(false, 0, null, startPosition - 1, null);
     }
 
-    // `rows` must be in playlist order (findTrackIdsInOrder). On the first page the start piece goes first.
+    // `rows` must be in playlist order (findPlayableTrackIdsInOrder). On the first page the start piece goes first.
     static QueueSlice sliceQueue(
             List<PlaylistTrackRepository.TrackIdRow> rows,
             QueueCursor cursor,

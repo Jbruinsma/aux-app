@@ -291,11 +291,8 @@ public class UploadService {
         }
     }
 
-    // 404, not 403, so a private piece looks the same as a missing one (same as private playlists)
-    public String signedAudioUrl(MusicPieceEntity piece, String userId) {
-        if (!piece.isPlayableBy(userId)) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "MUSIC_PIECE_NOT_FOUND", "Music piece not found", "musicPieceId");
-        }
+    // Callers check the piece is playable first (PlaybackEventService.issuePlayToken)
+    public String signedAudioUrl(MusicPieceEntity piece) {
         return presigner.presignGetObject(p -> p
                         .signatureDuration(SIGNED_URL_TTL)
                         .getObjectRequest(get -> get.bucket(audioBucket).key(piece.getMp3FileUrl())))
