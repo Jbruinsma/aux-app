@@ -41,6 +41,7 @@ public abstract class PlaylistService {
     protected final UploadService uploads;
     protected final ApplicationEventPublisher events;
     protected final NotificationRepository notifications;
+    protected final TagService tags;
 
     protected PlaylistService(
             PlaylistRepository playlists,
@@ -49,7 +50,8 @@ public abstract class PlaylistService {
             PlaylistTrackRepository tracks,
             UploadService uploads,
             ApplicationEventPublisher events,
-            NotificationRepository notifications
+            NotificationRepository notifications,
+            TagService tags
     ) {
         this.playlists = playlists;
         this.savedPlaylists = savedPlaylists;
@@ -58,6 +60,7 @@ public abstract class PlaylistService {
         this.uploads = uploads;
         this.events = events;
         this.notifications = notifications;
+        this.tags = tags;
     }
 
     // Live updates (see LiveEventService). Each is delivered after the surrounding transaction commits, or right
@@ -97,6 +100,7 @@ public abstract class PlaylistService {
                 ),
                 playlist.totalPieces(),
                 playlist.isPublic(),
+                playlist.tags(),
                 playlist.owner(),
                 playlist.isSaved(),
                 playlist.pieces(),
@@ -120,6 +124,7 @@ public abstract class PlaylistService {
     }
 
     public PlaylistOverview createPlaylist(UserEntity owner, PlaylistCreationDetails playlistCreationDetails) {
+        List<String> newTags = Objects.requireNonNullElse(TagService.normalize(playlistCreationDetails.tags()), List.of());
         PlaylistEntity newPlaylist = new PlaylistEntity(
                 UUID.randomUUID().toString(),
                 owner.getUserId(),
@@ -131,6 +136,7 @@ public abstract class PlaylistService {
                 newPlaylist,
                 playlistCreationDetails.playlistCover()
         );
+        tags.setPlaylistTags(newPlaylist.getPlaylistId(), newTags);
 
         publishTo(owner.getUserId(), Section.LIBRARY);
 
@@ -142,6 +148,7 @@ public abstract class PlaylistService {
                 ),
                 0,
                 newPlaylist.getIsPublic(),
+                newTags,
                 new PlaylistOwner(
                         owner.getPublicId(),
                         owner.getProfilePictureUrl(),
@@ -171,6 +178,16 @@ public abstract class PlaylistService {
                     "isPublic"
             );
         }
+        if (playlistDetailsUpdate.tags() != null && !isOwner) {
+            throw new AuxException(
+                    HttpStatus.FORBIDDEN,
+                    "PLAYLIST_ACTION_FORBIDDEN",
+                    "Only the owner can change a playlist's tags",
+                    "tags"
+            );
+        }
+        // Before any write, so bad tags leave the playlist unchanged
+        List<String> newTags = TagService.normalize(playlistDetailsUpdate.tags());
 
         PlaylistEntity playlist = found.playlist();
 
@@ -185,6 +202,9 @@ public abstract class PlaylistService {
             uploads.replacePlaylistCover(playlist, playlistDetailsUpdate.playlistCover());
         } else {
             playlists.save(playlist);
+        }
+        if (newTags != null) {
+            tags.setPlaylistTags(playlist.getPlaylistId(), newTags);
         }
 
         publishToAudience(playlist.getPlaylistId(), Section.LIBRARY, Section.INVITES, Section.NOTIFICATIONS);

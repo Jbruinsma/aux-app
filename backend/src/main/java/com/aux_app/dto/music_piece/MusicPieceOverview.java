@@ -2,6 +2,8 @@ package com.aux_app.dto.music_piece;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.List;
+
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.users.PlaylistOwner;
 
@@ -12,6 +14,7 @@ public record MusicPieceOverview(
         @Schema(description = "Square WebP cover URL", example = "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String coverUrl,
         @Schema(description = "The artist") ArtistSummary artistSummary,
         @Schema(description = "The user who uploaded the piece") PlaylistOwner uploader,
+        @Schema(description = "Up to 5 lowercase tags, in name order; empty if none", example = "[\"chill\", \"lo-fi\"]") List<String> tags,
         @Schema(description = "Whether the caller has favorited the piece", example = "true") boolean isFavorite,
         @Schema(description = "Whether the caller can play the piece. Only false in a playlist's track list: the piece is private and the playlist is public, or its uploader is no longer the owner or an accepted member. Show it grayed out; it never appears in the play queue", example = "true") boolean isAvailable
 ) {

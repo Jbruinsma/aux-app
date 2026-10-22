@@ -13,6 +13,7 @@ public record PlaylistOverview(
         @JsonUnwrapped CorePlaylist playlist,
         @Schema(description = "Number of tracks in the playlist", example = "12") int totalPieces,
         @Schema(description = "Whether anyone can open the playlist; private ones are only for the owner and accepted members", example = "true") boolean isPublic,
+        @Schema(description = "Up to 5 lowercase tags set by the owner, in name order; empty if none", example = "[\"chill\", \"late night\"]") List<String> tags,
         @Schema(description = "The playlist's owner") PlaylistOwner playlistOwner,
         @Schema(description = "Whether the caller has saved the playlist", example = "false") boolean isSaved,
         @Schema(description = "First page of tracks in playlist order; empty for a new playlist") List<MusicPieceOverview> musicPieces,

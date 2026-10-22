@@ -22,7 +22,9 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
-                        THEN p.public_id END AS playlistId
+                        THEN p.public_id END AS playlistId,
+            """ + TagRepository.PIECE_TAGS + """
+             AS tags
             FROM play_events pe
             JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
             JOIN artists a ON a.artist_id = mp.artist_id
@@ -55,7 +57,9 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
-                        THEN p.public_id END AS playlistId
+                        THEN p.public_id END AS playlistId,
+            """ + TagRepository.PIECE_TAGS + """
+             AS tags
             FROM latest l
             JOIN music_pieces mp ON mp.music_piece_id = l.music_piece_id
             JOIN artists a ON a.artist_id = mp.artist_id
@@ -86,5 +90,6 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         String getUploaderPfpUrl();
         Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
         String getPlaylistId();
+        String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }
 }

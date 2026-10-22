@@ -168,7 +168,7 @@ public class LiveEventService {
             case RECENTS -> new RecentListeningResponse(playbackEvents.retrieveRecentPlaybacks(userId));
             case TOP_ARTISTS -> new TopArtistsResponse(users.findTopArtists(userId));
             case LIBRARY -> users.findLibrary(userId);
-            case UPLOADS -> UploadedMusicPiecesResponse.of(musicPieces.findUploadsWithArtist(userId));
+            case UPLOADS -> UploadedMusicPiecesResponse.of(musicPieces.findUploads(userId));
             case NOTIFICATIONS -> notifications.page(userId, null);
         };
     }

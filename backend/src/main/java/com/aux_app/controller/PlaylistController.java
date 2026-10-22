@@ -82,6 +82,8 @@ public class PlaylistController {
                     - `playlistCover` (required): a JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256.
                       Send the original image; do NOT crop it on the frontend. The server applies EXIF rotation,
                       center-crops to a square, resizes to at most 1024x1024, and stores it as WebP.
+                    - `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24
+                      letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.
                     The caller owns the new playlist. Returns it with no tracks.
                     """)
     @ApiResponse(responseCode = "200", description = "Playlist created; body is the new, empty playlist")
@@ -99,16 +101,18 @@ public class PlaylistController {
     @Operation(
             summary = "Edit a playlist's details",
             description = """
-                    Partial update of a playlist the caller owns or can edit (accepted EDITOR). Only the owner can change `isPublic`. Every multipart field is optional; a missing or
+                    Partial update of a playlist the caller owns or can edit (accepted EDITOR). Only the owner can change `isPublic` and `tags`. Every multipart field is optional; a missing or
                     blank field leaves that value unchanged.
                     - `playlistName`: at most 36 chars, trimmed.
                     - `isPublic`: `true` or `false`.
                     - `playlistCover`: same rules as on create. Replaces the old cover.
+                    - `tags`: same rules as on create. Replaces all tags; send a single blank `tags` value to remove
+                      them all.
                     Returns the playlist's id, name and cover URL after the update.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)")
-    @ApiResponse(responseCode = "403", description = "Editor tried to change `isPublic` (code PLAYLIST_ACTION_FORBIDDEN)")
+    @ApiResponse(responseCode = "403", description = "Editor tried to change `isPublic` or `tags` (code PLAYLIST_ACTION_FORBIDDEN)")
     @ApiResponse(responseCode = "404", description = "Playlist not found, or caller can't edit it (code PLAYLIST_NOT_FOUND)")
     @ApiResponse(responseCode = "413", description = "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
