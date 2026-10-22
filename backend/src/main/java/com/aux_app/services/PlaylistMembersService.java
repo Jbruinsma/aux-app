@@ -41,9 +41,10 @@ public class PlaylistMembersService extends PlaylistService {
             PlaylistMemberRepository members,
             EmailService emails,
             ApplicationEventPublisher events,
-            NotificationRepository notifications
+            NotificationRepository notifications,
+            TagService tags
     ) {
-        super(playlists, savedPlaylists, musicPieces, tracks, uploads, events, notifications);
+        super(playlists, savedPlaylists, musicPieces, tracks, uploads, events, notifications, tags);
         this.members = members;
         this.emails = emails;
     }

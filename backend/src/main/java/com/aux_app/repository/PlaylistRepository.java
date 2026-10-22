@@ -56,6 +56,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                 first.getPlaylistCoverUrl(),
                 first.getPlaylistName(),
                 Integer.valueOf(1).equals(first.getIsPublic()),
+                TagRepository.split(first.getPlaylistTags()),
                 new PlaylistOwner(first.getOwnerId(), first.getOwnerPfpUrl(), first.getOwnerUsername()),
                 Integer.valueOf(1).equals(first.getIsSaved()),
                 first.getPieceCount(),
@@ -90,6 +91,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                     row.getPieceCoverUrl(),
                     new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
                     new PlaylistOwner(row.getUploaderId(), row.getUploaderPfpUrl(), row.getUploaderUsername()),
+                    TagRepository.split(row.getPieceTags()),
                     Integer.valueOf(1).equals(row.getIsFavorite()),
                     Integer.valueOf(1).equals(row.getIsAvailable())));
         }
@@ -124,7 +126,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                         THEN 1 ELSE 0 END AS isAvailable,
                    pm.status AS callerStatus,
                    pm.permission AS callerPermission,
-                   (SELECT COUNT(*) FROM playlist_tracks c WHERE c.playlist_id = p.playlist_id) AS pieceCount
+                   (SELECT COUNT(*) FROM playlist_tracks c WHERE c.playlist_id = p.playlist_id) AS pieceCount,
+            """ + TagRepository.PLAYLIST_TAGS + " AS playlistTags, " + TagRepository.PIECE_TAGS + """
+             AS pieceTags
             FROM playlists p
             JOIN users u ON u.user_id = p.owner_id
             LEFT JOIN user_saved_playlists usp ON usp.playlist_id = p.playlist_id AND usp.user_id = :userId
@@ -148,6 +152,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         String getPlaylistCoverUrl();
         String getOwnerUsername();
         Integer getPieceCount();
+        String getTags(); // TagRepository.PLAYLIST_TAGS; read with TagRepository.split
     }
 
     interface PlaylistWithTracksRow {
@@ -174,6 +179,8 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         String getCallerStatus(); // caller's playlist_members row; null if they have none
         String getCallerPermission();
         Integer getPieceCount(); // every track in the playlist, not just this page
+        String getPlaylistTags(); // TagRepository.PLAYLIST_TAGS; read with TagRepository.split
+        String getPieceTags(); // TagRepository.PIECE_TAGS, null on the row of a playlist with no tracks
     }
 
     record PlaylistPage(
@@ -181,6 +188,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             String playlistCoverUrl,
             String playlistName,
             boolean isPublic,
+            List<String> tags,
             PlaylistOwner owner,
             boolean isSaved,
             int totalPieces,
@@ -279,7 +287,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
     @Query(value = """
             SELECT p.public_id AS playlistId, p.playlist_name AS playlistName, p.playlist_cover_url AS playlistCoverUrl,
                    o.username AS ownerUsername,
-                   (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS pieceCount
+                   (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS pieceCount,
+            """ + TagRepository.PLAYLIST_TAGS + """
+             AS tags
             FROM playlists p
             JOIN users o ON o.user_id = p.owner_id
             WHERE (p.is_public = 1 OR p.owner_id = :userId) AND p.playlist_name LIKE :pattern ESCAPE '\\'

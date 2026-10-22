@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 // Partial update: a null field means "leave unchanged"
 @Schema(description = "Multipart form for editing a playlist; a missing field leaves that value unchanged")
 public record PlaylistDetailsUpdate(
@@ -18,7 +20,11 @@ public record PlaylistDetailsUpdate(
 
         // Empty, size and format are checked by UploadService
         @Schema(description = "New cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Omit to keep the current cover", type = "string", format = "binary")
-        MultipartFile playlistCover
+        MultipartFile playlistCover,
+
+        // Owner only. Normalized by TagService.normalize, which keeps null as "unchanged"
+        @Schema(description = "Owner only. Replaces all tags, one value per tag (repeat the field); same rules as on create. Omit to keep the current tags; send a single blank value to remove them all", example = "[\"chill\", \"late night\"]")
+        List<String> tags
 ) {
     // Runs before validation, so a blank name counts as unchanged instead of failing @Size
     public PlaylistDetailsUpdate {

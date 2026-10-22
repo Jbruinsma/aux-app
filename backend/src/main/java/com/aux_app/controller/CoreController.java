@@ -12,6 +12,7 @@ import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.PlaylistRepository;
+import com.aux_app.repository.TagRepository;
 import com.aux_app.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -200,7 +201,8 @@ public class CoreController {
                                             m.getArtistId(),
                                             m.getArtistName(),
                                             m.getArtistPfpUrl()
-                                    )
+                                    ),
+                                    TagRepository.split(m.getTags())
                                     )
                             ).toList());
             case PLAYLISTS -> new SearchEntity<>(
@@ -208,7 +210,7 @@ public class CoreController {
                     playlists.searchPlaylists(pattern, userId, limit, offset).stream()
                             .map(p -> new PlaylistSearchResult(
                                     p.getPlaylistId(), p.getPlaylistName(), p.getPlaylistCoverUrl(), p.getOwnerUsername(),
-                                    p.getPieceCount()))
+                                    p.getPieceCount(), TagRepository.split(p.getTags())))
                             .toList());
         };
     }

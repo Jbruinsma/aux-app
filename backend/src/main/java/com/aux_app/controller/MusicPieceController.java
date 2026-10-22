@@ -1,7 +1,6 @@
 package com.aux_app.controller;
 
 import com.aux_app.auth.CurrentUser;
-import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceCreationDetails;
 import com.aux_app.dto.music_piece.MusicPieceDetailsUpdate;
 import com.aux_app.dto.base.Message;
@@ -9,7 +8,6 @@ import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.music_piece.MusicPieceStream;
 import com.aux_app.dto.music_piece.PlayEventCreation;
 import com.aux_app.dto.music_piece.UploadedMusicPiecesResponse;
-import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.UserEntity;
@@ -19,6 +17,7 @@ import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
+import com.aux_app.services.TagService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +41,7 @@ public class MusicPieceController {
     private final ArtistRepository artists;
     private final MusicPieceRepository musicPieces;
     private final PlaybackEventService playbackEvents;
+    private final TagService tags;
     private final ApplicationEventPublisher events;
 
     public MusicPieceController(
@@ -50,6 +50,7 @@ public class MusicPieceController {
             ArtistRepository artists,
             MusicPieceRepository musicPieces,
             PlaybackEventService playbackEvents,
+            TagService tags,
             ApplicationEventPublisher events
     ) {
         this.users = users;
@@ -57,6 +58,7 @@ public class MusicPieceController {
         this.artists = artists;
         this.musicPieces = musicPieces;
         this.playbackEvents = playbackEvents;
+        this.tags = tags;
         this.events = events;
     }
 
@@ -72,7 +74,7 @@ public class MusicPieceController {
     public UploadedMusicPiecesResponse getMusicPieces(
             @CurrentUser UserEntity user
     ) {
-        return UploadedMusicPiecesResponse.of(musicPieces.findUploadsWithArtist(user.getUserId()));
+        return UploadedMusicPiecesResponse.of(musicPieces.findUploads(user.getUserId()));
     }
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -88,6 +90,8 @@ public class MusicPieceController {
                       caller's 2GB storage quota.
                     - `coverImage` (required): same rules as a playlist cover. Send the original image; the server
                       crops it to a square and stores it as WebP.
+                    - `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24
+                      letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.
                     The caller is the uploader. Returns the new piece; `isFavorite` is always `false`.
                     """)
     @ApiResponse(responseCode = "200", description = "Music piece created; body is the new piece")
@@ -99,6 +103,8 @@ public class MusicPieceController {
             @CurrentUser UserEntity user,
             @Valid @ModelAttribute MusicPieceCreationDetails musicPieceCreationDetails
     ) {
+        // Before the upload, so bad tags fail fast
+        List<String> newTags = TagService.normalize(musicPieceCreationDetails.tags());
 
         ArtistEntity artist = this.artists.findByPublicId(musicPieceCreationDetails.artistId());
 
@@ -139,27 +145,14 @@ public class MusicPieceController {
             this.uploads.deleteTrack(newMusicPiece.getMp3FileUrl());
             throw e;
         }
+        if (newTags != null) {
+            this.tags.setPieceTags(newMusicPiece.getMusicPieceId(), newTags);
+        }
 
         // Live-refreshes the caller's uploads row (see LiveEventService)
         events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.UPLOADS)));
 
-        return new MusicPieceOverview(
-                newMusicPiece.getPublicId(),
-                newMusicPiece.getName(),
-                newMusicPiece.getCoverUrl(),
-                new ArtistSummary(
-                        artist.getPublicId(),
-                        artist.getArtistName(),
-                        artist.getArtistPfpUrl()
-                ),
-                new PlaylistOwner(
-                        user.getPublicId(),
-                        user.getProfilePictureUrl(),
-                        user.getUsername()
-                ),
-                false,
-                true
-        );
+        return this.musicPieces.findOverviews(List.of(newMusicPiece.getPublicId()), user.getUserId()).getFirst();
     }
 
     @PutMapping(value = "/{musicPieceId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -173,6 +166,8 @@ public class MusicPieceController {
                     - `isPublic`: `true` or `false`. Making a piece private marks it unavailable on public playlists
                       and on playlists where the caller is no longer a collaborator; it stays in those playlists.
                     - `coverImage`: same rules as on upload. Replaces the old cover.
+                    - `tags`: same rules as on upload. Replaces all tags; send a single blank `tags` value to remove
+                      them all.
                     The MP3 can't be replaced; upload a new piece instead. Returns the piece after the update.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
@@ -197,6 +192,9 @@ public class MusicPieceController {
             );
         }
 
+        // Before any write, so bad tags leave the piece unchanged
+        List<String> newTags = TagService.normalize(details.tags());
+
         if (details.artistId() != null) {
             ArtistEntity artist = this.artists.findByPublicId(details.artistId());
             if (artist == null) {
@@ -220,6 +218,9 @@ public class MusicPieceController {
             this.uploads.replaceMusicPieceCover(piece, details.coverImage());
         } else {
             this.musicPieces.save(piece);
+        }
+        if (newTags != null) {
+            this.tags.setPieceTags(piece.getMusicPieceId(), newTags);
         }
 
         // ponytail: only the uploader's rows refresh live; other listeners' recents catch up on their next refresh

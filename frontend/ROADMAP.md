@@ -182,7 +182,8 @@ else, can't be played, and the owner can remove them.
 ### 13. Edit music pieces
 
 **Files:** `src/views/Dashboard.vue` (My uploads), new edit dialog
-**API:** `PUT /api/music-pieces/{musicPieceId}` (multipart: `name`, `artistId`, `isPublic`, `coverImage`, all optional)
+**API:** `PUT /api/music-pieces/{musicPieceId}` (multipart: `name`, `artistId`, `isPublic`, `coverImage`, `tags`, all
+optional)
 
 - [ ] Add an Edit action to each piece in My uploads, opening a dialog with name, artist (reuse `ArtistPicker.vue`),
       public/private and cover.
@@ -193,9 +194,39 @@ else, can't be played, and the owner can remove them.
 
 **Done when:** an uploader can rename, re-artist, re-cover and change the visibility of a piece from My uploads.
 
+### 14. Add tags to pieces and playlists
+
+Pieces and playlists can now have up to 5 tags: curated genres and moods, or anything the user types. Tags are
+optional, but nudge users to add them, since recommendations will use them later. Every music piece, the playlist
+overview, and music and playlist search results now return `tags`, a list of lowercase strings that is empty when
+there are none. Wait until `tags` shows up in the OpenAPI docs before starting.
+
+**Files:** new `src/components/TagPicker.vue`, `src/views/UploadMusic.vue`, `src/views/CreatePlaylist.vue`,
+`src/views/EditPlaylist.vue`, `src/views/PlaylistDetail.vue`, `src/views/Dashboard.vue`
+**API:** `GET /api/tags?q=`, and the `tags` field on `POST /api/music-pieces/create`,
+`PUT /api/music-pieces/{musicPieceId}`, `POST /api/playlists` and `PUT /api/playlists/{playlistId}`
+
+- [ ] Build `TagPicker.vue` with chips and a text input. Before the user types, show suggestions from `GET /api/tags`
+      with no `q`. As they type, pass the text as `q`. Let Enter add a tag that isn't suggested. Stop at 5 tags.
+- [ ] Check tags the way the server does: lowercase, 2-24 letters, digits, spaces, `&` or `-`. Show a
+      `400 INVALID_FIELD` on `tags` under the picker anyway, because only the server checks for profanity.
+- [ ] Append one `tags` form field per tag. Never join tags with commas.
+- [ ] Add the picker to UploadMusic and CreatePlaylist. Saving without tags must still work. Show a hint such as
+      "Add tags to help people find this" while no tags are picked.
+- [ ] Add the picker to EditPlaylist, for the owner only: an editor who sends `tags` gets
+      `403 PLAYLIST_ACTION_FORBIDDEN`. Leave `tags` out when the tags didn't change. To remove every tag, send one
+      empty `tags` value. The `PUT` response has no `tags`, so keep the list that was sent.
+- [ ] Add the picker to the piece Edit dialog from task 13.
+- [ ] Show the playlist's tags in the PlaylistDetail header, and each piece's tags in search results.
+- [ ] When `tags` is empty, show an "Add tags" link on My uploads cards and on PlaylistDetail for the owner.
+- [ ] Add `tags: []` to the mock pieces in `src/utils/dashboardPreview.js` and in the tests.
+
+**Done when:** a user can tag a new upload and a new playlist, the tags show on the playlist page and in search, and
+saving without tags still works.
+
 ## P2: Later
 
-### 14. Build the artist page
+### 15. Build the artist page
 
 **API:** `GET /api/artists/{artistId}`, `PUT`/`DELETE .../favorite`, `PUT .../pfp`, `PUT .../banner`,
 `GET /api/artists/favorites/{username}`
@@ -205,7 +236,7 @@ else, can't be played, and the owner can remove them.
 - [ ] Link artist names in track rows, search results and Top artists to the page.
 - [ ] Show favourite artists on the profile.
 
-### 15. Autoplay (not decided)
+### 16. Autoplay (not decided)
 
 - [ ] Decide whether to play recommended music when the queue ends with repeat `OFF`, like Apple Music's infinity
       button. The backend has nothing for it yet.
