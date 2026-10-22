@@ -13,6 +13,7 @@ import javax.crypto.SecretKey;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.users.LastPlayback;
+import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.*;
 import com.aux_app.repository.*;
 import org.jspecify.annotations.Nullable;
@@ -87,17 +88,27 @@ public class PlaybackEventService {
                         row.getMusicPieceId(),
                         row.getName(),
                         row.getCoverUrl(),
-                        new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
-                        row.getIsFavorite() == 1
+                        new ArtistSummary(
+                                row.getArtistId(),
+                                row.getArtistName(),
+                                row.getArtistPfpUrl()
+                        ),
+                        new PlaylistOwner(
+                                row.getUploaderId(),
+                                row.getUploaderPfpUrl(),
+                                row.getUploaderUsername()
+                        ),
+                        row.getIsFavorite() == 1,
+                        true // findLastPlayback and findRecentPlaybacks only return pieces the user can play
                 ),
                 row.getPlaylistId()
         );
     }
 
+    // Also the check for /stream: throws unless the user can play the piece, from that playlist if one is given
     public String issuePlayToken(UserEntity user, MusicPieceEntity piece, @Nullable String publicPlaylistId) {
-        if (publicPlaylistId != null) {
-            findContextPlaylist(user, piece, publicPlaylistId);
-        }
+        PlaylistEntity playlist = publicPlaylistId == null ? null : findContextPlaylist(user, piece, publicPlaylistId);
+        requirePlayable(user, piece, playlist);
         Instant now = Instant.now();
         return Jwts.builder()
                 .issuer(ISSUER)
@@ -130,11 +141,12 @@ public class PlaybackEventService {
         }
 
         MusicPieceEntity piece = musicPieces.findByPublicId(publicMusicPieceId);
-        if (piece == null || !piece.isPlayableBy(user.getUserId())) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "MUSIC_PIECE_NOT_FOUND", "Music piece not found", "musicPieceId");
+        if (piece == null) {
+            throw musicPieceNotFound();
         }
         String publicPlaylistId = claims.get("playlistId", String.class);
         PlaylistEntity playlist = publicPlaylistId == null ? null : findContextPlaylist(user, piece, publicPlaylistId);
+        requirePlayable(user, piece, playlist);
 
         PlayEventEntity last = playEvents.findFirstByUserIdOrderByPlayedAtDesc(user.getUserId());
         int seconds = creditedSeconds(
@@ -187,12 +199,37 @@ public class PlaybackEventService {
         return playlist;
     }
 
+    // 404, not 403, so an unplayable piece looks the same as a missing one (same as private playlists)
+    private void requirePlayable(UserEntity user, MusicPieceEntity piece, @Nullable PlaylistEntity playlist) {
+        boolean uploaderCollaborates = playlist != null && isCollaborator(playlist, piece.getUploaderUserId());
+        if (!isPlayable(piece, user.getUserId(), playlist, uploaderCollaborates)) {
+            throw musicPieceNotFound();
+        }
+    }
+
+    // The visibility rule for pieces. A piece is playable when it is public, the user uploaded it, or it is played
+    // from a private playlist its uploader still collaborates on (owner or accepted member). Otherwise a track list
+    // shows it with isAvailable false. The track-list, queue and recents queries repeat this rule in SQL.
+    static boolean isPlayable(MusicPieceEntity piece, String userId, @Nullable PlaylistEntity playlist, boolean uploaderCollaborates) {
+        return piece.isPlayableBy(userId)
+                || (playlist != null && !Boolean.TRUE.equals(playlist.getIsPublic()) && uploaderCollaborates);
+    }
+
     private boolean canView(UserEntity user, PlaylistEntity playlist) {
-        if (Boolean.TRUE.equals(playlist.getIsPublic()) || playlist.getOwnerId().equals(user.getUserId())) {
+        return Boolean.TRUE.equals(playlist.getIsPublic()) || isCollaborator(playlist, user.getUserId());
+    }
+
+    // Owner or accepted member
+    private boolean isCollaborator(PlaylistEntity playlist, String userId) {
+        if (playlist.getOwnerId().equals(userId)) {
             return true;
         }
-        PlaylistMemberEntity member = members.findByPlaylistIdAndUserId(playlist.getPlaylistId(), user.getUserId());
+        PlaylistMemberEntity member = members.findByPlaylistIdAndUserId(playlist.getPlaylistId(), userId);
         return member != null && member.getStatus() == PlaylistMemberStatus.ACCEPTED;
+    }
+
+    private static AuxException musicPieceNotFound() {
+        return new AuxException(HttpStatus.NOT_FOUND, "MUSIC_PIECE_NOT_FOUND", "Music piece not found", "musicPieceId");
     }
 
     private static AuxException invalidToken() {

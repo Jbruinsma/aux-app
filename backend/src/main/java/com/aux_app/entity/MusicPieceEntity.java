@@ -5,6 +5,7 @@ import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 // Maps the `music_pieces` table
@@ -82,11 +83,17 @@ public class MusicPieceEntity {
     public void setIsPublic(Boolean isPublic) { this.isPublic = isPublic; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public void setName(String name) { this.name = name; }
+    public void setArtistId(String artistId) { this.artistId = artistId; }
     public void setMp3FileUrl(String mp3FileUrl) { this.mp3FileUrl = mp3FileUrl; }
     public void setDurationSeconds(Integer durationSeconds) { this.durationSeconds = durationSeconds; }
     public void setSizeBytes(Integer sizeBytes) { this.sizeBytes = sizeBytes; }
 
+    // Outside any playlist. Inside one, see PlaybackEventService.isPlayable
     public boolean isPlayableBy(String userId) {
         return Boolean.TRUE.equals(isPublic) || uploaderUserId.equals(userId);
     }
+
+    // Only runs when a column actually changed, so a no-op edit leaves it alone
+    @PreUpdate
+    void touch() { updatedAt = Instant.now(); }
 }

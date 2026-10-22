@@ -8,6 +8,6 @@ import java.util.List;
 
 @Schema(description = "One page of a playlist's play queue")
 public record PlaylistQueuePage(
-        @Schema(description = "Next tracks to play, in play order") List<MusicPieceOverview> musicPieces,
+        @Schema(description = "Next tracks, in order. Track-list pages include unavailable pieces (`isAvailable` false); the play queue leaves them out") List<MusicPieceOverview> musicPieces,
         @Schema(description = "Send back as `cursor` to get the next page; null when the queue is done", nullable = true) String nextCursor
 ) {}
