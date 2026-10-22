@@ -14,6 +14,7 @@ import UploadMusic from '@/views/UploadMusic.vue'
 import AddFriends from '@/views/AddFriends.vue'
 import EditPlaylist from '@/views/EditPlaylist.vue'
 import Onboarding from '@/views/Onboarding.vue'
+import Discover from '@/views/Discover.vue'
 import { useUserStore } from '@/stores/user.js'
 
 const routes = [
@@ -57,6 +58,12 @@ const routes = [
     path: '/upload',
     name: 'Upload',
     component: UploadMusic,
+    beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
+  },
+  {
+    path: '/discover/:id',
+    name: 'Discover',
+    component: Discover,
     beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
   },
   { path: '/:username', name: 'Profile', component: PublicProfile },

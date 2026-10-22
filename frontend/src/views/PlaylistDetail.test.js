@@ -115,8 +115,26 @@ it("removes a song from an editor's row menu without touching the next-page curs
   expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('/api/playlists/p1/pieces?cursor=c1'))
 })
 
-it('hides the row menu from listeners', async () => {
+it('gives listeners a row menu with Discover but not Remove', async () => {
   fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER' }))
+  await render()
+  await wrapper.get('button[aria-label="More options for Song 1"]').trigger('click')
+  const menu = wrapper.get('#track-menu-m1').text()
+  expect(menu).toContain('Discover similar songs')
+  expect(menu).not.toContain('Remove from playlist')
+})
+
+it('offers Discover above Remove to editors, and no Discover on unavailable songs', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'EDITOR', musicPieces: [track(1), { ...track(2), isAvailable: false }] }))
+  await render()
+  await wrapper.get('button[aria-label="More options for Song 1"]').trigger('click')
+  expect(wrapper.findAll('#track-menu-m1 li').map((item) => item.text())).toEqual(['Discover similar songs', 'Remove from playlist'])
+  await wrapper.get('button[aria-label="More options for Song 2"]').trigger('click')
+  expect(wrapper.get('#track-menu-m2').text()).not.toContain('Discover')
+})
+
+it('has no row menu for a listener on an unavailable song', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER', musicPieces: [{ ...track(1), isAvailable: false }] }))
   await render()
   expect(wrapper.find('.track-more').exists()).toBe(false)
 })

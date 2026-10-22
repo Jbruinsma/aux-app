@@ -247,6 +247,7 @@ public class MusicPieceController {
                     Leaves out the piece itself, the caller's own uploads and favorites, and pieces the caller played
                     in the last 7 days. Equal matches come back in random order, so results vary between calls.
                     The piece must be playable by the caller on its own: public, or uploaded by the caller.
+                    `seed` is that piece, so a page opened straight from a link can show it.
                     """)
     @ApiResponse(responseCode = "200", description = "OK; `musicPieces` is empty if nothing fits")
     @ApiResponse(responseCode = "404", description = "Music piece not found or not playable by the caller (code MUSIC_PIECE_NOT_FOUND)")
@@ -265,7 +266,10 @@ public class MusicPieceController {
             );
         }
 
-        return new DiscoverResponse(this.recommendations.discover(piece, user));
+        return new DiscoverResponse(
+                this.musicPieces.findOverviews(List.of(piece.getPublicId()), user.getUserId()).getFirst(),
+                this.recommendations.discover(piece, user)
+        );
     }
 
     @GetMapping("/{musicPieceId}/stream")

@@ -190,7 +190,7 @@
                 </span>
               </button>
 
-              <div v-if="canEdit" class="menu-wrap track-menu-wrap">
+              <div v-if="canEdit || track.isAvailable !== false" class="menu-wrap track-menu-wrap">
                 <button
                   type="button"
                   class="track-more"
@@ -205,7 +205,15 @@
                   </svg>
                 </button>
                 <ul v-if="trackMenuFor === track.musicPieceId" :id="`track-menu-${track.musicPieceId}`" class="menu track-menu">
-                  <li>
+                  <li v-if="track.isAvailable !== false">
+                    <router-link class="menu-item" :to="{ name: 'Discover', params: { id: track.musicPieceId } }">
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" /><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+                      </svg>
+                      Discover similar songs
+                    </router-link>
+                  </li>
+                  <li v-if="canEdit">
                     <button type="button" class="menu-item" :disabled="!!removingId" @click="removeTrack(track)">
                       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M8 12h8" /></svg>
                       {{ removingId === track.musicPieceId ? 'Removing…' : 'Remove from playlist' }}
@@ -448,7 +456,8 @@ function closeMenuOnEscape(event) {
   trackMenuFor.value = null
 }
 
-/* Each song's ⋯ menu, for owners and editors. One open at a time, keyed by musicPieceId */
+/* Each song's ⋯ menu: Discover for anyone who can play the song, Remove for owners and editors. One open at a time,
+   keyed by musicPieceId */
 
 const trackMenuFor = ref(null)
 const removingId = ref(null)
