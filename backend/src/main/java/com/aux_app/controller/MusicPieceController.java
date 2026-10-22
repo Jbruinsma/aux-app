@@ -3,6 +3,7 @@ package com.aux_app.controller;
 import com.aux_app.auth.CurrentUser;
 import com.aux_app.dto.music_piece.MusicPieceCreationDetails;
 import com.aux_app.dto.music_piece.MusicPieceDetailsUpdate;
+import com.aux_app.dto.music_piece.DiscoverResponse;
 import com.aux_app.dto.base.Message;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.music_piece.MusicPieceStream;
@@ -17,6 +18,7 @@ import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
+import com.aux_app.services.RecommendationService;
 import com.aux_app.services.TagService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +44,7 @@ public class MusicPieceController {
     private final MusicPieceRepository musicPieces;
     private final PlaybackEventService playbackEvents;
     private final TagService tags;
+    private final RecommendationService recommendations;
     private final ApplicationEventPublisher events;
 
     public MusicPieceController(
@@ -51,6 +54,7 @@ public class MusicPieceController {
             MusicPieceRepository musicPieces,
             PlaybackEventService playbackEvents,
             TagService tags,
+            RecommendationService recommendations,
             ApplicationEventPublisher events
     ) {
         this.users = users;
@@ -59,6 +63,7 @@ public class MusicPieceController {
         this.musicPieces = musicPieces;
         this.playbackEvents = playbackEvents;
         this.tags = tags;
+        this.recommendations = recommendations;
         this.events = events;
     }
 
@@ -230,6 +235,37 @@ public class MusicPieceController {
         ));
 
         return this.musicPieces.findOverviews(List.of(piece.getPublicId()), user.getUserId()).getFirst();
+    }
+
+    @GetMapping("/{musicPieceId}/discover")
+    @Operation(
+            summary = "Discover music like a piece",
+            description = """
+                    Up to 100 public pieces like the given one, best match first. Pieces score for sharing its tags,
+                    for sharing the artist's most used tags, and for being played by the same listeners. At most 3
+                    are by the same artist. When too few match, the most played pieces of the last 30 days fill in.
+                    Leaves out the piece itself, the caller's own uploads and favorites, and pieces the caller played
+                    in the last 7 days. Equal matches come back in random order, so results vary between calls.
+                    The piece must be playable by the caller on its own: public, or uploaded by the caller.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK; `musicPieces` is empty if nothing fits")
+    @ApiResponse(responseCode = "404", description = "Music piece not found or not playable by the caller (code MUSIC_PIECE_NOT_FOUND)")
+    public DiscoverResponse discover(
+            @CurrentUser UserEntity user,
+            @Parameter(description = "Public id of the music piece", example = "m_92kd0Z") @PathVariable String musicPieceId
+    ) {
+        MusicPieceEntity piece = this.musicPieces.findByPublicId(musicPieceId);
+
+        if (piece == null || !piece.isPlayableBy(user.getUserId())) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "MUSIC_PIECE_NOT_FOUND",
+                    "Music piece not found",
+                    "musicPieceId"
+            );
+        }
+
+        return new DiscoverResponse(this.recommendations.discover(piece, user));
     }
 
     @GetMapping("/{musicPieceId}/stream")
