@@ -5394,8 +5394,7 @@
         }
       },
       "PlaylistOwner" : {
-        "type" : "object",
-        "description" : "A user shown on a playlist: its owner, or the user on a membership",
+        "description" : "A user shown next to content: a playlist's owner or member, a notification's actor, or a music piece's uploader",
         "properties" : {
           "userId" : {
             "type" : "string",
@@ -5495,6 +5494,9 @@
           },
           "artistSummary" : {
             "$ref" : "#/components/schemas/ArtistSummary"
+          },
+          "uploader" : {
+            "$ref" : "#/components/schemas/PlaylistOwner"
           },
           "isFavorite" : {
             "type" : "boolean",

@@ -13,6 +13,7 @@ import javax.crypto.SecretKey;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.users.LastPlayback;
+import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.*;
 import com.aux_app.repository.*;
 import org.jspecify.annotations.Nullable;
@@ -87,7 +88,16 @@ public class PlaybackEventService {
                         row.getMusicPieceId(),
                         row.getName(),
                         row.getCoverUrl(),
-                        new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
+                        new ArtistSummary(
+                                row.getArtistId(),
+                                row.getArtistName(),
+                                row.getArtistPfpUrl()
+                        ),
+                        new PlaylistOwner(
+                                row.getUploaderId(),
+                                row.getUploaderPfpUrl(),
+                                row.getUploaderUsername()
+                        ),
                         row.getIsFavorite() == 1
                 ),
                 row.getPlaylistId()

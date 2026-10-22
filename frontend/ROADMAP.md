@@ -5,7 +5,7 @@ ticked, delete the task (git history keeps it). Exact request and response shape
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-10-21.
+Last updated 2026-10-22.
 
 ______________________________________________________
 
@@ -135,9 +135,32 @@ The endpoint is live; the UI still runs on a mock.
 
 - [ ] Use the same cover cards and drag-to-scroll row as Recent listening.
 
+### 11. Show who uploaded each piece
+
+Every music piece the backend returns now has an `uploader` field: `{ userId, pfpUrl, username }`, the same shape as a
+playlist's owner. It's on `last-playback`, the `/play` queue, `/pieces` pages, the playlist overview, the `recents` and
+`uploads` events, `GET /api/music-pieces` and the upload response. Nothing breaks without this task; the field just
+goes unused.
+
+**Files:** `src/stores/music.js`, `src/components/BottomPlayer.vue`, `src/views/PlaylistDetail.vue`,
+`src/views/Dashboard.vue`, `src/utils/dashboardPreview.js`
+
+- [ ] Copy `uploader` onto the current piece in `toCurrent` in `src/stores/music.js`.
+- [ ] Show the uploader's picture and username in `BottomPlayer.vue`, linked to their profile (`/:username`).
+- [ ] Show the uploader on each track row in `PlaylistDetail.vue`. Shared playlists mix uploads from several members.
+- [ ] Show the uploader on the Recent listening cards in `Dashboard.vue`.
+- [ ] Skip it on My uploads and in `AddMusic.vue`: the uploader is always the caller there.
+- [ ] Load `pfpUrl` through `resolveCoverURL`, like the other profile pictures. It can be a relative path such as
+      `/default_profile_picture.svg`.
+- [ ] Add `uploader` to the mock pieces in `src/utils/dashboardPreview.js` and in the `music`, `AddMusic` and
+      `PlaylistDetail` tests.
+
+**Done when:** the player and playlist track rows show who uploaded the piece, and clicking the name opens their
+profile.
+
 ## P2: Later
 
-### 11. Build the artist page
+### 12. Build the artist page
 
 **API:** `GET /api/artists/{artistId}`, `PUT`/`DELETE .../favorite`, `PUT .../pfp`, `PUT .../banner`,
 `GET /api/artists/favorites/{username}`
@@ -147,7 +170,7 @@ The endpoint is live; the UI still runs on a mock.
 - [ ] Link artist names in track rows, search results and Top artists to the page.
 - [ ] Show favourite artists on the profile.
 
-### 12. Autoplay (not decided)
+### 13. Autoplay (not decided)
 
 - [ ] Decide whether to play recommended music when the queue ends with repeat `OFF`, like Apple Music's infinity
       button. The backend has nothing for it yet.

@@ -8,6 +8,7 @@ import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.music_piece.MusicPieceStream;
 import com.aux_app.dto.music_piece.PlayEventCreation;
 import com.aux_app.dto.music_piece.UploadedMusicPiecesResponse;
+import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.UserEntity;
@@ -145,7 +146,16 @@ public class MusicPieceController {
                 newMusicPiece.getPublicId(),
                 newMusicPiece.getName(),
                 newMusicPiece.getCoverUrl(),
-                new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl()),
+                new ArtistSummary(
+                        artist.getPublicId(),
+                        artist.getArtistName(),
+                        artist.getArtistPfpUrl()
+                ),
+                new PlaylistOwner(
+                        user.getPublicId(),
+                        user.getProfilePictureUrl(),
+                        user.getUsername()
+                ),
                 false
         );
     }

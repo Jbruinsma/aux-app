@@ -89,6 +89,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                     row.getPieceName(),
                     row.getPieceCoverUrl(),
                     new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
+                    new PlaylistOwner(row.getUploaderId(), row.getUploaderPfpUrl(), row.getUploaderUsername()),
                     Integer.valueOf(1).equals(row.getIsFavorite())));
         }
         return pieces;
@@ -110,6 +111,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                    a.public_id AS artistId,
                    a.artist_name AS artistName,
                    a.artist_pfp_url AS artistPfpUrl,
+                   up.public_id AS uploaderId,
+                   up.username AS uploaderUsername,
+                   up.profile_picture_url AS uploaderPfpUrl,
                    (uft.user_id IS NOT NULL) AS isFavorite,
                    pm.status AS callerStatus,
                    pm.permission AS callerPermission,
@@ -120,6 +124,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.playlist_id AND pt.playlist_position > :afterPosition
             LEFT JOIN music_pieces mp ON mp.music_piece_id = pt.music_piece_id
             LEFT JOIN artists a ON a.artist_id = mp.artist_id
+            LEFT JOIN users up ON up.user_id = mp.uploader_user_id
             LEFT JOIN playlist_members pm ON pm.playlist_id = p.playlist_id AND pm.user_id = :userId
             LEFT JOIN user_favorite_tracks uft ON uft.music_piece_id = mp.music_piece_id AND uft.user_id = :userId
             WHERE p.public_id = :publicId
@@ -154,6 +159,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         String getArtistId();
         String getArtistName();
         String getArtistPfpUrl();
+        String getUploaderId();
+        String getUploaderUsername();
+        String getUploaderPfpUrl();
         Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
         String getCallerStatus(); // caller's playlist_members row; null if they have none
         String getCallerPermission();

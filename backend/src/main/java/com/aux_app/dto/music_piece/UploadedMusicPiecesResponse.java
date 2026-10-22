@@ -1,8 +1,10 @@
 package com.aux_app.dto.music_piece;
 
 import com.aux_app.dto.artist.ArtistSummary;
+import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
+import com.aux_app.entity.UserEntity;
 import com.aux_app.repository.MusicPieceRepository;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -20,11 +22,21 @@ public record UploadedMusicPiecesResponse(
                 .map(upload -> {
                     MusicPieceEntity piece = upload.piece();
                     ArtistEntity artist = upload.artist();
+                    UserEntity uploader = upload.uploader();
                     return new MusicPieceOverview(
                             piece.getPublicId(),
                             piece.getName(),
                             piece.getCoverUrl(),
-                            new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl()),
+                            new ArtistSummary(
+                                    artist.getPublicId(),
+                                    artist.getArtistName(),
+                                    artist.getArtistPfpUrl()
+                            ),
+                            new PlaylistOwner(
+                                    uploader.getPublicId(),
+                                    uploader.getProfilePictureUrl(),
+                                    uploader.getUsername()
+                            ),
                             upload.isFavorite()
                     );
                 })
