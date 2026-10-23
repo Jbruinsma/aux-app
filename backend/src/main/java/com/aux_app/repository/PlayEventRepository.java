@@ -21,8 +21,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
-                   CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
-                        THEN p.public_id END AS playlistId,
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM play_events pe
@@ -56,8 +56,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
-                   CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
-                        THEN p.public_id END AS playlistId,
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM latest l
@@ -89,7 +89,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         String getUploaderUsername();
         String getUploaderPfpUrl();
         Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
-        String getPlaylistId();
+        String getPlaylistId(); // '' when none
         String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }
 }

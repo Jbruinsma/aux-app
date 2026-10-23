@@ -12,12 +12,14 @@ public interface TagRepository extends JpaRepository<TagEntity, String> {
 
     // Column snippets for native queries: a piece's (alias `mp`) or playlist's (alias `p`) tags, joined with
     // commas in name order, null when it has none. Read with split(). Tag names can't contain a comma.
+    // COALESCE: sqlite-jdbc types an expression column from the first row, so a NULL there makes Hibernate read
+    // every later row as BigDecimal and fail. '' keeps it TEXT; split treats it as no tags
     String PIECE_TAGS = """
-            (SELECT group_concat(t.tag, ',' ORDER BY t.tag) FROM music_piece_tags mpt
-             JOIN tags t ON t.tag_id = mpt.tag_id WHERE mpt.music_piece_id = mp.music_piece_id)""";
+            COALESCE((SELECT group_concat(t.tag, ',' ORDER BY t.tag) FROM music_piece_tags mpt
+             JOIN tags t ON t.tag_id = mpt.tag_id WHERE mpt.music_piece_id = mp.music_piece_id), '')""";
     String PLAYLIST_TAGS = """
-            (SELECT group_concat(t.tag, ',' ORDER BY t.tag) FROM playlist_tags ptg
-             JOIN tags t ON t.tag_id = ptg.tag_id WHERE ptg.playlist_id = p.playlist_id)""";
+            COALESCE((SELECT group_concat(t.tag, ',' ORDER BY t.tag) FROM playlist_tags ptg
+             JOIN tags t ON t.tag_id = ptg.tag_id WHERE ptg.playlist_id = p.playlist_id), '')""";
 
     static List<String> split(String tags) {
         return tags == null || tags.isEmpty() ? List.of() : List.of(tags.split(","));
