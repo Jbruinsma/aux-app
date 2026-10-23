@@ -87,6 +87,9 @@ const page = computed(() => eventsStore.notifications)
 watch(page, () => {
   readLocally.value = false
   answered.value = new Set()
+  // A changed snapshot can remove deleted playlists from any page, including cached older invites.
+  older.value = []
+  olderCursor.value = undefined
 })
 
 const items = computed(() => {
@@ -117,10 +120,12 @@ function toggle() {
 
 async function loadOlder() {
   if (!nextCursor.value || loadingOlder.value) return
+  const snapshot = page.value
   loadingOlder.value = true
   olderError.value = ''
   try {
     const next = await fetchNotifications(nextCursor.value)
+    if (page.value !== snapshot) return
     older.value = [...older.value, ...next.notifications]
     olderCursor.value = next.nextCursor
   } catch (err) {

@@ -1,12 +1,6 @@
 import { fetchAPI, request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// Delete isn't on the backend yet. It's requested in backend/BACKEND_REQUESTS.md and answers from mock data until then; flip
-// this off once it ships, since the real call below already uses the requested shape
-export const PLAYLIST_DELETE_MOCKED = true
-
-const wait = () => new Promise((resolve) => setTimeout(resolve, 400))
-
 // PlaylistOverview: { playlistId, playlistName, playlistCoverUrl, totalPieces, isPublic, playlistOwner, isSaved,
 // musicPieces (first 50), nextCursor, editors, access: OWNER | EDITOR | LISTENER | null }.
 // 403 PLAYLIST_INVITE_PENDING: the caller was invited to this private playlist and hasn't accepted yet
@@ -58,9 +52,12 @@ export async function setPlaylistSaved(playlistId, saved) {
 
 // Returns nothing (204)
 export async function deletePlaylist(playlistId) {
-  if (!PLAYLIST_DELETE_MOCKED) return request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}`)
-  await wait()
-  return null
+  try {
+    await request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}`, undefined, { notifyOnError: false })
+  } catch (err) {
+    // Already deleted (including deletion in another tab).
+    if (err.status !== 404) throw err
+  }
 }
 
 // Members are owner-only: anyone else gets 404 PLAYLIST_NOT_FOUND.

@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { useNotificationStore } from '@/stores/notification.js'
 import { fetchAPI, request } from '@/utils/api.js'
 import { useEventsStore } from '@/stores/events.js'
+import { useMusicStore } from '@/stores/music.js'
 import PlaylistDetail from './PlaylistDetail.vue'
 
 const { route, push } = vi.hoisted(() => ({ route: { params: {} }, push: vi.fn() }))
@@ -141,4 +142,52 @@ it('has no row menu for a listener on an unavailable song', async () => {
   fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER', musicPieces: [{ ...track(1), isAvailable: false }] }))
   await render()
   expect(wrapper.find('.track-more').exists()).toBe(false)
+})
+
+it.each([null, { status: 404, code: 'PLAYLIST_NOT_FOUND' }])('closes deletion, resets its player and goes home after %s', async (error) => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'OWNER' }))
+  if (error) request.mockRejectedValueOnce(error)
+  else request.mockResolvedValueOnce(null)
+  const music = useMusicStore()
+  music.currentPlaylistUUID = 'p1'
+  music.isPlaying = true
+  await render()
+  const dialog = wrapper.get('dialog').element
+  dialog.showModal = vi.fn()
+  dialog.close = vi.fn()
+  await wrapper.get('button[aria-label="More options"]').trigger('click')
+  await wrapper.findAll('#playlist-menu button').find((b) => b.text() === 'Delete playlist').trigger('click')
+  await wrapper.get('.confirm-actions .primary').trigger('click')
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringContaining('/api/playlists/p1'), undefined, { notifyOnError: false })
+  expect(dialog.close).toHaveBeenCalled()
+  expect(music.isEmpty()).toBe(true)
+  expect(push).toHaveBeenCalledWith({ name: 'Dashboard' })
+})
+
+it.each(['LISTENER', 'EDITOR', null])('shows not-found to a former member or saver (%s)', async (access) => {
+  fetchAPI.mockResolvedValueOnce(playlist({ access, isSaved: access === null }))
+  await render()
+  fetchAPI.mockRejectedValueOnce({ status: 404, code: 'PLAYLIST_NOT_FOUND' })
+  await wrapper.vm.loadPlaylist()
+  expect(wrapper.text()).toContain("This playlist isn't available")
+  expect(wrapper.find('.tracks').exists()).toBe(false)
+})
+
+it('keeps the dialog open on a server failure and leaves a different playlist playing', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'OWNER' }))
+  request.mockRejectedValueOnce({ status: 500 })
+  const music = useMusicStore()
+  music.currentPlaylistUUID = 'p2'
+  music.isPlaying = true
+  await render()
+  const dialog = wrapper.get('dialog').element
+  dialog.close = vi.fn()
+  await wrapper.get('.confirm-actions .primary').trigger('click')
+  await flushPromises()
+  expect(dialog.close).not.toHaveBeenCalled()
+  expect(wrapper.get('.confirm .error').text()).toContain("We couldn't delete")
+  expect(music.currentPlaylistUUID).toBe('p2')
+  expect(music.isPlaying).toBe(true)
+  expect(push).not.toHaveBeenCalled()
 })

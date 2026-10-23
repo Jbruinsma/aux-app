@@ -296,6 +296,34 @@ const preferencesSent = () => fetch.mock.calls
   .filter(([url]) => url.includes('/play-preferences'))
   .map(([, options]) => [options.method, JSON.parse(options.body)])
 
+it.each(['recoverStream', 'prefetchNext', 'toggleShuffle', 'startRepeat', 'moveForward'])('stops a deleted playlist during %s and does not retry it', async (action) => {
+  backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } })
+  const music = useMusicStore()
+  await music.playPlaylist('p1')
+  backend({}, {
+    '/stream': (answer) => answer({ errorDetails: { code: 'PLAYLIST_NOT_FOUND' } }, 404),
+    '/play': (answer) => answer({ errorDetails: { code: 'PLAYLIST_NOT_FOUND' } }, 404),
+  })
+  await music[action]()
+  expect(music.isEmpty()).toBe(true)
+  const count = fetch.mock.calls.length
+  await music.recoverStream()
+  await music.moveForward()
+  expect(fetch.mock.calls).toHaveLength(count)
+})
+
+it('stops instead of retrying a deleted playlist queue page', async () => {
+  backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: 'c1' } }, {
+    'cursor=': (answer) => answer({ errorDetails: { code: 'PLAYLIST_NOT_FOUND' } }, 404),
+  })
+  const music = useMusicStore()
+  await music.playPlaylist('p1')
+  await vi.waitFor(() => expect(music.isEmpty()).toBe(true))
+  const count = fetch.mock.calls.length
+  await music.moveForward()
+  expect(fetch.mock.calls).toHaveLength(count)
+})
+
 it('cycles repeat OFF → PLAYLIST → PIECE → OFF, updating the player before the server answers', async () => {
   backend({}, { 'play-preferences': () => new Promise(() => {}) })
   const music = useMusicStore()
