@@ -93,7 +93,7 @@ public class UploadService {
     static final int BANNER_MAX_HEIGHT = 500;
     private static final Set<String> ALLOWED_FORMATS = Set.of("jpeg", "png");
 
-    static final int MIN_TRACK_SECONDS = 5;
+    static final int MIN_TRACK_SECONDS = 30;
     static final int MAX_TRACK_SECONDS = 10 * 60;
     static final long MAX_STORAGE_BYTES = 2L * 1024 * 1024 * 1024;
     // Room for ID3v1/APE/Lyrics3 tags after the last frame. More than that means the frame chain broke
