@@ -16,7 +16,7 @@ export class ApiError extends Error {
 
 // Sends the logged-in user's session token
 // so the Java backend knows who is asking.
-function authHeaders() {
+export function authHeaders() {
   const token = useUserStore().token
 
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -25,7 +25,7 @@ function authHeaders() {
 let endingSession = false
 
 // Logs out and sends the user to log in, then back to this page. Several requests can fail at once; only the first acts
-async function endSession() {
+export async function endSession() {
   if (endingSession) return
   endingSession = true
   try {

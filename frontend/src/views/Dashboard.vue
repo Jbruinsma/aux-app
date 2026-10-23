@@ -334,8 +334,8 @@ import { API_BASE_URL } from '@/utils/variables.js'
 import { MATCHES_MOCKED, compatibilityLevel, fetchMatches, nameSeparator } from '@/utils/matches.js'
 import { DASHBOARD_PREVIEW, PREVIEW_RECENTS, PREVIEW_TOP_ARTISTS } from '@/utils/dashboardPreview.js'
 import { useDragScroll } from '@/utils/dragScroll.js'
-import { fetchUploads } from '@/utils/music.js'
 import { useMusicStore } from '@/stores/music.js'
+import { useEventsStore } from '@/stores/events.js'
 
 const SEARCH_TABS = [
   { id: 'USERS', label: 'People', icon: 'users' },
@@ -356,22 +356,49 @@ const userStore = useUserStore()
 
 const username = computed(() => userStore.userData?.username ?? '')
 
-// Library: GET /api/users/library. `isSaved` means saved from someone else
-const library = ref([])
-const libraryLoading = ref(true)
-const libraryError = ref('')
+const eventsStore = useEventsStore()
+
+// The rows come from the live event stream (stores/events.js). A row is loading until its event arrives, and shows an
+// error only while the stream can't connect and nothing has arrived yet; data already shown stays if it drops later.
+// `placeholder` fills a row only while the account's own list is empty (DASHBOARD_PREVIEW)
+function streamRow(field, key, what, placeholder = []) {
+  return computed(() => {
+    const body = eventsStore[field]
+    if (body === null) {
+      const failed = eventsStore.status === 'error'
+      return {
+        items: [],
+        loading: !failed,
+        error: failed ? `We couldn't load ${what}. Check that the server is running; we'll keep trying.` : '',
+        preview: false,
+      }
+    }
+    const items = (key ? body[key] : body) ?? []
+    if (!items.length && DASHBOARD_PREVIEW && placeholder.length) {
+      return { items: placeholder, loading: false, error: '', preview: true }
+    }
+    return { items, loading: false, error: '', preview: false }
+  })
+}
+
+// Library: the `library` event, an array of LibraryPlaylist. `isSaved` means saved from someone else
+const libraryRow = streamRow('library', null, 'your library')
+const library = computed(() => libraryRow.value.items)
+const libraryLoading = computed(() => libraryRow.value.loading)
+const libraryError = computed(() => libraryRow.value.error)
 const libraryFilter = ref('all')
 const LIBRARY_PREVIEW_COUNT = 7
 const UPLOADS_PREVIEW_COUNT = 6
 const musicStore = useMusicStore()
 
-// My Uploads: GET /api/music-pieces. Clicking a song plays it with the rest of the uploads queued after it
-const uploads = reactive({ items: [], loading: true, error: '' })
+// My Uploads: the `uploads` event. Clicking a song plays it with the rest of the uploads queued after it
+const uploads = streamRow('uploads', 'uploadedMusicPieces', 'your uploads')
 const uploadsExpanded = ref(false)
-const shownUploads = computed(() => (uploadsExpanded.value ? uploads.items : uploads.items.slice(0, UPLOADS_PREVIEW_COUNT)))
+const shownUploads = computed(() => (uploadsExpanded.value ? uploads.value.items : uploads.value.items.slice(0, UPLOADS_PREVIEW_COUNT)))
 const uploadsSummary = computed(() => {
-  if (uploads.loading || uploads.error) return 'Songs you uploaded, newest first.'
-  return uploads.items.length === 1 ? '1 song, newest first.' : `${uploads.items.length} songs, newest first.`
+  const { items, loading, error } = uploads.value
+  if (loading || error) return 'Songs you uploaded, newest first.'
+  return items.length === 1 ? '1 song, newest first.' : `${items.length} songs, newest first.`
 })
 
 function isPlayingUpload(piece) {
@@ -398,19 +425,12 @@ const librarySummary = computed(() => {
 })
 
 
-// Recent listening: GET /api/users/recent-listening. Top artists: GET /api/users/top-artists. Both return up to 4
-const recent = reactive({ items: [], loading: true, error: '', preview: false })
-const topArtists = reactive({ items: [], loading: true, error: '', preview: false })
-const matches = reactive({ items: [], loading: true, error: '', preview: false })
+// Recent listening and top artists: the `recents` and `top-artists` events, up to 20 each, all in the scrolling rows
+const recent = streamRow('recents', 'recents', 'your recent listening', PREVIEW_RECENTS)
+const topArtists = streamRow('topArtists', 'artists', 'your top artists', PREVIEW_TOP_ARTISTS)
+const matches = reactive({ items: [], loading: true, error: '' })
 
-// With previews on, a row that has placeholder data shows it instead of the account's own
-async function loadRow(state, load, key, what, placeholder = []) {
-  if (DASHBOARD_PREVIEW && placeholder.length) {
-    state.items = placeholder
-    state.preview = true
-    state.loading = false
-    return
-  }
+async function loadRow(state, load, key, what) {
   try {
     state.items = (await load())[key] ?? []
   } catch (err) {
@@ -450,7 +470,7 @@ function playHint() {
   hinting.value = true
 }
 
-watch(() => recent.items.length, async (count) => {
+watch(() => recent.value.items.length, async (count) => {
   if (!count) return
   await nextTick()
   clearInterval(hintTimer)
@@ -528,18 +548,7 @@ onMounted(async () => {
     return
   }
 
-  loadRow(recent, () => fetchAPI(`${API_BASE_URL}/api/users/recent-listening`), 'recents', 'your recent listening', PREVIEW_RECENTS)
-  loadRow(topArtists, () => fetchAPI(`${API_BASE_URL}/api/users/top-artists`), 'artists', 'your top artists', PREVIEW_TOP_ARTISTS)
   loadRow(matches, fetchMatches, 'matches', 'people who hear it too')
-  loadRow(uploads, fetchUploads, 'uploadedMusicPieces', 'your uploads')
-
-  try {
-    library.value = await fetchAPI(`${API_BASE_URL}/api/users/library`)
-  } catch {
-    libraryError.value = "We couldn't load your library. Check that the server is running, then refresh the page."
-  } finally {
-    libraryLoading.value = false
-  }
 })
 </script>
 

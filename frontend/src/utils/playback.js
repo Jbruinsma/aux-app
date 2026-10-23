@@ -33,3 +33,10 @@ export function reportPlay(musicPieceId, playToken, listenDurationSeconds) {
   return request('POST', `${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}/plays`,
     { playToken, listenDurationSeconds }, quiet)
 }
+
+export const REPEAT_MODES = ['OFF', 'PLAYLIST', 'PIECE']
+
+// Full replace: both fields are required. Kept across devices and read back from GET /api/users/me/last-playback
+export function savePlayPreferences({ shuffleEnabled, repeatPreference }) {
+  return request('PUT', `${API_BASE_URL}/api/users/me/play-preferences`, { shuffleEnabled, repeatPreference }, quiet)
+}

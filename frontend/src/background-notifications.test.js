@@ -6,6 +6,7 @@ import App from './App.vue'
 import { useUserStore } from './stores/user.js'
 import { useMusicStore } from './stores/music.js'
 import { useNotificationStore } from './stores/notification.js'
+import { useEventsStore } from './stores/events.js'
 import { request } from './utils/api.js'
 
 vi.mock('vue-router', () => ({
@@ -78,8 +79,9 @@ it('treats 204 as no history and does not refetch on profile updates', async () 
   expect(useMusicStore().isEmpty()).toBe(true)
   useUserStore().updateUser({ username: 'newname', profilePictureUrl: '/cover.webp' })
   await flushPromises()
-  expect(fetch).toHaveBeenCalledTimes(1)
-  expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/users/me/last-playback'), expect.any(Object))
+  const calls = (path) => fetch.mock.calls.filter(([url]) => url.includes(path)).length
+  expect(calls('/api/users/me/last-playback')).toBe(1)
+  expect(calls('/api/users/me/events')).toBe(1)
 })
 
 it('ignores an old restoration response after logout', async () => {
@@ -93,4 +95,24 @@ it('ignores an old restoration response after logout', async () => {
   finish({ ok: true, status: 200, json: async () => ({ musicPiece: { musicPieceId: 'old-track', name: 'Old song' }, playlistId: null }) })
   await flushPromises()
   expect(useMusicStore().isEmpty()).toBe(true)
+})
+
+it('opens the live event stream after login and closes it on logout', async () => {
+  let signal
+  vi.stubGlobal('fetch', vi.fn((url, options) => {
+    if (url.includes('/me/events')) {
+      signal = options.signal
+      return Promise.resolve({ ok: true, status: 200, body: new ReadableStream() })
+    }
+    return Promise.resolve({ ok: true, status: 204 })
+  }))
+  wrapper = mount(App, { global: { stubs: { RouterView: true } } })
+  expect(useEventsStore().status).toBe('idle')
+  useUserStore().login({ username: 'listener', onboardingStep: 'DONE' }, 'token')
+  await flushPromises()
+  expect(useEventsStore().status).toBe('open')
+  useUserStore().logout()
+  await flushPromises()
+  expect(signal.aborted).toBe(true)
+  expect(useEventsStore().status).toBe('idle')
 })

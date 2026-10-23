@@ -18,18 +18,18 @@ Shuffle and repeat move from localStorage to the server so they follow the user 
 **Files:** `src/stores/music.js`, `src/App.vue`
 **API:** `GET /api/users/me/last-playback`, `PUT /api/users/me/play-preferences`
 
-- [ ] Read `playPreferences` from the `last-playback` response and apply it to the player.
-- [ ] Apply the preferences *after* `reset()` in `restoreLastPlayback`, since `reset()` turns shuffle and repeat off.
-- [ ] Apply the preferences when `musicPiece` is null too. `last-playback` now always returns 200, and
+- [x] Read `playPreferences` from the `last-playback` response and apply it to the player.
+- [x] Apply the preferences *after* `reset()` in `restoreLastPlayback`, since `reset()` turns shuffle and repeat off.
+- [x] Apply the preferences when `musicPiece` is null too. `last-playback` now always returns 200, and
       `restoreLastPlayback` returns early when there's no piece.
-- [ ] Replace the `repeatOn` boolean with a repeat mode: `OFF`, `PLAYLIST` or `PIECE`.
-- [ ] Make the repeat button cycle `OFF` → `PLAYLIST` → `PIECE` → `OFF`, with a distinct icon for each.
-- [ ] Keep today's repeat behaviour (`startRepeat`) as `PIECE`.
-- [ ] Build `PLAYLIST`: when the last piece ends and `nextCursor` is null, call `/play` again with the current shuffle
+- [x] Replace the `repeatOn` boolean with a repeat mode: `OFF`, `PLAYLIST` or `PIECE`.
+- [x] Make the repeat button cycle `OFF` → `PLAYLIST` → `PIECE` → `OFF`, with a distinct icon for each.
+- [x] Keep today's repeat behaviour (`startRepeat`) as `PIECE`.
+- [x] Build `PLAYLIST`: when the last piece ends and `nextCursor` is null, call `/play` again with the current shuffle
       setting. For a single piece, play it again.
-- [ ] Send `PUT /api/users/me/play-preferences` on every shuffle or repeat change. Update the player straight away; don't
+- [x] Send `PUT /api/users/me/play-preferences` on every shuffle or repeat change. Update the player straight away; don't
       wait for the response.
-- [ ] Remove shuffle and repeat from the `aux-player-settings-{id}` localStorage key. Keep volume there.
+- [x] Remove shuffle and repeat from the `aux-player-settings-{id}` localStorage key. Keep volume there.
 
 **Done when:** shuffle and repeat set on one device are already set after logging in on another, and volume is not.
 
@@ -40,14 +40,14 @@ One connection to the server that keeps the header and the Dashboard up to date 
 **Files:** new `src/stores/events.js`, `src/App.vue`
 **API:** `GET /api/users/me/events`
 
-- [ ] Create a Pinia store that opens the stream after login and closes it on logout.
-- [ ] Read the stream with `fetch` and `response.body.getReader()`. Do **not** use `EventSource`: it can't send the
+- [x] Create a Pinia store that opens the stream after login and closes it on logout.
+- [x] Read the stream with `fetch` and `response.body.getReader()`. Do **not** use `EventSource`: it can't send the
       token, and the token must never go in the URL.
-- [ ] Keep one field in the store per event (`invites`, `recents`, `top-artists`, `library`, `uploads`,
+- [x] Keep one field in the store per event (`invites`, `recents`, `top-artists`, `library`, `uploads`,
       `notifications`). Replace the whole field each time its event arrives.
-- [ ] Ignore keep-alive lines that start with `:`.
-- [ ] Reconnect when the stream drops, backing off to about 30 seconds on repeated failures.
-- [ ] On a 401 when reconnecting, log the user out the same way `src/utils/api.js` does.
+- [x] Ignore keep-alive lines that start with `:`.
+- [x] Reconnect when the stream drops, backing off to about 30 seconds on repeated failures.
+- [x] On a 401 when reconnecting, log the user out the same way `src/utils/api.js` does.
 
 **Done when:** the stream stays connected across page changes, recovers after the network drops, and closes on logout.
 
@@ -59,11 +59,11 @@ Top artists and Library rows fail until this ships.
 **Files:** `src/views/Dashboard.vue`
 **Needs:** task 2
 
-- [ ] Replace the `recent-listening`, `top-artists`, `library` and uploads fetches in `onMounted` with the store.
-- [ ] Show each row as loading until its event arrives, and as an error if the stream can't connect.
-- [ ] `recents` and `top-artists` now carry up to 20 items. Show the first 4 in the Dashboard rows and all of them on
-      each one's own tab.
-- [ ] Keep `GET /api/music-pieces` in `AddMusic.vue`; that one isn't going away.
+- [x] Replace the `recent-listening`, `top-artists`, `library` and uploads fetches in `onMounted` with the store.
+- [x] Show each row as loading until its event arrives, and as an error if the stream can't connect.
+- [x] `recents` and `top-artists` now carry up to 20 items. Show the first 4 in the Dashboard rows and all of them on
+      each one's own tab. *(Changed by Mo: the Dashboard has no tabs now, so the drag-to-scroll rows show all 20.)*
+- [x] Keep `GET /api/music-pieces` in `AddMusic.vue`; that one isn't going away.
 
 **Done when:** Dashboard makes none of those four REST calls, and a new play shows up in Recent listening without a
 reload.
@@ -74,12 +74,12 @@ reload.
 **Needs:** task 2
 **API:** `GET /api/notifications`, `PUT /api/notifications/read-all`, `PUT /api/notifications/read`
 
-- [ ] Show the `notifications` event in the bell, and load older pages with `GET /api/notifications?cursor=`.
-- [ ] Handle each type: `PLAYLIST_INVITE` (with Accept and Decline), `INVITE_ACCEPTED` and `TRACKS_ADDED`.
-- [ ] Link each notification to its playlist using `playlistOwnerUsername`, **not** `actor.username`.
-- [ ] Show `unreadCount` on the badge, and mark notifications read when the bell opens.
-- [ ] Remove the 60-second polling, the refresh on focus and the localStorage list of seen invites.
-- [ ] On the `403 PLAYLIST_INVITE_PENDING` page in `PlaylistDetail.vue`, read the invite from the store's `invites`
+- [x] Show the `notifications` event in the bell, and load older pages with `GET /api/notifications?cursor=`.
+- [x] Handle each type: `PLAYLIST_INVITE` (with Accept and Decline), `INVITE_ACCEPTED` and `TRACKS_ADDED`.
+- [x] Link each notification to its playlist using `playlistOwnerUsername`, **not** `actor.username`.
+- [x] Show `unreadCount` on the badge, and mark notifications read when the bell opens.
+- [x] Remove the 60-second polling, the refresh on focus and the localStorage list of seen invites.
+- [x] On the `403 PLAYLIST_INVITE_PENDING` page in `PlaylistDetail.vue`, read the invite from the store's `invites`
       field instead of calling `GET /api/playlists/invites` again.
 
 **Done when:** a new invite appears in the bell within a second, with no polling in the network tab.
