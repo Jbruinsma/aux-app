@@ -276,18 +276,19 @@ import {
   acceptInvite,
   declineInvite,
   deletePlaylist,
-  fetchPendingInvites,
   fetchPlaylist,
   fetchPlaylistPieces,
   removePieceFromPlaylist,
   setPlaylistSaved,
 } from '@/utils/playlist.js'
 import { useMusicStore } from '@/stores/music.js'
+import { useEventsStore } from '@/stores/events.js'
 
 const route = useRoute()
 const router = useRouter()
 const notification = useNotificationStore()
 const musicStore = useMusicStore()
+const eventsStore = useEventsStore()
 
 const status = ref('loading')
 const playlist = ref(null)
@@ -320,7 +321,7 @@ async function loadPlaylist() {
     status.value = 'ready'
   } catch (err) {
     if (err.sessionEnded || route.params.id !== playlistId) return
-    if (err.code === 'PLAYLIST_INVITE_PENDING') await showInvite(playlistId)
+    if (err.code === 'PLAYLIST_INVITE_PENDING') showInvite()
     else status.value = err.status === 404 ? 'missing' : 'error'
   }
 }
@@ -328,7 +329,11 @@ async function loadPlaylist() {
 /* Invitation: a private playlist the caller was invited to but hasn't accepted. The invite list has its name, cover
    and who sent it; without it the page still offers Accept and Decline */
 
-const invite = ref(null)
+// The invite's name, cover, permission and who sent it come from the live `invites` event; until it arrives (or if it
+// doesn't list this playlist) the page still offers Accept and Decline
+const invite = computed(() => (status.value === 'invite'
+  ? eventsStore.invites?.invites?.find((item) => item.playlistId === route.params.id) ?? null
+  : null))
 const inviteError = ref('')
 const responding = ref('')
 
@@ -338,16 +343,9 @@ const inviteText = computed(() => {
   return `@${invite.value.invitedBy.username} invited you to ${what} this private playlist.`
 })
 
-async function showInvite(playlistId) {
-  invite.value = null
+function showInvite() {
   inviteError.value = ''
   status.value = 'invite'
-  try {
-    const { invites } = await fetchPendingInvites()
-    if (route.params.id === playlistId) invite.value = invites.find((item) => item.playlistId === playlistId) ?? null
-  } catch {
-    invite.value = null
-  }
 }
 
 async function respondToInvite(accept) {

@@ -32,10 +32,6 @@ export async function removePieceFromPlaylist(playlistId, musicPieceId) {
   }
 }
 
-// { invites: [{ playlistId, playlistName, playlistCoverUrl, permission: LISTENER | EDITOR, invitedBy }] }, newest first
-export function fetchPendingInvites(options) {
-  return fetchAPI(`${API_BASE_URL}/api/playlists/invites`, options)
-}
 
 export function acceptInvite(playlistId) {
   return request('POST', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/invites/accept`)

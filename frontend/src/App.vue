@@ -18,6 +18,7 @@ import GlobalNotifications from '@/components/GlobalNotifications.vue'
 
 import { useUserStore } from '@/stores/user.js'
 import { useMusicStore } from '@/stores/music.js'
+import { useEventsStore } from '@/stores/events.js'
 
 import { fetchAPI } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
@@ -27,6 +28,18 @@ const bannedRoutes = ['/', '/login', '/register', '/onboarding']
 const route = useRoute()
 const userStore = useUserStore()
 const musicStore = useMusicStore()
+const eventsStore = useEventsStore()
+
+// One live stream per session: opens after login (once onboarding is done), restarts with a new token, closes on logout
+watch(
+  () => [userStore.loggedIn && userStore.onboarded, userStore.token],
+  ([active, token], [wasActive, previousToken] = []) => {
+    if (!active || !token) eventsStore.disconnect()
+    else if (wasActive && previousToken && token !== previousToken) eventsStore.restart()
+    else eventsStore.connect()
+  },
+  { immediate: true },
+)
 
 const hideBottomPlayerOnThisRoute = computed(() => {
   if (bannedRoutes.includes(route.path)) {
@@ -47,8 +60,10 @@ watch(
     onCleanup(() => { cancelled = true })
     try {
       const data = await fetchAPI(`${API_BASE_URL}/api/users/me/last-playback`, { notifyOnError: false })
-      if (cancelled || !data || musicStore.isPlaying) return
-      musicStore.updateBottomPlayerAfterLogin(data)
+      if (cancelled || !data) return
+      // Something is already playing: keep it, but still take this account's shuffle and repeat
+      if (musicStore.isPlaying) musicStore.applyPlayPreferences(data.playPreferences)
+      else musicStore.updateBottomPlayerAfterLogin(data)
     } catch (err) {
       console.log('Error fetching last playback:', err)
     }

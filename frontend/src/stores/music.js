@@ -3,7 +3,15 @@ import { ref, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
-import { IGNORED_PLAY_ERRORS, fetchQueue, fetchQueuePage, fetchStream, reportPlay } from '@/utils/playback.js'
+import {
+  IGNORED_PLAY_ERRORS,
+  REPEAT_MODES,
+  fetchQueue,
+  fetchQueuePage,
+  fetchStream,
+  reportPlay,
+  savePlayPreferences,
+} from '@/utils/playback.js'
 
 // The server builds the play queue in pages and signs the audio URLs; this store keeps the queue it has fetched,
 // where in it we are, shuffle, and the current song's stream
@@ -12,7 +20,8 @@ const REFILL_WHEN_LEFT = 3
 const STREAM_MARGIN_MS = 60_000
 // A listen counts after this many seconds actually played, or the whole piece if it's shorter
 const LISTEN_TO_COUNT = 30
-// The server doesn't keep position, shuffle or queue order, so they're saved here, per account
+// The server keeps shuffle and repeat (play preferences) but not position or queue order, so those are saved here, per
+// account
 const SAVE_EVERY_SECONDS = 5
 const DEFAULT_VOLUME = 0.8
 
@@ -36,7 +45,8 @@ export const useMusicStore = defineStore('music', () => {
   const queueCursor = ref(null)
   const isPlaying = ref(false)
   const shuffleOn = ref(false)
-  const repeatOn = ref(false)
+  // OFF stops at the end of the queue, PLAYLIST starts it again, PIECE repeats the current song
+  const repeatMode = ref('OFF')
   const volume = ref(DEFAULT_VOLUME)
   const position = ref(0)
   // Where to seek once the next audio source has loaded (after refreshing an expired URL)
@@ -116,7 +126,7 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   // Plays songs that aren't from a playlist (your uploads, for example), starting at `index`. Their streams are requested
-  // without a playlistId, and with no playlist there's no server shuffle
+  // without a playlistId. With no playlist there's no server shuffle, but the shuffle preference is left as it is
   function playPieces(pieces, index = 0) {
     if (!pieces?.[index]) return false
     playRequest++
@@ -124,7 +134,6 @@ export const useMusicStore = defineStore('music', () => {
     currentPlaylistUUID.value = ''
     playlist.value = [...pieces]
     queueCursor.value = null
-    shuffleOn.value = false
     forceShowPlayerActive.value = true
     return playAt(index)
   }
@@ -140,7 +149,7 @@ export const useMusicStore = defineStore('music', () => {
       currentPlaylistUUID.value = playlistId
       playlist.value = page.musicPieces
       queueCursor.value = page.nextCursor
-      shuffleOn.value = shuffle
+      setPreferences({ shuffle })
       if (!page.musicPieces.length) {
         notify().neutral('This playlist has no songs to play yet.')
         return false
@@ -181,8 +190,16 @@ export const useMusicStore = defineStore('music', () => {
     if (next < playlist.value.length) return playAt(next)
     // End of the queue
     finishListening()
+    if (repeatMode.value === 'PLAYLIST') return repeatQueue()
     isPlaying.value = false
     position.value = 0
+  }
+
+  // Repeat PLAYLIST: a playlist's queue comes again from /play (with the current shuffle, so a shuffled one gets a new
+  // order); songs played on their own start over
+  function repeatQueue() {
+    if (currentPlaylistUUID.value) return playPlaylist(currentPlaylistUUID.value, { shuffle: shuffleOn.value })
+    return playAt(0)
   }
 
   // Back to the start of the song, or to the previous one if it only just started
@@ -207,7 +224,7 @@ export const useMusicStore = defineStore('music', () => {
       playlist.value = page.musicPieces
       queueCursor.value = page.nextCursor
       currentPlaylistIndex = 0
-      shuffleOn.value = shuffle
+      setPreferences({ shuffle })
       prefetched.clear()
     } catch (err) {
       if (!err.sessionEnded) notify().error("We couldn't change shuffle. Check that the server is running, then try again.")
@@ -311,7 +328,7 @@ export const useMusicStore = defineStore('music', () => {
     return id ? `aux-playback-${id}` : null
   }
 
-  // Shuffle, repeat and volume are player settings: kept apart from the song, so they come back whatever plays next
+  // Volume stays on this device; shuffle and repeat are play preferences kept on the server
   function settingsKey() {
     const id = accountId()
     return id ? `aux-player-settings-${id}` : null
@@ -321,12 +338,9 @@ export const useMusicStore = defineStore('music', () => {
     try {
       const key = settingsKey()
       const settings = key ? JSON.parse(localStorage.getItem(key) ?? 'null') : null
-      if (!settings) return
-      shuffleOn.value = Boolean(settings.shuffle)
-      repeatOn.value = Boolean(settings.repeat)
-      if (typeof settings.volume === 'number') volume.value = Math.min(1, Math.max(0, settings.volume))
+      if (typeof settings?.volume === 'number') volume.value = Math.min(1, Math.max(0, settings.volume))
     } catch {
-      // Bad or blocked storage: keep the defaults
+      // Bad or blocked storage: keep the default
     }
   }
 
@@ -334,10 +348,27 @@ export const useMusicStore = defineStore('music', () => {
     const key = settingsKey()
     if (!key) return
     try {
-      localStorage.setItem(key, JSON.stringify({ shuffle: shuffleOn.value, repeat: repeatOn.value, volume: Number(volume.value) }))
+      localStorage.setItem(key, JSON.stringify({ volume: Number(volume.value) }))
     } catch {
-      // Storage can be blocked; the settings still hold until the page reloads
+      // Storage can be blocked; the volume still holds until the page reloads
     }
+  }
+
+  // `playPreferences` from GET /api/users/me/last-playback: { shuffleEnabled, repeatPreference }
+  function applyPlayPreferences(preferences) {
+    if (!preferences) return
+    shuffleOn.value = Boolean(preferences.shuffleEnabled)
+    repeatMode.value = REPEAT_MODES.includes(preferences.repeatPreference) ? preferences.repeatPreference : 'OFF'
+  }
+
+  // Every shuffle or repeat change: the player changes straight away and the server is told in the background
+  function setPreferences({ shuffle = shuffleOn.value, repeat = repeatMode.value }) {
+    if (shuffle === shuffleOn.value && repeat === repeatMode.value) return
+    shuffleOn.value = shuffle
+    repeatMode.value = repeat
+    savePlayPreferences({ shuffleEnabled: shuffle, repeatPreference: repeat }).catch((err) => {
+      if (!err.sessionEnded) console.warn('Play preferences not saved:', err.code)
+    })
   }
 
   function readSaved() {
@@ -371,17 +402,23 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   watch([() => currentMusicPiece.value.uuid, isPlaying, shuffleOn], () => saveLastPlayback())
-  watch([shuffleOn, repeatOn, volume], saveSettings)
+  watch(volume, saveSettings)
   watch(accountId, applySettings, { immediate: true })
   if (typeof window !== 'undefined') window.addEventListener('pagehide', () => saveLastPlayback())
 
-  // GET /api/users/me/last-playback ({ musicPiece, playlistId }): shows that song, paused, with its queue rebuilt so
-  // Play picks up where the user left off. Saved position, shuffle and queue are only used for the same song
+  // GET /api/users/me/last-playback ({ musicPiece, playlistId, playPreferences }): shows that song, paused, with its
+  // queue rebuilt so Play picks up where the user left off. Saved position and queue are only used for the same song.
+  // musicPiece is null for someone who has never played anything, but their preferences still apply
   async function restoreLastPlayback(playbackData) {
     const piece = playbackData?.musicPiece
-    if (!piece?.musicPieceId) return
+    if (!piece?.musicPieceId) {
+      applyPlayPreferences(playbackData?.playPreferences)
+      return
+    }
     const saved = readSaved()
     reset()
+    // After reset(), which turns shuffle and repeat off
+    applyPlayPreferences(playbackData.playPreferences)
     const request = playRequest
     const playlistId = playbackData.playlistId ?? null
     const same = saved?.musicPieceId === piece.musicPieceId && (saved.playlistId ?? null) === playlistId
@@ -391,7 +428,6 @@ export const useMusicStore = defineStore('music', () => {
     currentPlaylistIndex = 0
     collapsed.value = false
     forceShowPlayerActive.value = true
-    applySettings()
     if (same) position.value = Math.max(0, saved.position ?? 0)
     // Pick the music back up if it was playing at the refresh. Browsers often block audio that starts without a click,
     // in which case the player just shows Play
@@ -436,8 +472,10 @@ export const useMusicStore = defineStore('music', () => {
     isPlaying.value = true
   }
 
-  function toggleRepeat() {
-    repeatOn.value = !repeatOn.value
+  // OFF → PLAYLIST → PIECE → OFF
+  function cycleRepeat() {
+    const next = REPEAT_MODES[(REPEAT_MODES.indexOf(repeatMode.value) + 1) % REPEAT_MODES.length]
+    setPreferences({ repeat: next })
   }
 
   function forceShowPlayer() {
@@ -470,7 +508,7 @@ export const useMusicStore = defineStore('music', () => {
     queueCursor.value = null
     isPlaying.value = false
     shuffleOn.value = false
-    repeatOn.value = false
+    repeatMode.value = 'OFF'
     position.value = 0
     seekOnLoad.value = null
     forceShowPlayerActive.value = false
@@ -491,7 +529,7 @@ export const useMusicStore = defineStore('music', () => {
     queueCursor,
     isPlaying,
     shuffleOn,
-    repeatOn,
+    repeatMode,
     volume,
     position,
     seekOnLoad,
@@ -510,7 +548,8 @@ export const useMusicStore = defineStore('music', () => {
     moveBackward,
     playMusicPiece,
     toggleShuffle,
-    toggleRepeat,
+    cycleRepeat,
+    applyPlayPreferences,
     prefetchNext,
     recoverStream,
     forceShowPlayer,

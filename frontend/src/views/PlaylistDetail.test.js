@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { useNotificationStore } from '@/stores/notification.js'
 import { fetchAPI, request } from '@/utils/api.js'
+import { useEventsStore } from '@/stores/events.js'
 import PlaylistDetail from './PlaylistDetail.vue'
 
 const { route, push } = vi.hoisted(() => ({ route: { params: {} }, push: vi.fn() }))
@@ -65,13 +66,16 @@ it('keeps Manage access and Delete for the owner only', async () => {
   expect(wrapper.get('.editors').text()).toContain('pal')
 })
 
-it('shows the invitation instead of not-found, and opens the playlist once accepted', async () => {
+it('shows the invitation from the live invites, instead of not-found, and opens the playlist once accepted', async () => {
   fetchAPI
     .mockRejectedValueOnce({ status: 403, code: 'PLAYLIST_INVITE_PENDING' })
-    .mockResolvedValueOnce({ invites: [{ playlistId: 'p1', playlistName: 'Mix', permission: 'EDITOR', invitedBy: { username: 'owner' } }] })
     .mockResolvedValueOnce(playlist({ access: 'EDITOR' }))
   request.mockResolvedValue({ status: 'ACCEPTED' })
   await render()
+  expect(wrapper.text()).toContain("You're invited to this playlist")
+  useEventsStore().invites = { invites: [{ playlistId: 'p1', playlistName: 'Mix', permission: 'EDITOR', invitedBy: { username: 'owner' } }] }
+  await flushPromises()
+  expect(fetchAPI.mock.calls.some(([url]) => url.includes('/api/playlists/invites'))).toBe(false)
   expect(wrapper.text()).toContain("You're invited to Mix")
   expect(wrapper.text()).toContain('@owner invited you to listen to and edit this private playlist.')
   await wrapper.findAll('button').find((b) => b.text() === 'Accept invitation').trigger('click')

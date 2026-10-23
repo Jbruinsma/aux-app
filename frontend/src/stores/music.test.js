@@ -201,10 +201,9 @@ describe('resuming after login', () => {
     localStorage.setItem('aux-playback-u1', JSON.stringify({
       musicPieceId: 'm2', playlistId: 'p1', position: 95, playing: false, queue: [2, 7, 4].map(piece), cursor: 'c9',
     }))
-    localStorage.setItem('aux-player-settings-u1', JSON.stringify({ shuffle: true, repeat: false, volume: 0.5 }))
     const calls = backend({})
     const music = useMusicStore()
-    await music.restoreLastPlayback(lastPlayback)
+    await music.restoreLastPlayback({ ...lastPlayback, playPreferences: { shuffleEnabled: true, repeatPreference: 'OFF' } })
     expect(calls).toHaveLength(0)
     expect(music.playlist.map((p) => p.musicPieceId)).toEqual(['m2', 'm7', 'm4'])
     expect(music.queueCursor).toBe('c9')
@@ -233,24 +232,28 @@ describe('resuming after login', () => {
     expect(fetch.mock.calls.at(-1)[0]).toMatch(/\/music-pieces\/m5\/stream$/)
   })
 
-  it('keeps shuffle, repeat and volume as settings that come back after a reload, whatever song is restored', async () => {
-    backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } })
+  it('keeps only volume on this device; shuffle and repeat come from the server after reset, even with no last song', async () => {
+    backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } }, { 'play-preferences': (answer) => answer({}) })
     const music = useMusicStore()
     await music.playPlaylist('p1', { shuffle: true })
-    music.toggleRepeat()
     music.volume = 0.35
     await nextTick()
-    expect(JSON.parse(localStorage.getItem('aux-player-settings-u1'))).toEqual({ shuffle: true, repeat: true, volume: 0.35 })
+    expect(JSON.parse(localStorage.getItem('aux-player-settings-u1'))).toEqual({ volume: 0.35 })
 
     setActivePinia(createPinia())
     useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
     const calls = backend({ first: { musicPieces: [piece(9)], nextCursor: null } })
     const fresh = useMusicStore()
     expect(fresh.volume).toBe(0.35)
-    await fresh.restoreLastPlayback({ musicPiece: piece(9), playlistId: 'p1' })
+    expect(fresh.shuffleOn).toBe(false)
+    await fresh.restoreLastPlayback({ musicPiece: piece(9), playlistId: 'p1', playPreferences: { shuffleEnabled: true, repeatPreference: 'PIECE' } })
     expect(fresh.shuffleOn).toBe(true)
-    expect(fresh.repeatOn).toBe(true)
+    expect(fresh.repeatMode).toBe('PIECE')
     expect(calls[0]).toContain('shuffle=true')
+
+    await fresh.restoreLastPlayback({ musicPiece: null, playlistId: null, playPreferences: { shuffleEnabled: false, repeatPreference: 'PLAYLIST' } })
+    expect(fresh.shuffleOn).toBe(false)
+    expect(fresh.repeatMode).toBe('PLAYLIST')
   })
 
   it('starts playing again after a reload if it was playing', async () => {
@@ -279,13 +282,77 @@ it('shows Play instead of a stuck Pause when the browser refuses to start audio'
   wrapper.unmount()
 })
 
-it('plays uploads as a queue of their own, streaming without a playlist and with shuffle off', async () => {
+it('plays uploads as a queue of their own, streaming without a playlist', async () => {
   const calls = backend({})
   const music = useMusicStore()
   expect(await music.playPieces([1, 2, 3].map(piece), 1)).toBe(true)
   expect(calls[0]).toMatch(/\/music-pieces\/m2\/stream$/)
   expect(music.currentPlaylistUUID).toBe('')
-  expect(music.shuffleOn).toBe(false)
   await music.moveForward()
   expect(music.currentMusicPiece.uuid).toBe('m3')
+})
+
+const preferencesSent = () => fetch.mock.calls
+  .filter(([url]) => url.includes('/play-preferences'))
+  .map(([, options]) => [options.method, JSON.parse(options.body)])
+
+it('cycles repeat OFF → PLAYLIST → PIECE → OFF, updating the player before the server answers', async () => {
+  backend({}, { 'play-preferences': () => new Promise(() => {}) })
+  const music = useMusicStore()
+  expect(music.repeatMode).toBe('OFF')
+  music.cycleRepeat()
+  expect(music.repeatMode).toBe('PLAYLIST')
+  music.cycleRepeat()
+  expect(music.repeatMode).toBe('PIECE')
+  music.cycleRepeat()
+  expect(music.repeatMode).toBe('OFF')
+  expect(preferencesSent()).toEqual([
+    ['PUT', { shuffleEnabled: false, repeatPreference: 'PLAYLIST' }],
+    ['PUT', { shuffleEnabled: false, repeatPreference: 'PIECE' }],
+    ['PUT', { shuffleEnabled: false, repeatPreference: 'OFF' }],
+  ])
+})
+
+it('saves shuffle when it changes, and not when it stays the same', async () => {
+  backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } }, { 'play-preferences': (answer) => answer({}) })
+  const music = useMusicStore()
+  await music.playPlaylist('p1')
+  expect(preferencesSent()).toEqual([])
+  await music.toggleShuffle()
+  expect(music.shuffleOn).toBe(true)
+  expect(preferencesSent()).toEqual([['PUT', { shuffleEnabled: true, repeatPreference: 'OFF' }]])
+})
+
+it('with repeat PLAYLIST, asks /play for the queue again at the end, keeping shuffle; a lone song plays again', async () => {
+  const calls = backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } }, { 'play-preferences': (answer) => answer({}) })
+  const music = useMusicStore()
+  music.applyPlayPreferences({ shuffleEnabled: true, repeatPreference: 'PLAYLIST' })
+  await music.playPlaylist('p1', { shuffle: true })
+  await music.moveForward()
+  await music.moveForward()
+  expect(calls.filter((url) => url.includes('/play?')).at(-1)).toContain('/api/playlists/p1/play?shuffle=true')
+  expect(music.currentMusicPiece.uuid).toBe('m1')
+  expect(music.isPlaying).toBe(true)
+
+  await music.playPieces([piece(7)])
+  await music.moveForward()
+  expect(music.currentMusicPiece.uuid).toBe('m7')
+  expect(calls.filter((url) => url.includes('/m7/stream'))).toHaveLength(2)
+  expect(music.isPlaying).toBe(true)
+})
+
+it('labels the repeat button with its mode and moves to the next mode on click', async () => {
+  backend({}, { 'play-preferences': (answer) => answer({}) })
+  const music = useMusicStore()
+  music.playlist = [piece(1)]
+  music.currentMusicPiece = { uuid: 'm1', title: 'Song 1', cover: '', artist: '', mp3File: null, playToken: null, expiresAt: 0 }
+  const wrapper = mount(BottomPlayer)
+  const repeat = () => wrapper.get('button[aria-label^="Repeat"]')
+  const labels = [repeat().attributes('aria-label')]
+  for (let i = 0; i < 3; i++) {
+    await repeat().trigger('click')
+    labels.push(repeat().attributes('aria-label'))
+  }
+  expect(labels).toEqual(['Repeat: off', 'Repeat: playlist', 'Repeat: this song', 'Repeat: off'])
+  wrapper.unmount()
 })

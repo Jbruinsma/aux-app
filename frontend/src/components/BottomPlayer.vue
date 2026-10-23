@@ -53,10 +53,26 @@
             <path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" />
           </svg>
         </button>
-        <button type="button" class="icon-btn toggle" :class="{ active: repeatOn }" :disabled="!canPlay" aria-label="Repeat" :aria-pressed="repeatOn ? 'true' : 'false'" @click="toggleRepeat">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button
+          type="button"
+          class="icon-btn toggle"
+          :class="{ active: repeatMode !== 'OFF' }"
+          :disabled="!canPlay"
+          :aria-label="REPEAT_LABELS[repeatMode]"
+          :title="REPEAT_LABELS[repeatMode]"
+          @click="musicStore.cycleRepeat()"
+        >
+          <svg v-if="repeatMode === 'PIECE'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+            <path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /><path d="M11 10h1v4" />
+          </svg>
+          <svg v-else-if="repeatMode === 'PLAYLIST'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" />
             <path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
+          </svg>
+          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+            <path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /><path d="m3 3 18 18" />
           </svg>
         </button>
         <div class="volume">
@@ -114,7 +130,8 @@ const currentMusicPiece = computed(() => musicStore.currentMusicPiece)
 const canPlay = computed(() => Boolean(currentMusicPiece.value?.mp3File || (currentMusicPiece.value?.uuid && musicStore.playlist.length)))
 const isPlaying = computed(() => musicStore.isPlaying)
 const shuffleOn = computed(() => musicStore.shuffleOn)
-const repeatOn = computed(() => musicStore.repeatOn)
+const repeatMode = computed(() => musicStore.repeatMode)
+const REPEAT_LABELS = { OFF: 'Repeat: off', PLAYLIST: 'Repeat: playlist', PIECE: 'Repeat: this song' }
 const volume = computed({
   get: () => musicStore.volume,
   set: val => (musicStore.volume = val)
@@ -218,7 +235,7 @@ async function onLoadedMetadata() {
 function onTrackEnd() {
   if (!audioRef.value) return
   lastTime = null
-  if (musicStore.repeatOn) {
+  if (musicStore.repeatMode === 'PIECE') {
     musicStore.startRepeat()
     progress.value = 0
     audioRef.value.play().catch(onPlayBlocked)
@@ -280,9 +297,6 @@ function toggleShuffle() {
   musicStore.toggleShuffle()
 }
 
-function toggleRepeat() {
-  musicStore.toggleRepeat()
-}
 
 function prevTrack() {
   const currentUser = userStore.userData?.username
