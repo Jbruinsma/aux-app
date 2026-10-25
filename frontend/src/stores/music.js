@@ -70,6 +70,13 @@ export const useMusicStore = defineStore('music', () => {
 
   const notify = () => useNotificationStore()
 
+  function stopMissingPlaylist(err) {
+    if (err.code !== 'PLAYLIST_NOT_FOUND' || !currentPlaylistUUID.value) return false
+    reset()
+    notify().neutral(QUEUE_ERRORS.PLAYLIST_NOT_FOUND)
+    return true
+  }
+
   function toCurrent(piece, stream) {
     return {
       uuid: piece.musicPieceId,
@@ -117,6 +124,7 @@ export const useMusicStore = defineStore('music', () => {
       return true
     } catch (err) {
       if (request !== playRequest || err.sessionEnded) return false
+      if (stopMissingPlaylist(err)) return false
       isPlaying.value = false
       notify().error(err.code === 'MUSIC_PIECE_NOT_FOUND'
         ? `"${piece.name}" can't be played.`
@@ -157,6 +165,7 @@ export const useMusicStore = defineStore('music', () => {
       return playAt(0)
     } catch (err) {
       if (request !== playRequest || err.sessionEnded) return false
+      if (currentPlaylistUUID.value === playlistId && stopMissingPlaylist(err)) return false
       notify().error(QUEUE_ERRORS[err.code] ?? "We couldn't start this playlist. Check that the server is running, then try again.")
       return false
     }
@@ -174,7 +183,8 @@ export const useMusicStore = defineStore('music', () => {
         playlist.value.push(...page.musicPieces)
         queueCursor.value = page.nextCursor
       })
-      .catch(() => {
+      .catch((err) => {
+        if (currentPlaylistUUID.value === playlistId && queueCursor.value === cursor && stopMissingPlaylist(err)) return
         // Tried again on the next song
       })
       .finally(() => {
@@ -187,6 +197,7 @@ export const useMusicStore = defineStore('music', () => {
     if (!playlist.value.length) return
     const next = (currentPlaylistIndex ?? -1) + 1
     if (next >= playlist.value.length && queueCursor.value) await refill()
+    if (!playlist.value.length) return
     if (next < playlist.value.length) return playAt(next)
     // End of the queue
     finishListening()
@@ -227,6 +238,7 @@ export const useMusicStore = defineStore('music', () => {
       setPreferences({ shuffle })
       prefetched.clear()
     } catch (err) {
+      if (currentPlaylistUUID.value === playlistId && stopMissingPlaylist(err)) return
       if (!err.sessionEnded) notify().error("We couldn't change shuffle. Check that the server is running, then try again.")
     }
   }
@@ -235,15 +247,18 @@ export const useMusicStore = defineStore('music', () => {
   async function prefetchNext() {
     const next = playlist.value[(currentPlaylistIndex ?? -1) + 1]
     if (!next || prefetched.has(next.musicPieceId) || prefetching) return
+    const request = playRequest
     prefetching = requestStream(next)
     try {
       const stream = await prefetching
+      if (request !== playRequest) return
       prefetched.set(next.musicPieceId, stream)
       if (warmAudio) {
         warmAudio.preload = 'auto'
         warmAudio.src = stream.url
       }
-    } catch {
+    } catch (err) {
+      if (request === playRequest && stopMissingPlaylist(err)) return
       // The song asks again when it starts
     } finally {
       prefetching = null
@@ -272,6 +287,7 @@ export const useMusicStore = defineStore('music', () => {
       currentMusicPiece.value = { ...current, mp3File: stream.url, playToken: stream.playToken, expiresAt: stream.expiresAt }
     } catch (err) {
       if (request !== playRequest || err.sessionEnded) return
+      if (stopMissingPlaylist(err)) return
       isPlaying.value = false
       notify().error(`"${current.title}" stopped playing. Check that the server is running, then try again.`)
     }
@@ -308,10 +324,12 @@ export const useMusicStore = defineStore('music', () => {
     listened = 0
     const current = currentMusicPiece.value
     if (!current.uuid) return
+    const request = playRequest
     try {
       const stream = await requestStream({ musicPieceId: current.uuid })
       if (currentMusicPiece.value.uuid === current.uuid) currentMusicPiece.value.playToken = stream.playToken
-    } catch {
+    } catch (err) {
+      if (request === playRequest && stopMissingPlaylist(err)) return
       // The repeat still plays; this listen just isn't counted
     }
   }
@@ -449,7 +467,8 @@ export const useMusicStore = defineStore('music', () => {
         queueCursor.value = page.nextCursor
       }
       resumePlaying()
-    } catch {
+    } catch (err) {
+      if (request === playRequest && stopMissingPlaylist(err)) return
       // The playlist can't be played anymore: keep just this song, played on its own
       if (request === playRequest) currentPlaylistUUID.value = ''
     }

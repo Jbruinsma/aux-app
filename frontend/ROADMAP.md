@@ -86,19 +86,6 @@ reload.
 
 ## P1: Do next
 
-### 5. Turn on real playlist deletion
-
-The endpoint is live; the UI still runs on a mock.
-
-**Files:** `src/utils/playlist.js`, `src/views/PlaylistDetail.vue`
-
-- [ ] Delete `PLAYLIST_DELETE_MOCKED` and the mock branch in `deletePlaylist`.
-- [ ] Remove the "Preview only" notice in `confirmDelete`.
-- [ ] On 404, treat the playlist as already deleted: close the dialog, reset the player if it was playing that
-      playlist, and go to the Dashboard.
-- [ ] Check what other users see after a delete: members and savers get the not-found page, a player on that playlist
-      stops instead of retrying, and the invite leaves the bell.
-
 ### 6. Skip private pieces
 
 **Files:** `src/stores/music.js`

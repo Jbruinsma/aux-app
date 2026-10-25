@@ -272,7 +272,6 @@ import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import {
-  PLAYLIST_DELETE_MOCKED,
   acceptInvite,
   declineInvite,
   deletePlaylist,
@@ -322,7 +321,10 @@ async function loadPlaylist() {
   } catch (err) {
     if (err.sessionEnded || route.params.id !== playlistId) return
     if (err.code === 'PLAYLIST_INVITE_PENDING') showInvite()
-    else status.value = err.status === 404 ? 'missing' : 'error'
+    else {
+      status.value = err.status === 404 ? 'missing' : 'error'
+      if (err.status === 404 && musicStore.getCurrentPlaylistUUID() === playlistId) musicStore.reset()
+    }
   }
 }
 
@@ -524,13 +526,10 @@ async function confirmDelete() {
   deleteError.value = ''
   deleting.value = true
   try {
-    await deletePlaylist(id.value)
+    const playlistId = id.value
+    await deletePlaylist(playlistId)
     deleteDialog.value.close()
-    if (PLAYLIST_DELETE_MOCKED) {
-      notification.neutral("Preview only: the playlist wasn't deleted.")
-      return
-    }
-    if (musicStore.getCurrentPlaylistUUID() === id.value) musicStore.reset()
+    if (musicStore.getCurrentPlaylistUUID() === playlistId) musicStore.reset()
     notification.success('Playlist deleted.')
     await router.push({ name: 'Dashboard' })
   } catch (err) {
