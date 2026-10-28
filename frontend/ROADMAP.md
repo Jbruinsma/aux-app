@@ -1,11 +1,11 @@
 # Frontend roadmap
 
-Work top to bottom: finish P0 before picking up P1. Tick each box as you finish it. When every box in a task is
-ticked, delete the task (git history keeps it). Exact request and response shapes are in the OpenAPI docs
+Work top to bottom: finish P0 before picking up P1. Tick each box as you finish it. Keep finished tasks
+in place, all boxes ticked, so the team can see what's done. Exact request and response shapes are in the OpenAPI docs
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-10-22.
+Last updated 2026-10-28.
 
 ______________________________________________________
 
@@ -90,7 +90,7 @@ reload.
 
 **Files:** `src/stores/music.js`
 
-- [ ] When `/stream` returns 404 `MUSIC_PIECE_NOT_FOUND`, skip to the next piece. The notification already shows.
+- [x] When `/stream` returns 404 `MUSIC_PIECE_NOT_FOUND`, skip to the next piece. The notification already shows.
       The `/play` queue now leaves out pieces the caller can't play, so this only happens when a piece becomes
       unavailable mid-session (see task 12).
 
@@ -98,31 +98,31 @@ reload.
 
 **Files:** `src/views/Dashboard.vue`
 
-- [ ] On click, call `playPlaylist(playlistId, { start: musicPieceId, shuffle: shuffleOn })`.
-- [ ] When `playlistId` is null, play the piece on its own with `playPieces([musicPiece])`.
-- [ ] When the queue call fails with 404 or 403, fall back to playing the piece on its own.
+- [x] On click, call `playPlaylist(playlistId, { start: musicPieceId, shuffle: shuffleOn })`.
+- [x] When `playlistId` is null, play the piece on its own with `playPieces([musicPiece])`.
+- [x] When the queue call fails with 404 or 403, fall back to playing the piece on its own.
 
 ### 8. Add Leave playlist
 
 **Files:** `src/views/PlaylistDetail.vue`
 **API:** `DELETE /api/playlists/{playlistId}/membership`
 
-- [ ] Show the PlaylistDetail menu to listeners, not only editors.
-- [ ] Add a Leave playlist item for editors and listeners.
+- [x] Show the PlaylistDetail menu to listeners, not only editors.
+- [x] Add a Leave playlist item for editors and listeners.
 
 ### 9. Finish the empty states
 
 **Files:** `src/views/Dashboard.vue`
 
 - [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
-- [ ] Add a next step where one fits, such as Create playlist or Upload music.
-- [ ] Give the loading and error states the same `EmptyState` look; they're plain text now.
+- [x] Add a next step where one fits, such as Create playlist or Upload music.
+- [x] Give the loading and error states the same `EmptyState` look; they're plain text now.
 
 ### 10. Restyle My uploads
 
 **Files:** `src/views/Dashboard.vue`
 
-- [ ] Use the same cover cards and drag-to-scroll row as Recent listening.
+- [x] Use the same cover cards and drag-to-scroll row as Recent listening.
 
 ### 11. Show who uploaded each piece
 
@@ -134,14 +134,14 @@ goes unused.
 **Files:** `src/stores/music.js`, `src/components/BottomPlayer.vue`, `src/views/PlaylistDetail.vue`,
 `src/views/Dashboard.vue`, `src/utils/dashboardPreview.js`
 
-- [ ] Copy `uploader` onto the current piece in `toCurrent` in `src/stores/music.js`.
-- [ ] Show the uploader's picture and username in `BottomPlayer.vue`, linked to their profile (`/:username`).
-- [ ] Show the uploader on each track row in `PlaylistDetail.vue`. Shared playlists mix uploads from several members.
-- [ ] Show the uploader on the Recent listening cards in `Dashboard.vue`.
-- [ ] Skip it on My uploads and in `AddMusic.vue`: the uploader is always the caller there.
-- [ ] Load `pfpUrl` through `resolveCoverURL`, like the other profile pictures. It can be a relative path such as
+- [x] Copy `uploader` onto the current piece in `toCurrent` in `src/stores/music.js`.
+- [x] Show the uploader's picture and username in `BottomPlayer.vue`, linked to their profile (`/:username`).
+- [x] Show the uploader on each track row in `PlaylistDetail.vue`. Shared playlists mix uploads from several members.
+- [x] Show the uploader on the Recent listening cards in `Dashboard.vue`.
+- [x] Skip it on My uploads and in `AddMusic.vue`: the uploader is always the caller there.
+- [x] Load `pfpUrl` through `resolveCoverURL`, like the other profile pictures. It can be a relative path such as
       `/default_profile_picture.svg`.
-- [ ] Add `uploader` to the mock pieces in `src/utils/dashboardPreview.js` and in the `music`, `AddMusic` and
+- [x] Add `uploader` to the mock pieces in `src/utils/dashboardPreview.js` and in the `music`, `AddMusic` and
       `PlaylistDetail` tests.
 
 **Done when:** the player and playlist track rows show who uploaded the piece, and clicking the name opens their
@@ -157,11 +157,11 @@ Every music piece now has `isAvailable`. It is only ever false in a playlist's t
 
 **Files:** `src/views/PlaylistDetail.vue`, `src/stores/music.js`
 
-- [ ] Gray out rows where `isAvailable` is false and label them "UNAVAILABLE". Keep the title, cover and uploader.
-- [ ] Don't let an unavailable row start playback.
-- [ ] Keep the remove-track action on unavailable rows for the owner and editors; the endpoint allows it.
-- [ ] When starting playback from a row, pass that row's piece as `start` only if it's available.
-- [ ] Add `isAvailable: true` to the mock pieces in `src/utils/dashboardPreview.js` and the tests.
+- [x] Gray out rows where `isAvailable` is false and label them "UNAVAILABLE". Keep the title, cover and uploader.
+- [x] Don't let an unavailable row start playback.
+- [x] Keep the remove-track action on unavailable rows for the owner and editors; the endpoint allows it.
+- [x] When starting playback from a row, pass that row's piece as `start` only if it's available.
+- [x] Add `isAvailable: true` to the mock pieces in `src/utils/dashboardPreview.js` and the tests.
 
 **Done when:** after an editor is removed from a private playlist, their private pieces show grayed out to everyone
 else, can't be played, and the owner can remove them.
@@ -172,12 +172,15 @@ else, can't be played, and the owner can remove them.
 **API:** `PUT /api/music-pieces/{musicPieceId}` (multipart: `name`, `artistId`, `isPublic`, `coverImage`, `tags`, all
 optional)
 
-- [ ] Add an Edit action to each piece in My uploads, opening a dialog with name, artist (reuse `ArtistPicker.vue`),
+- [x] Add an Edit action to each piece in My uploads, opening a dialog with name, artist (reuse `ArtistPicker.vue`),
       public/private and cover.
-- [ ] Send only the fields that changed. Send the original cover image; the server crops it.
-- [ ] When switching a piece to private, warn that it becomes unavailable on public playlists and on playlists
+- [x] Send only the fields that changed. Send the original cover image; the server crops it.
+- [x] When switching a piece to private, warn that it becomes unavailable on public playlists and on playlists
       the uploader no longer collaborates on.
-- [ ] The response is the updated piece; the `uploads` event also refreshes the row.
+- [x] The response is the updated piece; the `uploads` event also refreshes the row.
+
+*Pieces don't return `isPublic` yet, so the dialog starts on "Keep as it is" instead of the current visibility
+(`../backend/BACKEND_REQUESTS.md` §2).*
 
 **Done when:** an uploader can rename, re-artist, re-cover and change the visibility of a piece from My uploads.
 
@@ -186,7 +189,8 @@ optional)
 Pieces and playlists can now have up to 5 tags: curated genres and moods, or anything the user types. Tags are
 optional, but nudge users to add them, since recommendations will use them later. Every music piece, the playlist
 overview, and music and playlist search results now return `tags`, a list of lowercase strings that is empty when
-there are none. Wait until `tags` shows up in the OpenAPI docs before starting.
+there are none. Wait until `tags` shows up in the OpenAPI docs before starting. *Blocked: the backend code has tags, but
+the docs haven't been regenerated yet (`../backend/BACKEND_REQUESTS.md` §1).*
 
 **Files:** new `src/components/TagPicker.vue`, `src/views/UploadMusic.vue`, `src/views/CreatePlaylist.vue`,
 `src/views/EditPlaylist.vue`, `src/views/PlaylistDetail.vue`, `src/views/Dashboard.vue`
@@ -218,26 +222,29 @@ saving without tags still works.
 **API:** `GET /api/artists/{artistId}`, `PUT`/`DELETE .../favorite`, `PUT .../pfp`, `PUT .../banner`,
 `GET /api/artists/favorites/{username}`
 
-- [ ] Artist page with a Favorite/Unfavorite button.
-- [ ] Picture and banner editing when `canEdit` is true.
-- [ ] Link artist names in track rows, search results and Top artists to the page.
-- [ ] Show favourite artists on the profile.
+- [x] Artist page with a Favorite/Unfavorite button.
+- [x] Picture and banner editing when `canEdit` is true.
+- [x] Link artist names in track rows, search results and Top artists to the page.
+- [x] Show favourite artists on the profile.
+
+*The page lists an artist's songs by running a music search for their name and keeping that artist's pieces, until
+there's an endpoint for it (`../backend/BACKEND_REQUESTS.md` §3).*
 
 ### 16. Autoplay (not decided)
 
 - [ ] Decide whether to play recommended music when the queue ends with repeat `OFF`, like Apple Music's infinity
-      button. The backend has nothing for it yet.
+      button. The backend has nothing for it yet. Options are in `../backend/BACKEND_REQUESTS.md` (Open questions).
 
 ## Blocked: waiting on the backend
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
 - [ ] **Delete account.** Turn off `ACCOUNT_MOCKED` in `src/utils/account.js` once `DELETE /api/users/me` exists
-      (`../backend/BACKEND_REQUESTS.md` §1).
+      (`../backend/BACKEND_REQUESTS.md` §4).
 - [ ] **People who hear it too.** Fill the Dashboard section once `GET /api/users/matches` exists
-      (`../backend/BACKEND_REQUESTS.md` §2).
-- [ ] **Follow.** Enable the profile's follow button once there's a follow endpoint. Not requested yet.
+      (`../backend/BACKEND_REQUESTS.md` §5).
+- [ ] **Follow.** Enable the profile's follow button once there's a follow endpoint (`../backend/BACKEND_REQUESTS.md` §6).
 - [ ] **Landing page.** Replace the hardcoded top albums in `LandingPage.vue` once `GET /api/core/top` returns real
-      data. Not requested yet.
+      data (`../backend/BACKEND_REQUESTS.md` §7).
 - [ ] **Music piece page.** Open a details page with a Play button when an upload is clicked, once
-      `GET /api/music-pieces/{musicPieceId}` exists. Not requested yet.
+      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §8).

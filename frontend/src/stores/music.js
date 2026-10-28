@@ -33,11 +33,11 @@ const QUEUE_ERRORS = {
 
 export const useMusicStore = defineStore('music', () => {
   const DEFAULT_TITLE = 'No song playing'
-  const emptyPiece = () => ({ uuid: '', cover: '', title: DEFAULT_TITLE, artist: '', mp3File: null, playToken: null, expiresAt: 0 })
+  const emptyPiece = () => ({ uuid: '', cover: '', title: DEFAULT_TITLE, artist: '', artistId: '', uploader: null, mp3File: null, playToken: null, expiresAt: 0 })
 
   const showArrow = ref(true)
   const collapsed = ref(true)
-  // { uuid, cover, title, artist, mp3File (signed URL), playToken, expiresAt }
+  // { uuid, cover, title, artist, artistId, uploader ({ userId, pfpUrl, username }), mp3File (signed URL), playToken, expiresAt }
   const currentMusicPiece = ref(emptyPiece())
   const currentPlaylistUUID = ref('')
   // The fetched queue, in play order: MusicPieceOverview items
@@ -83,6 +83,8 @@ export const useMusicStore = defineStore('music', () => {
       title: piece.name,
       cover: piece.coverUrl ? resolveCoverURL(piece.coverUrl) : '',
       artist: piece.artistSummary?.artistName ?? '',
+      artistId: piece.artistSummary?.artistId ?? '',
+      uploader: piece.uploader ?? null,
       mp3File: stream?.url ?? null,
       playToken: stream?.playToken ?? null,
       expiresAt: stream?.expiresAt ?? 0,
@@ -126,9 +128,14 @@ export const useMusicStore = defineStore('music', () => {
       if (request !== playRequest || err.sessionEnded) return false
       if (stopMissingPlaylist(err)) return false
       isPlaying.value = false
-      notify().error(err.code === 'MUSIC_PIECE_NOT_FOUND'
-        ? `"${piece.name}" can't be played.`
-        : "We couldn't start this song. Check that the server is running, then try again.")
+      if (err.code !== 'MUSIC_PIECE_NOT_FOUND') {
+        notify().error("We couldn't start this song. Check that the server is running, then try again.")
+        return false
+      }
+      // The piece became unavailable mid-session (made private, or its uploader left the playlist): skip it. Only when
+      // something follows, so a queue of unplayable pieces can't loop under repeat PLAYLIST
+      notify().error(`"${piece.name}" can't be played.`)
+      if (index + 1 < playlist.value.length || queueCursor.value) return moveForward()
       return false
     }
   }
@@ -146,8 +153,9 @@ export const useMusicStore = defineStore('music', () => {
     return playAt(index)
   }
 
-  // Replaces the queue with a playlist's, starting at `start` (a musicPieceId) or the top
-  async function playPlaylist(playlistId, { start = null, shuffle = false } = {}) {
+  // Replaces the queue with a playlist's, starting at `start` (a musicPieceId) or the top. With `fallback` (a piece), a
+  // playlist that's gone or can't be opened anymore (404 or 403) plays that piece on its own instead
+  async function playPlaylist(playlistId, { start = null, shuffle = false, fallback = null } = {}) {
     const request = ++playRequest
     forceShowPlayerActive.value = true
     try {
@@ -165,6 +173,7 @@ export const useMusicStore = defineStore('music', () => {
       return playAt(0)
     } catch (err) {
       if (request !== playRequest || err.sessionEnded) return false
+      if (fallback && (err.status === 404 || err.status === 403)) return playPieces([fallback])
       if (currentPlaylistUUID.value === playlistId && stopMissingPlaylist(err)) return false
       notify().error(QUEUE_ERRORS[err.code] ?? "We couldn't start this playlist. Check that the server is running, then try again.")
       return false

@@ -17,6 +17,7 @@
             </svg>
             <input
               id="dash-search"
+              ref="searchInput"
               v-model="searchText"
               class="search-input"
               type="search"
@@ -46,8 +47,8 @@
             </div>
           </div>
 
-          <p v-if="search.error" class="error" role="alert">{{ search.error }}</p>
-          <p v-else-if="search.loading && !search.results.length" class="meta">Searching…</p>
+          <EmptyState v-if="search.error" tone="error" :title="search.error" />
+          <EmptyState v-else-if="search.loading && !search.results.length" tone="loading" :icon="activeTab.icon" title="Searching…" />
           <EmptyState
             v-else-if="!search.results.length"
             :icon="activeTab.icon"
@@ -74,7 +75,12 @@
                 <span v-else class="song-art" aria-hidden="true"></span>
                 <span class="song-text">
                   <span class="song-title">{{ piece.name }}</span>
-                  <span v-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
+                  <router-link
+                    v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
+                    class="song-artist artist-link"
+                    :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
+                  >{{ piece.artistSummary.artistName }}</router-link>
+                  <span v-else-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
                 </span>
               </li>
             </ul>
@@ -100,12 +106,12 @@
               </div>
             </div>
 
-            <p v-if="recent.error" class="error" role="alert">{{ recent.error }}</p>
-            <p v-else-if="recent.loading" class="meta">Loading your recent listening…</p>
+            <EmptyState v-if="recent.error" tone="error" :title="recent.error" :text="STREAM_RETRY" />
+            <EmptyState v-else-if="recent.loading" tone="loading" title="Loading your recent listening…" />
             <EmptyState
               v-else-if="!recent.items.length"
               title="No plays yet"
-              text="Play a song from one of your playlists and it shows up here."
+              text="Play a song from one of your playlists or uploads and it shows up here."
             />
             <div v-else class="scroll-area">
               <ul
@@ -115,15 +121,36 @@
                 tabindex="0"
                 aria-label="Recent Listening songs"
               >
-                <li v-for="{ musicPiece } in recent.items" :key="musicPiece.musicPieceId" class="card">
-                  <img v-if="musicPiece.coverUrl" class="card-art" :src="resolveCoverURL(musicPiece.coverUrl)" alt="" loading="lazy" />
-                  <span v-else class="card-art card-art-empty" aria-hidden="true">
-                    <svg class="card-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
-                  </span>
-                  <span class="card-body">
-                    <span class="card-title">{{ musicPiece.name }}</span>
-                    <span v-if="musicPiece.artistSummary?.artistName" class="card-meta">{{ musicPiece.artistSummary.artistName }}</span>
-                  </span>
+                <li
+                  v-for="item in recent.items"
+                  :key="item.musicPiece.musicPieceId"
+                  class="card"
+                  :class="{ playing: !recent.preview && isCurrent(item.musicPiece) }"
+                >
+                  <component
+                    :is="recent.preview ? 'span' : 'button'"
+                    :type="recent.preview ? null : 'button'"
+                    class="card-main"
+                    :aria-label="recent.preview ? null : playLabel(item.musicPiece)"
+                    @click="playRecent(item)"
+                  >
+                    <span class="card-art-wrap">
+                      <img v-if="item.musicPiece.coverUrl" class="card-art" :src="resolveCoverURL(item.musicPiece.coverUrl)" alt="" loading="lazy" />
+                      <span v-else class="card-art card-art-empty" aria-hidden="true">
+                        <svg class="card-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+                      </span>
+                      <span v-if="!recent.preview" class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg></span>
+                    </span>
+                    <span class="card-body">
+                      <span class="card-title">{{ item.musicPiece.name }}</span>
+                      <span v-if="item.musicPiece.artistSummary?.artistName" class="card-meta">{{ item.musicPiece.artistSummary.artistName }}</span>
+                      <span v-if="item.musicPiece.uploader" class="card-uploader">
+                        <img v-if="item.musicPiece.uploader.pfpUrl" class="uploader-pfp" :src="resolveCoverURL(item.musicPiece.uploader.pfpUrl)" alt="" loading="lazy" />
+                        <span v-else class="uploader-pfp uploader-initial" aria-hidden="true">{{ item.musicPiece.uploader.username.charAt(0).toUpperCase() }}</span>
+                        <span class="uploader-name"><span class="sr-only">Uploaded by </span>{{ item.musicPiece.uploader.username }}</span>
+                      </span>
+                    </span>
+                  </component>
                 </li>
               </ul>
               <span v-if="hinting" :key="hintRun" class="drag-hint" aria-hidden="true" @animationend="hinting = false">
@@ -147,8 +174,8 @@
               </div>
             </div>
 
-            <p v-if="topArtists.error" class="error" role="alert">{{ topArtists.error }}</p>
-            <p v-else-if="topArtists.loading" class="meta">Loading your top artists…</p>
+            <EmptyState v-if="topArtists.error" tone="error" :title="topArtists.error" :text="STREAM_RETRY" />
+            <EmptyState v-else-if="topArtists.loading" tone="loading" icon="mic" title="Loading your top artists…" />
             <EmptyState
               v-else-if="!topArtists.items.length"
               icon="mic"
@@ -164,14 +191,20 @@
               aria-label="Your Top Artists"
             >
               <li v-for="(artist, index) in topArtists.items" :key="artist.artistId" class="card">
-                <span class="card-art-wrap">
-                  <img v-if="artist.artistPfpUrl" class="card-art" :src="resolveCoverURL(artist.artistPfpUrl)" alt="" loading="lazy" />
-                  <span v-else class="card-art card-art-empty card-initial" aria-hidden="true">{{ artist.artistName.charAt(0).toUpperCase() }}</span>
-                  <span class="rank">#{{ index + 1 }}</span>
-                </span>
-                <span class="card-body">
-                  <span class="card-title">{{ artist.artistName }}</span>
-                </span>
+                <component
+                  :is="topArtists.preview ? 'span' : 'router-link'"
+                  class="card-main"
+                  :to="topArtists.preview ? null : { name: 'Artist', params: { artistId: artist.artistId } }"
+                >
+                  <span class="card-art-wrap">
+                    <img v-if="artist.artistPfpUrl" class="card-art" :src="resolveCoverURL(artist.artistPfpUrl)" alt="" loading="lazy" />
+                    <span v-else class="card-art card-art-empty card-initial" aria-hidden="true">{{ artist.artistName.charAt(0).toUpperCase() }}</span>
+                    <span class="rank">#{{ index + 1 }}</span>
+                  </span>
+                  <span class="card-body">
+                    <span class="card-title">{{ artist.artistName }}</span>
+                  </span>
+                </component>
               </li>
             </ol>
           </section>
@@ -188,8 +221,8 @@
               </div>
             </div>
 
-            <p v-if="matches.error" class="error" role="alert">{{ matches.error }}</p>
-            <p v-else-if="matches.loading" class="meta">Finding people who hear it too…</p>
+            <EmptyState v-if="matches.error" tone="error" :title="matches.error" text="Check that the server is running, then refresh the page." />
+            <EmptyState v-else-if="matches.loading" tone="loading" icon="users" title="Finding people who hear it too…" />
             <EmptyState
               v-else-if="!matches.items.length"
               icon="users"
@@ -237,13 +270,15 @@
               </div>
             </div>
 
-            <p v-if="libraryError" class="error" role="alert">{{ libraryError }}</p>
-            <p v-else-if="libraryLoading" class="meta">Loading your library…</p>
+            <EmptyState v-if="libraryError" tone="error" :title="libraryError" :text="STREAM_RETRY" />
+            <EmptyState v-else-if="libraryLoading" tone="loading" title="Loading your library…" />
             <EmptyState
               v-else-if="libraryFilter === 'saved' && filteredLibrary.length === 0"
               title="Nothing saved yet"
               text="Save a playlist from someone else and it shows up here."
-            />
+            >
+              <button type="button" class="btn secondary" @click="findPlaylists">Find playlists</button>
+            </EmptyState>
             <PlaylistGrid v-else class="big-grid" :playlists="shownLibrary" :owner="username">
               <li v-if="libraryFilter !== 'saved'">
                 <button type="button" class="new-tile" @click="createDialog.open()">
@@ -272,43 +307,47 @@
                 <h2 id="uploads-heading">My Uploads</h2>
                 <p class="meta">{{ uploadsSummary }}</p>
               </div>
-              <router-link :to="{ name: 'Upload' }" class="btn secondary">Upload music</router-link>
+              <router-link v-if="uploads.items.length" :to="{ name: 'Upload' }" class="btn secondary">Upload music</router-link>
             </div>
 
-            <p v-if="uploads.error" class="error" role="alert">{{ uploads.error }}</p>
-            <p v-else-if="uploads.loading" class="meta">Loading your uploads…</p>
+            <EmptyState v-if="uploads.error" tone="error" :title="uploads.error" :text="STREAM_RETRY" />
+            <EmptyState v-else-if="uploads.loading" tone="loading" title="Loading your uploads…" />
             <EmptyState
               v-else-if="!uploads.items.length"
               title="No uploads yet"
               text="Upload an MP3 to start your library."
-            />
-            <template v-else>
-              <ol class="upload-list">
-                <li v-for="(piece, index) in shownUploads" :key="piece.musicPieceId" class="upload" :class="{ playing: isPlayingUpload(piece) }">
-                  <button
-                    type="button"
-                    class="upload-main"
-                    :aria-label="`Play ${piece.name}${piece.artistSummary?.artistName ? ` by ${piece.artistSummary.artistName}` : ''}`"
-                    @click="musicStore.playPieces(uploads.items, index)"
-                  >
-                    <img v-if="piece.coverUrl" class="upload-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
-                    <span v-else class="upload-art" aria-hidden="true"></span>
-                    <span class="upload-text">
-                      <span class="upload-title">{{ piece.name }}</span>
-                      <span v-if="piece.artistSummary?.artistName" class="upload-artist">{{ piece.artistSummary.artistName }}</span>
+            >
+              <router-link :to="{ name: 'Upload' }" class="btn primary">Upload music</router-link>
+            </EmptyState>
+            <ul
+              v-else
+              ref="uploadsScroller"
+              class="cards scroller"
+              :class="{ dragging: uploadsDragging }"
+              tabindex="0"
+              aria-label="My Uploads songs"
+            >
+              <li v-for="(piece, index) in uploads.items" :key="piece.musicPieceId" class="card" :class="{ playing: isPlayingUpload(piece) }">
+                <button type="button" class="card-main" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
+                  <span class="card-art-wrap">
+                    <img v-if="piece.coverUrl" class="card-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
+                    <span v-else class="card-art card-art-empty" aria-hidden="true">
+                      <svg class="card-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
                     </span>
-                    <svg class="upload-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" /></svg>
-                  </button>
-                </li>
-              </ol>
-              <button
-                v-if="uploads.items.length > UPLOADS_PREVIEW_COUNT"
-                type="button"
-                class="btn secondary more"
-                :aria-expanded="uploadsExpanded ? 'true' : 'false'"
-                @click="uploadsExpanded = !uploadsExpanded"
-              >{{ uploadsExpanded ? 'Show less' : `More (${uploads.items.length - UPLOADS_PREVIEW_COUNT})` }}</button>
-            </template>
+                    <span class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg></span>
+                  </span>
+                  <span class="card-body">
+                    <span class="card-title">{{ piece.name }}</span>
+                    <span v-if="piece.artistSummary?.artistName" class="card-meta">{{ piece.artistSummary.artistName }}</span>
+                  </span>
+                </button>
+                <button type="button" class="card-edit" :aria-label="`Edit ${piece.name}`" title="Edit song" @click="editDialog.open(piece)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
+                  </svg>
+                </button>
+              </li>
+            </ul>
           </section>
         </div>
 
@@ -316,6 +355,7 @@
     </main>
     <AppFooter />
     <CreateDialog ref="createDialog" />
+    <EditPieceDialog ref="editDialog" />
   </div>
 </template>
 
@@ -325,6 +365,7 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import CreateDialog from '@/components/CreateDialog.vue'
+import EditPieceDialog from '@/components/EditPieceDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import PlaylistGrid from '@/components/PlaylistGrid.vue'
 import { fetchAPI } from '@/utils/api.js'
@@ -352,6 +393,7 @@ const DEBOUNCE_MS = 300
 
 const router = useRouter()
 const createDialog = ref(null)
+const editDialog = ref(null)
 const userStore = useUserStore()
 
 const username = computed(() => userStore.userData?.username ?? '')
@@ -361,6 +403,8 @@ const eventsStore = useEventsStore()
 // The rows come from the live event stream (stores/events.js). A row is loading until its event arrives, and shows an
 // error only while the stream can't connect and nothing has arrived yet; data already shown stays if it drops later.
 // `placeholder` fills a row only while the account's own list is empty (DASHBOARD_PREVIEW)
+const STREAM_RETRY = "Check that the server is running; we'll keep trying."
+
 function streamRow(field, key, what, placeholder = []) {
   return computed(() => {
     const body = eventsStore[field]
@@ -369,7 +413,7 @@ function streamRow(field, key, what, placeholder = []) {
       return {
         items: [],
         loading: !failed,
-        error: failed ? `We couldn't load ${what}. Check that the server is running; we'll keep trying.` : '',
+        error: failed ? `We couldn't load ${what}.` : '',
         preview: false,
       }
     }
@@ -388,13 +432,10 @@ const libraryLoading = computed(() => libraryRow.value.loading)
 const libraryError = computed(() => libraryRow.value.error)
 const libraryFilter = ref('all')
 const LIBRARY_PREVIEW_COUNT = 7
-const UPLOADS_PREVIEW_COUNT = 6
 const musicStore = useMusicStore()
 
 // My Uploads: the `uploads` event. Clicking a song plays it with the rest of the uploads queued after it
 const uploads = streamRow('uploads', 'uploadedMusicPieces', 'your uploads')
-const uploadsExpanded = ref(false)
-const shownUploads = computed(() => (uploadsExpanded.value ? uploads.value.items : uploads.value.items.slice(0, UPLOADS_PREVIEW_COUNT)))
 const uploadsSummary = computed(() => {
   const { items, loading, error } = uploads.value
   if (loading || error) return 'Songs you uploaded, newest first.'
@@ -403,6 +444,29 @@ const uploadsSummary = computed(() => {
 
 function isPlayingUpload(piece) {
   return !musicStore.currentPlaylistUUID && musicStore.currentMusicPiece.uuid === piece.musicPieceId
+}
+
+function isCurrent(piece) {
+  return musicStore.currentMusicPiece.uuid === piece.musicPieceId
+}
+
+function playLabel(piece) {
+  const artist = piece.artistSummary?.artistName
+  return `Play ${piece.name}${artist ? ` by ${artist}` : ''}`
+}
+
+// A recent play starts its playlist from that song, with the current shuffle. Without a playlist, or when the playlist
+// can't be played anymore, the song plays on its own
+function playRecent({ musicPiece, playlistId }) {
+  if (recent.value.preview) return
+  if (!playlistId) return musicStore.playPieces([musicPiece])
+  return musicStore.playPlaylist(playlistId, { start: musicPiece.musicPieceId, shuffle: musicStore.shuffleOn, fallback: musicPiece })
+}
+
+// Next step for an empty Saved tab: search playlists
+function findPlaylists() {
+  category.value = 'PLAYLISTS'
+  searchInput.value?.focus()
 }
 const libraryExpanded = ref(false)
 
@@ -435,18 +499,19 @@ async function loadRow(state, load, key, what) {
     state.items = (await load())[key] ?? []
   } catch (err) {
     if (err.sessionEnded) return
-    state.error = `We couldn't load ${what}. Check that the server is running, then refresh the page.`
+    state.error = `We couldn't load ${what}.`
   } finally {
     state.loading = false
   }
 }
 
-/* Both card rows scroll sideways by mouse drag too. Recent Listening shows a hint (a pointer dragging the row) every
+/* The card rows scroll sideways by mouse drag too. Recent Listening shows a hint (a pointer dragging the row) every
    HINT_EVERY_MS until the user drags it themselves; it never shows when they prefer reduced motion */
 
 const HINT_EVERY_MS = 10_000
 const recentScroller = ref(null)
 const topScroller = ref(null)
+const uploadsScroller = ref(null)
 const hinting = ref(false)
 const hintRun = ref(0)
 const hintDismissed = ref(false)
@@ -461,6 +526,7 @@ const { dragging: recentDragging } = useDragScroll(recentScroller, {
   },
 })
 const { dragging: topDragging } = useDragScroll(topScroller)
+const { dragging: uploadsDragging } = useDragScroll(uploadsScroller)
 
 function playHint() {
   const list = recentScroller.value
@@ -486,6 +552,7 @@ onBeforeUnmount(() => {
 
 // Search: GET /api/core/search, one category at a time
 const searchText = ref('')
+const searchInput = ref(null)
 const category = ref('USERS')
 const search = reactive({ results: [], total: 0, loading: false, error: '' })
 const trimmedQuery = computed(() => searchText.value.trim())
@@ -555,7 +622,6 @@ onMounted(async () => {
 <style scoped>
 h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
-.error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
 .sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
 .welcome { border-bottom: 1px solid var(--line); }
@@ -601,8 +667,24 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
   48% { transform: translateX(-120px); }
   74%, 100% { transform: translateX(0); }
 }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; flex-direction: column; min-width: 0; overflow: hidden; position: relative; }
+.card-edit { align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 36px; justify-content: center; opacity: 0; padding: 0; position: absolute; right: var(--space-2); top: var(--space-2); transition: opacity var(--dur-fast) var(--ease); width: 36px; }
+.card-edit svg { fill: none; height: 18px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 18px; }
+.card-edit:hover { background: var(--surface-alt); color: var(--link); }
+.card-edit:focus-visible { opacity: 1; outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.card:hover .card-edit { opacity: 1; }
+@media (hover: none) {
+  .card-edit { opacity: 1; }
+}
+.card-main { background: none; border: 0; color: inherit; display: flex; flex: 1; flex-direction: column; font: inherit; min-width: 0; padding: 0; text-align: left; }
+button.card-main, a.card-main { cursor: pointer; text-decoration: none; }
+button.card-main:focus-visible, a.card-main:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.scroller.dragging .card-main { cursor: grabbing; }
 .card-art-wrap { display: block; position: relative; }
+.card-play { align-items: center; background: var(--primary); border-radius: var(--radius-pill); bottom: var(--space-3); display: flex; height: 40px; justify-content: center; opacity: 0; position: absolute; right: var(--space-3); transition: opacity var(--dur-fast) var(--ease); width: 40px; }
+.card-play svg { fill: var(--on-primary); height: 18px; width: 18px; }
+.card-main:hover .card-play, .card-main:focus-visible .card-play, .playing .card-play { opacity: 1; }
+.card-main:hover .card-play { background: var(--purple-hover); }
 .card-art { aspect-ratio: 1; background: var(--surface-alt); display: block; object-fit: cover; width: 100%; }
 .card-art-empty { color: var(--ink-muted); display: grid; place-items: center; }
 .card-icon { fill: none; height: 48px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; width: 48px; }
@@ -610,6 +692,12 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .rank { background: var(--primary); border-radius: var(--radius-pill); color: var(--on-primary); font: 600 12px/16px var(--font-sans); left: var(--space-3); padding: 2px var(--space-2); position: absolute; top: var(--space-3); }
 .card-body { background: var(--surface-alt); border-top: 1px solid var(--line); display: flex; flex: 1; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); }
 .card-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.card-main:hover .card-title, a.card-main:hover .card-title, .playing .card-title { color: var(--link); }
+.playing .card-body { background: var(--purple-soft); }
+.card-uploader { align-items: center; color: var(--ink-muted); display: flex; font: 500 12px/16px var(--font-sans); gap: var(--space-1); margin-top: var(--space-1); min-width: 0; }
+.uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
+.uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
+.uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .matches { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); list-style: none; margin: 0; padding: 0; }
@@ -627,19 +715,6 @@ a.match-name:hover { color: var(--link); text-decoration: underline; }
 .pct { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); margin-left: var(--space-2); }
 .shared { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
 .shared b { color: var(--ink); font-weight: 600; }
-
-.upload-list { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
-.upload { border-bottom: 1px solid var(--line); transition: background var(--dur-fast) var(--ease); }
-.upload:hover { background: var(--surface-alt); }
-.upload.playing { background: var(--purple-soft); }
-.upload-main { align-items: center; background: none; border: 0; color: inherit; cursor: pointer; display: flex; font: inherit; gap: var(--space-3); padding: var(--space-3) var(--space-2); text-align: left; width: 100%; }
-.upload-art { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-sm); flex: none; object-fit: cover; width: 40px; }
-.upload-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.upload-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.playing .upload-title { color: var(--link); }
-.upload-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.upload-play { fill: var(--link); flex: none; height: 20px; opacity: 0; width: 20px; }
-.upload:hover .upload-play, .upload-main:focus-visible .upload-play, .playing .upload-play { opacity: 1; }
 
 .count { margin: calc(var(--space-3) * -1) 0 var(--space-4); }
 .below .big-grid { gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
@@ -662,6 +737,8 @@ a.match-name:hover { color: var(--link); text-decoration: underline; }
 .song-text { display: flex; flex-direction: column; min-width: 0; }
 .song-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artist-link { text-decoration: none; }
+.artist-link:hover { color: var(--link); text-decoration: underline; }
 .more { margin-top: var(--space-6); }
 
 @media (max-width: 1100px) {

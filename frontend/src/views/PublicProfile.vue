@@ -71,6 +71,29 @@
             />
           </section>
 
+          <section aria-labelledby="favorites-heading">
+            <h2 id="favorites-heading">Favorite artists</h2>
+            <EmptyState v-if="favorites.error" tone="error" icon="mic" :title="favorites.error" text="Check that the server is running, then refresh the page." />
+            <EmptyState v-else-if="favorites.loading" tone="loading" icon="mic" title="Loading favorite artists…" />
+            <EmptyState
+              v-else-if="!favorites.items.length"
+              icon="mic"
+              title="No favorite artists yet"
+              :text="profile.isMe
+                ? 'Favorite an artist from their page and they show up here.'
+                : `Artists @${profile.username} favorites show up here.`"
+            />
+            <ul v-else class="artists">
+              <li v-for="artist in favorites.items" :key="artist.artistId">
+                <router-link class="artist" :to="{ name: 'Artist', params: { artistId: artist.artistId } }">
+                  <img v-if="artist.artistPfpUrl" class="artist-av" :src="resolveCoverURL(artist.artistPfpUrl)" alt="" loading="lazy" />
+                  <span v-else class="artist-av artist-av-empty" aria-hidden="true">{{ artist.artistName.charAt(0).toUpperCase() }}</span>
+                  <span class="artist-name">{{ artist.artistName }}</span>
+                </router-link>
+              </li>
+            </ul>
+          </section>
+
           <section aria-labelledby="albums-heading">
             <h2 id="albums-heading">Top albums</h2>
             <EmptyState
@@ -110,7 +133,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -122,6 +145,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { COUNTRIES } from '@/utils/countries.js'
+import { fetchFavoriteArtists } from '@/utils/artist.js'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -172,7 +196,27 @@ async function glideToTopAfterRefresh() {
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
 }
 
-watch(username, loadProfile, { immediate: true })
+// GET /api/artists/favorites/{username}, newest first
+const favorites = reactive({ items: [], loading: true, error: '' })
+
+async function loadFavorites() {
+  const requested = username.value
+  Object.assign(favorites, { items: [], loading: true, error: '' })
+  try {
+    const items = await fetchFavoriteArtists(requested)
+    if (requested === username.value) favorites.items = items ?? []
+  } catch (err) {
+    if (err.sessionEnded || requested !== username.value) return
+    favorites.error = "We couldn't load favorite artists."
+  } finally {
+    if (requested === username.value) favorites.loading = false
+  }
+}
+
+watch(username, () => {
+  loadProfile()
+  loadFavorites()
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -197,6 +241,14 @@ p.page-state { display: block; }
 .stats dt { font: 600 12px/16px var(--font-sans); color: var(--ink-muted); }
 .stats dd { margin: 0; font: 700 20px/28px var(--font-sans); font-variant-numeric: tabular-nums; }
 .action { margin-top: var(--space-4); text-align: center; }
+
+.artists { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); list-style: none; margin: 0; padding: 0; }
+.artist { align-items: center; color: var(--ink); display: flex; flex-direction: column; gap: var(--space-2); text-decoration: none; }
+.artist:hover .artist-name { color: var(--link); text-decoration: underline; }
+.artist:focus-visible { border-radius: var(--radius-sm); outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.artist-av { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-pill); object-fit: cover; width: 100%; }
+.artist-av-empty { background: var(--purple-soft); color: var(--link); display: grid; font: 800 40px/1 var(--font-sans); place-items: center; }
+.artist-name { font: 600 16px/24px var(--font-sans); max-width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }

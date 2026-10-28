@@ -4,6 +4,7 @@
       v-if="showArrow"
       type="button"
       class="collapse-toggle"
+      :class="{ collapsed }"
       :aria-label="collapsed ? 'Show player' : 'Hide player'"
       :aria-expanded="collapsed ? 'false' : 'true'"
       @click="collapsed = !collapsed"
@@ -24,7 +25,27 @@
         </span>
         <div class="song-details">
           <p class="song-title">{{ currentMusicPiece?.title || 'No song playing' }}</p>
-          <p v-if="currentMusicPiece?.artist" class="song-artist">{{ currentMusicPiece.artist }}</p>
+          <p v-if="currentMusicPiece?.artist || uploader" class="song-artist">
+            <router-link
+              v-if="currentMusicPiece.artist && currentMusicPiece.artistId"
+              class="artist-name artist-link"
+              :to="{ name: 'Artist', params: { artistId: currentMusicPiece.artistId } }"
+            >{{ currentMusicPiece.artist }}</router-link>
+            <span v-else-if="currentMusicPiece.artist" class="artist-name">{{ currentMusicPiece.artist }}</span>
+            <template v-if="uploader">
+              <span v-if="currentMusicPiece.artist" aria-hidden="true">·</span>
+              <router-link
+                class="uploader"
+                :to="{ name: 'Profile', params: { username: uploader.username } }"
+                :aria-label="`Uploaded by ${uploader.username}`"
+                :title="`Uploaded by ${uploader.username}`"
+              >
+                <img v-if="uploader.pfpUrl" class="uploader-pfp" :src="resolveCoverURL(uploader.pfpUrl)" alt="" />
+                <span v-else class="uploader-pfp uploader-initial" aria-hidden="true">{{ uploader.username.charAt(0).toUpperCase() }}</span>
+                <span class="uploader-name">{{ uploader.username }}</span>
+              </router-link>
+            </template>
+          </p>
         </div>
       </div>
 
@@ -107,14 +128,23 @@
 </template>
 
 <script setup>
-import { computed, watch, nextTick, ref } from 'vue'
+import { computed, watch, watchEffect, nextTick, onBeforeUnmount, ref } from 'vue'
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
+import { resolveCoverURL } from '@/utils/display.js'
 
 const userStore = useUserStore()
 const musicStore = useMusicStore()
 
 const collapsed = ref(false)
+
+// Tells the page how much room to leave under its footer (aux_styles.css)
+watchEffect(() => {
+  const root = document.documentElement.classList
+  root.toggle('player-open', !collapsed.value)
+  root.toggle('player-collapsed', collapsed.value)
+})
+onBeforeUnmount(() => document.documentElement.classList.remove('player-open', 'player-collapsed'))
 const duration = ref(0)
 const audioRef = ref(null)
 const progress  = computed({
@@ -126,6 +156,7 @@ const showArrow = computed(() => musicStore.forceShowPlayerActive || musicStore.
 const shouldShowPlayer = showArrow
 
 const currentMusicPiece = computed(() => musicStore.currentMusicPiece)
+const uploader = computed(() => currentMusicPiece.value?.uploader ?? null)
 // A restored song has no audio yet, but Play can fetch it
 const canPlay = computed(() => Boolean(currentMusicPiece.value?.mp3File || (currentMusicPiece.value?.uuid && musicStore.playlist.length)))
 const isPlaying = computed(() => musicStore.isPlaying)
@@ -324,13 +355,22 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 
 .collapse-toggle { position: fixed; right: var(--page-gutter); bottom: 108px; z-index: 101; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: var(--radius-pill); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-muted); cursor: pointer; }
 .collapse-toggle:hover { color: var(--ink); background: var(--surface-alt); }
+.collapse-toggle.collapsed { bottom: var(--space-4); }
 
 .now-playing-info { display: flex; align-items: center; gap: var(--space-3); min-width: 0; flex: 1; }
 .song-cover { width: 48px; height: 48px; flex: none; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface); }
 .cover-empty { display: grid; place-items: center; color: var(--ink-muted); border: 1px solid var(--line); }
 .song-details { min-width: 0; }
 .song-title { margin: 0; font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.song-artist { margin: 0; font: 500 14px/20px var(--font-sans); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-artist { align-items: center; color: var(--ink-muted); display: flex; font: 500 14px/20px var(--font-sans); gap: var(--space-2); margin: 0; min-width: 0; white-space: nowrap; }
+.artist-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.artist-link { color: inherit; text-decoration: none; }
+.artist-link:hover { color: var(--link); text-decoration: underline; }
+.uploader { align-items: center; color: inherit; display: inline-flex; flex: none; gap: var(--space-1); max-width: 50%; text-decoration: none; }
+.uploader:hover { color: var(--link); text-decoration: underline; }
+.uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
+.uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
+.uploader-name { overflow: hidden; text-overflow: ellipsis; }
 
 .controls { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-4); }
 .icon-btn { position: relative; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--radius-pill); background: none; color: var(--ink-muted); cursor: pointer; }

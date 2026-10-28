@@ -60,6 +60,16 @@ export async function deletePlaylist(playlistId) {
   }
 }
 
+// Takes the caller off a playlist they accepted an invite to (not the owner). Already gone, 404 MEMBERSHIP_NOT_FOUND (left in
+// another tab, or removed by the owner), counts as done
+export async function leavePlaylist(playlistId) {
+  try {
+    await request('DELETE', `${API_BASE_URL}/api/playlists/${encodeURIComponent(playlistId)}/membership`, undefined, { notifyOnError: false })
+  } catch (err) {
+    if (err.status !== 404) throw err
+  }
+}
+
 // Members are owner-only: anyone else gets 404 PLAYLIST_NOT_FOUND.
 // [{ user: { userId, username, pfpUrl }, permission: LISTENER | EDITOR, status: PENDING | ACCEPTED, invitedAt, respondedAt }]
 export function fetchMembers(playlistId, options) {

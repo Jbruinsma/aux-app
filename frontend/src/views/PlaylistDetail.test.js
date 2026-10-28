@@ -32,7 +32,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const track = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, artistSummary: { artistName: 'Artist' } })
+const track = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
 const playlist = (overrides) => ({
   playlistId: 'p1', playlistName: 'Mix', playlistOwner: { username: 'owner' }, isSaved: false,
   totalPieces: 1, musicPieces: [track(1)], nextCursor: null, editors: [], access: null, ...overrides,
@@ -46,10 +46,10 @@ async function render() {
 
 it.each([
   [null, true, false],
-  ['LISTENER', false, false],
+  ['LISTENER', false, true],
   ['EDITOR', false, true],
   ['OWNER', false, true],
-])('with access %s, shows Save: %s and the edit menu: %s', async (access, save, menu) => {
+])('with access %s, shows Save: %s and the menu: %s', async (access, save, menu) => {
   fetchAPI.mockResolvedValue(playlist({ access }))
   await render()
   expect(wrapper.find('button[aria-pressed]').exists()).toBe(save)
@@ -190,4 +190,100 @@ it('keeps the dialog open on a server failure and leaves a different playlist pl
   expect(music.currentPlaylistUUID).toBe('p2')
   expect(music.isPlaying).toBe(true)
   expect(push).not.toHaveBeenCalled()
+})
+
+it.each([
+  ['LISTENER', []],
+  ['EDITOR', ['Add music', 'Edit playlist']],
+  ['OWNER', ['Add music', 'Edit playlist', 'Manage access', 'Delete playlist']],
+])('gives %s Leave playlist unless they own it', async (access, editItems) => {
+  fetchAPI.mockResolvedValue(playlist({ access }))
+  await render()
+  await wrapper.get('button[aria-label="More options"]').trigger('click')
+  const items = wrapper.findAll('#playlist-menu .menu-item').map((item) => item.text())
+  expect(items).toEqual(access === 'OWNER' ? editItems : [...editItems, 'Leave playlist'])
+})
+
+async function leave() {
+  await render()
+  const dialog = wrapper.findAll('dialog')[1].element
+  dialog.showModal = vi.fn()
+  dialog.close = vi.fn()
+  await wrapper.get('button[aria-label="More options"]').trigger('click')
+  await wrapper.findAll('#playlist-menu button').find((b) => b.text() === 'Leave playlist').trigger('click')
+  expect(dialog.showModal).toHaveBeenCalled()
+  await wrapper.findAll('dialog')[1].get('.confirm-actions .primary').trigger('click')
+  await flushPromises()
+  return dialog
+}
+
+it.each([null, { status: 404, code: 'MEMBERSHIP_NOT_FOUND' }])('leaves a private playlist, stops its player and goes home after %s', async (error) => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'EDITOR', isPublic: false }))
+  if (error) request.mockRejectedValueOnce(error)
+  else request.mockResolvedValueOnce({ previousStatus: 'ACCEPTED' })
+  const music = useMusicStore()
+  music.currentPlaylistUUID = 'p1'
+  music.isPlaying = true
+  const dialog = await leave()
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringContaining('/api/playlists/p1/membership'), undefined, { notifyOnError: false })
+  expect(dialog.close).toHaveBeenCalled()
+  expect(music.isEmpty()).toBe(true)
+  expect(push).toHaveBeenCalledWith({ name: 'Dashboard' })
+})
+
+it('stays on a public playlist after leaving it, now as a viewer', async () => {
+  fetchAPI.mockResolvedValueOnce(playlist({ access: 'LISTENER', isPublic: true }))
+  fetchAPI.mockResolvedValueOnce(playlist({ access: null, isPublic: true }))
+  request.mockResolvedValueOnce({ previousStatus: 'ACCEPTED' })
+  await leave()
+  expect(push).not.toHaveBeenCalled()
+  expect(useNotificationStore().message).toBe('You left "Mix".')
+  expect(wrapper.find('button[aria-pressed]').exists()).toBe(true)
+})
+
+it('keeps the leave dialog open on a server failure', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER', isPublic: false }))
+  request.mockRejectedValueOnce({ status: 500 })
+  const dialog = await leave()
+  expect(dialog.close).not.toHaveBeenCalled()
+  expect(wrapper.findAll('dialog')[1].get('.error').text()).toContain("We couldn't take you off this playlist")
+  expect(push).not.toHaveBeenCalled()
+})
+
+it('shows who uploaded each song, linked to their profile', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER', musicPieces: [track(1), { ...track(2), uploader: { userId: 'u3', pfpUrl: '/p.png', username: 'pal' } }] }))
+  await render()
+  const uploaders = wrapper.findAll('.track .uploader')
+  expect(uploaders.map((link) => link.attributes('aria-label'))).toEqual(['Uploaded by uploader', 'Uploaded by pal'])
+  expect(uploaders[1].find('img').exists()).toBe(true)
+})
+
+it('grays out an unavailable song: labeled, not playable, still removable by editors', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'EDITOR', totalPieces: 2, musicPieces: [{ ...track(1), isAvailable: false }, track(2)] }))
+  await render()
+  const music = useMusicStore()
+  const playPlaylist = vi.spyOn(music, 'playPlaylist').mockResolvedValue(true)
+  const rows = wrapper.findAll('.track')
+  expect(rows[0].classes()).toContain('unavailable')
+  expect(rows[0].text()).toContain('UNAVAILABLE')
+  expect(rows[0].text()).toContain('Song 1')
+  expect(rows[0].get('.track-main').attributes('disabled')).toBeDefined()
+  await rows[0].get('.track-main').trigger('click')
+  expect(playPlaylist).not.toHaveBeenCalled()
+
+  await wrapper.get('.actions .primary').trigger('click')
+  expect(playPlaylist).toHaveBeenLastCalledWith('p1', { start: null })
+  await rows[1].get('.track-main').trigger('click')
+  expect(playPlaylist).toHaveBeenLastCalledWith('p1', { start: 'm2' })
+
+  await wrapper.get('button[aria-label="More options for Song 1"]').trigger('click')
+  expect(wrapper.get('#track-menu-m1').text()).toContain('Remove from playlist')
+})
+
+it("links each song's artist to the artist page, outside the Play button", async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'LISTENER', musicPieces: [{ ...track(1), artistSummary: { artistId: 'a1', artistName: 'Frank Ocean' } }] }))
+  await render()
+  const row = wrapper.get('.track')
+  expect(row.get('.artist-col').text()).toBe('Frank Ocean')
+  expect(row.get('.track-main').find('.artist-col').exists()).toBe(false)
 })
