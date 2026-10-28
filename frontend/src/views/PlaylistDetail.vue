@@ -102,7 +102,7 @@
                 {{ playlist.isSaved ? 'Saved' : 'Save' }}
               </button>
 
-              <div v-else-if="canEdit" ref="menuWrap" class="menu-wrap">
+              <div v-else ref="menuWrap" class="menu-wrap">
                 <button
                   type="button"
                   class="btn secondary icon-btn"
@@ -117,13 +117,13 @@
                   </svg>
                 </button>
                 <ul v-if="menuOpen" id="playlist-menu" class="menu">
-                  <li>
+                  <li v-if="canEdit">
                     <router-link class="menu-item" :to="{ name: 'Add', params: { username: owner.username, id } }">
                       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
                       Add music
                     </router-link>
                   </li>
-                  <li>
+                  <li v-if="canEdit">
                     <router-link class="menu-item" :to="{ name: 'Edit', params: { username: owner.username, id } }">
                       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
@@ -145,6 +145,14 @@
                         <path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                       </svg>
                       Delete playlist
+                    </button>
+                  </li>
+                  <li v-else :class="{ 'menu-sep': canEdit }">
+                    <button type="button" class="menu-item" @click="openLeaveDialog">
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
+                      </svg>
+                      Leave playlist
                     </button>
                   </li>
                 </ul>
@@ -169,11 +177,19 @@
           </template>
 
           <ol v-else class="tracks">
-            <li v-for="(track, index) in tracks" :key="track.musicPieceId" class="track" :class="{ playing: isPlayingTrack(track) }">
+            <li
+              v-for="(track, index) in tracks"
+              :key="track.musicPieceId"
+              class="track"
+              :class="{ playing: isPlayingTrack(track), unavailable: !isAvailable(track) }"
+            >
               <button
                 type="button"
                 class="track-main"
-                :aria-label="`Play ${track.name}${artistName(track) ? ` by ${artistName(track)}` : ''}`"
+                :disabled="!isAvailable(track)"
+                :aria-label="isAvailable(track)
+                  ? `Play ${track.name}${artistName(track) ? ` by ${artistName(track)}` : ''}`
+                  : `${track.name}${artistName(track) ? ` by ${artistName(track)}` : ''}, unavailable`"
                 @click="playFrom(index)"
               >
                 <span class="rank" aria-hidden="true">
@@ -186,9 +202,30 @@
                 </span>
                 <span class="track-text">
                   <span class="track-name">{{ track.name }}</span>
-                  <span v-if="artistName(track)" class="track-artist">{{ artistName(track) }}</span>
+                  <span v-if="artistName(track) || !isAvailable(track)" class="track-artist">
+                    <span v-if="!isAvailable(track)" class="unavailable-label">UNAVAILABLE</span>
+                    <span v-if="artistName(track)" class="artist-name" :class="{ 'artist-inline': track.artistSummary?.artistId }">{{ artistName(track) }}</span>
+                  </span>
                 </span>
               </button>
+
+              <router-link
+                v-if="track.artistSummary?.artistId"
+                class="artist-col"
+                :to="{ name: 'Artist', params: { artistId: track.artistSummary.artistId } }"
+              >{{ artistName(track) }}</router-link>
+
+              <router-link
+                v-if="track.uploader"
+                class="uploader"
+                :to="{ name: 'Profile', params: { username: track.uploader.username } }"
+                :aria-label="`Uploaded by ${track.uploader.username}`"
+                :title="`Uploaded by ${track.uploader.username}`"
+              >
+                <img v-if="track.uploader.pfpUrl" class="uploader-pfp" :src="resolveCoverURL(track.uploader.pfpUrl)" alt="" loading="lazy" />
+                <span v-else class="uploader-pfp uploader-initial" aria-hidden="true">{{ track.uploader.username.charAt(0).toUpperCase() }}</span>
+                <span class="uploader-name">{{ track.uploader.username }}</span>
+              </router-link>
 
               <div v-if="canEdit || track.isAvailable !== false" class="menu-wrap track-menu-wrap">
                 <button
@@ -241,7 +278,7 @@
       aria-labelledby="delete-title"
       aria-describedby="delete-text"
       @cancel="deleting && $event.preventDefault()"
-      @close="onDeleteDialogClose"
+      @close="onConfirmDialogClose"
     >
       <div class="confirm-body">
         <h2 id="delete-title">Delete this playlist?</h2>
@@ -253,6 +290,31 @@
           <button type="button" class="btn secondary" autofocus :disabled="deleting" @click="deleteDialog.close()">Keep playlist</button>
           <button type="button" class="btn primary" :disabled="deleting" @click="confirmDelete">
             {{ deleting ? 'Deleting…' : 'Delete playlist' }}
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog
+      ref="leaveDialog"
+      class="confirm"
+      aria-labelledby="leave-title"
+      aria-describedby="leave-text"
+      @cancel="leaving && $event.preventDefault()"
+      @close="onConfirmDialogClose"
+    >
+      <div class="confirm-body">
+        <h2 id="leave-title">Leave this playlist?</h2>
+        <p id="leave-text" class="confirm-text">
+          {{ playlist?.isPublic
+            ? `You'll stop being ${access === 'EDITOR' ? 'an editor' : 'a listener'} of "${playlist?.playlistName}". It stays public, so you can still play it.`
+            : `You'll lose access to "${playlist?.playlistName}". To open it again, @${owner.username} has to invite you again.` }}
+        </p>
+        <p v-if="leaveError" class="error" role="alert">{{ leaveError }}</p>
+        <div class="confirm-actions">
+          <button type="button" class="btn secondary" autofocus :disabled="leaving" @click="leaveDialog.close()">Stay</button>
+          <button type="button" class="btn primary" :disabled="leaving" @click="confirmLeave">
+            {{ leaving ? 'Leaving…' : 'Leave playlist' }}
           </button>
         </div>
       </div>
@@ -277,6 +339,7 @@ import {
   deletePlaylist,
   fetchPlaylist,
   fetchPlaylistPieces,
+  leavePlaylist,
   removePieceFromPlaylist,
   setPlaylistSaved,
 } from '@/utils/playlist.js'
@@ -413,12 +476,22 @@ function artistName(track) {
   return track.artistSummary?.artistName ?? ''
 }
 
+// Only false in a playlist's track list: a private piece on a public playlist, or one whose uploader left. It stays
+// listed, grayed out, but can't play
+function isAvailable(track) {
+  return track.isAvailable !== false
+}
+
 function isPlayingTrack(track) {
   return musicStore.getCurrentPlaylistUUID() === id.value && musicStore.getCurrentMusicPieceUUID() === track.musicPieceId
 }
 
+// The queue leaves unavailable pieces out, so one can't be the start; Play from the top then starts at the first one
+// the queue has
 function playFrom(index) {
-  return musicStore.playPlaylist(id.value, { start: tracks.value[index]?.musicPieceId ?? null })
+  const track = tracks.value[index]
+  if (index > 0 && !isAvailable(track)) return false
+  return musicStore.playPlaylist(id.value, { start: track && isAvailable(track) ? track.musicPieceId : null })
 }
 
 function shuffle() {
@@ -510,7 +583,7 @@ function openDeleteDialog() {
   document.documentElement.classList.add('scroll-locked')
 }
 
-function onDeleteDialogClose() {
+function onConfirmDialogClose() {
   document.documentElement.classList.remove('scroll-locked')
 }
 
@@ -518,7 +591,7 @@ onBeforeUnmount(() => {
   moreObserver?.disconnect()
   document.removeEventListener('pointerdown', closeMenuOnOutside)
   document.removeEventListener('keydown', closeMenuOnEscape)
-  onDeleteDialogClose()
+  onConfirmDialogClose()
 })
 
 async function confirmDelete() {
@@ -537,6 +610,41 @@ async function confirmDelete() {
     deleteError.value = "We couldn't delete this playlist. Check that the server is running, then try again."
   } finally {
     deleting.value = false
+  }
+}
+
+/* Leave: editors and listeners take themselves off the playlist. A private one closes to them, so the page and its
+   player go; a public one stays open to view */
+
+const leaveDialog = ref(null)
+const leaving = ref(false)
+const leaveError = ref('')
+
+function openLeaveDialog() {
+  menuOpen.value = false
+  leaveError.value = ''
+  leaveDialog.value.showModal()
+  document.documentElement.classList.add('scroll-locked')
+}
+
+async function confirmLeave() {
+  if (leaving.value) return
+  leaveError.value = ''
+  leaving.value = true
+  try {
+    const playlistId = id.value
+    const wasPublic = playlist.value.isPublic
+    await leavePlaylist(playlistId)
+    leaveDialog.value.close()
+    notification.success(`You left "${playlist.value.playlistName}".`)
+    if (wasPublic) return await loadPlaylist()
+    if (musicStore.getCurrentPlaylistUUID() === playlistId) musicStore.reset()
+    await router.push({ name: 'Dashboard' })
+  } catch (err) {
+    if (err.sessionEnded) return
+    leaveError.value = "We couldn't take you off this playlist. Check that the server is running, then try again."
+  } finally {
+    leaving.value = false
   }
 }
 
@@ -596,7 +704,24 @@ p.page-state { display: block; }
 .track-text { display: flex; flex-direction: column; min-width: 0; }
 .track-name { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playing .track-name { color: var(--link); }
-.track-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-artist { align-items: center; color: var(--ink-muted); display: flex; font: 500 14px/20px var(--font-sans); gap: var(--space-2); min-width: 0; white-space: nowrap; }
+.artist-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.artist-inline { display: none; }
+.artist-col { color: var(--ink-muted); flex: none; font: 500 14px/20px var(--font-sans); max-width: 25%; overflow: hidden; padding: 0 var(--space-2); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.artist-col:hover { color: var(--link); text-decoration: underline; }
+.artist-col:focus-visible { border-radius: var(--radius-sm); outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.uploader { align-items: center; color: var(--ink-muted); display: flex; flex: none; font: 500 14px/20px var(--font-sans); gap: var(--space-2); max-width: 30%; padding: 0 var(--space-2); text-decoration: none; }
+.uploader:hover .uploader-name { color: var(--link); text-decoration: underline; }
+.uploader:focus-visible { border-radius: var(--radius-sm); outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 24px; object-fit: cover; width: 24px; }
+.uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 11px/1 var(--font-sans); place-items: center; }
+.uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unavailable-label { background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius-pill); color: var(--ink-muted); flex: none; font: 600 12px/16px var(--font-sans); padding: 0 var(--space-2); }
+.track.unavailable:hover { background: none; }
+.track.unavailable .track-main { cursor: not-allowed; }
+.track.unavailable:hover .rank-number, .track.unavailable .rank-number { opacity: 1; }
+.track.unavailable:hover .rank-play, .track.unavailable .rank-play { opacity: 0; }
+.track.unavailable .art, .track.unavailable .track-name, .track.unavailable .artist-name, .track.unavailable .artist-col, .track.unavailable .uploader { opacity: 0.5; }
 .track-menu-wrap { flex: none; margin-right: var(--space-2); }
 .track-more { align-items: center; background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink-muted); cursor: pointer; display: grid; height: 36px; padding: 0; place-items: center; transition: color var(--dur-fast) var(--ease); width: 36px; }
 .track-more:hover, .track-more[aria-expanded="true"] { color: var(--ink); }
@@ -619,5 +744,8 @@ p.page-state { display: block; }
   .head { align-items: start; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); padding-top: var(--space-6); }
   .cover-wrap { max-width: 200px; }
   .track-main { gap: var(--space-2); grid-template-columns: 24px 40px minmax(0, 1fr); padding-left: 0; }
+  .uploader-name { display: none; }
+  .artist-col { display: none; }
+  .artist-inline { display: inline; }
 }
 </style>

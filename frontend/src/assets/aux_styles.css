@@ -94,9 +94,20 @@ html:has(.aux-page) #app {
   flex: 1 0 auto;
 }
 
-/* Pages that show the fixed music player extend the footer underneath it, so nothing is hidden */
-.aux-page.with-player > footer {
-  padding-bottom: 120px;
+/* Pages that show the fixed music player extend the footer underneath it, so nothing is hidden. BottomPlayer sets
+   player-open or player-collapsed on <html>: a collapsed player leaves only its small toggle in the corner */
+html.player-open .aux-page.with-player > footer {
+  padding-bottom: 100px;
+}
+
+html.player-collapsed .aux-page.with-player > footer {
+  padding-bottom: 40px;
+}
+
+@media (max-width: 600px) {
+  html.player-open .aux-page.with-player > footer {
+    padding-bottom: 196px;
+  }
 }
 
 .aux-page *,

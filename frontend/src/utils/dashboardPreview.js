@@ -19,8 +19,18 @@ const ARTISTS = {
   daniel: { artistId: 'preview-daniel', artistName: 'Daniel Caesar', artistPfpUrl: art('artist/973809864ad1c52d8c61238662400089') },
 }
 
+const UPLOADER = { userId: 'preview-uploader', pfpUrl: '/default_profile_picture.svg', username: 'aux' }
+
 const piece = (id, name, cover, artist) => ({
-  musicPiece: { musicPieceId: `preview-${id}`, name, coverUrl: art(`cover/${cover}`), artistSummary: ARTISTS[artist], isFavorite: false },
+  musicPiece: {
+    musicPieceId: `preview-${id}`,
+    name,
+    coverUrl: art(`cover/${cover}`),
+    artistSummary: ARTISTS[artist],
+    isFavorite: false,
+    isAvailable: true,
+    uploader: UPLOADER,
+  },
   playlistId: null,
 })
 

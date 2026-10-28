@@ -15,6 +15,7 @@ import AddFriends from '@/views/AddFriends.vue'
 import EditPlaylist from '@/views/EditPlaylist.vue'
 import Onboarding from '@/views/Onboarding.vue'
 import Discover from '@/views/Discover.vue'
+import ArtistPage from '@/views/ArtistPage.vue'
 import { useUserStore } from '@/stores/user.js'
 
 const routes = [
@@ -72,7 +73,8 @@ const routes = [
   { path: '/playlist/:username/:id', name: 'Playlist', component: PlaylistDetail },
   { path: '/add/:username/:id', name: 'Add', component: AddMusic },
   { path: '/add-friends/:username/:id', name: 'AddFriends', component: AddFriends },
-  { path: '/edit-playlist/:username/:id', name: 'Edit', component: EditPlaylist }
+  { path: '/edit-playlist/:username/:id', name: 'Edit', component: EditPlaylist },
+  { path: '/artist/:artistId', name: 'Artist', component: ArtistPage },
 ]
 
 const router = createRouter({

@@ -48,7 +48,7 @@ it('handles absent history and a last track without a playlist or artist', async
   expect(() => { music.toggleShuffle(); music.moveForward(); music.moveBackward() }).not.toThrow()
 })
 
-const piece = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' } })
+const piece = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
 const stream = (n) => ({ url: `https://audio.example/m${n}?sig=1`, expiresInSeconds: 3600, playToken: `t${n}` })
 
 // Answers GET /play and /stream like the backend. `pages` maps a cursor (or 'first') to a queue page
@@ -73,7 +73,7 @@ it('plays a playlist from the server queue with a signed stream URL', async () =
   expect(await music.playPlaylist('p1', { start: 'm2' })).toBe(true)
   expect(calls[0]).toContain('/api/playlists/p1/play?shuffle=false&start=m2')
   expect(calls[1]).toContain('/api/music-pieces/m2/stream?playlistId=p1')
-  expect(music.currentMusicPiece).toMatchObject({ uuid: 'm2', title: 'Song 2', mp3File: stream(2).url, playToken: 't2' })
+  expect(music.currentMusicPiece).toMatchObject({ uuid: 'm2', title: 'Song 2', mp3File: stream(2).url, playToken: 't2', uploader: piece(2).uploader })
   expect(music.isPlaying).toBe(true)
 })
 
@@ -139,7 +139,24 @@ it('explains why a playlist could not start', async () => {
   expect(useNotificationStore().message).toBe('Accept the invitation to play this playlist.')
 })
 
-const playsSent = () => fetch.mock.calls.filter(([url]) => url.includes('/plays'))
+it('skips a piece that became unavailable mid-session, but stops on the last one even with repeat PLAYLIST', async () => {
+  backend({ first: { musicPieces: [1, 2, 3].map(piece), nextCursor: null } },
+    { 'm2/stream': (answer) => answer({ errorDetails: { code: 'MUSIC_PIECE_NOT_FOUND' } }, 404) })
+  const music = useMusicStore()
+  await music.playPlaylist('p1')
+  await music.moveForward()
+  expect(useNotificationStore().message).toBe('"Song 2" can\'t be played.')
+  expect(music.currentMusicPiece.uuid).toBe('m3')
+  expect(music.isPlaying).toBe(true)
+
+  backend({ first: { musicPieces: [piece(1)], nextCursor: null } },
+    { 'm1/stream': (answer) => answer({ errorDetails: { code: 'MUSIC_PIECE_NOT_FOUND' } }, 404) })
+  music.cycleRepeat()
+  expect(await music.playPieces([piece(1)])).toBe(false)
+  expect(fetch.mock.calls.filter(([url]) => url.includes('/stream'))).toHaveLength(1)
+})
+
+const playsSent = () =>fetch.mock.calls.filter(([url]) => url.includes('/plays'))
 
 it('reports a listen once, after 30 seconds actually played, and stays quiet about anti-abuse rejections', async () => {
   backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } },

@@ -8,7 +8,7 @@
       <img v-if="pictureUrl" class="av" :src="pictureUrl" alt="" />
       <div v-else class="av av-empty" aria-hidden="true">{{ initial }}</div>
       <p class="name">{{ displayName || username }}</p>
-      <p class="meta">@{{ username }}<template v-if="country"> · {{ country }}</template></p>
+      <p class="meta">{{ subtitle || `@${username}` }}<template v-if="country"> · {{ country }}</template></p>
       <p v-if="about" class="about">{{ about }}</p>
       <p v-if="website" class="site"><ExternalLink :href="website">{{ websiteLabel }}</ExternalLink></p>
       <slot />
@@ -30,6 +30,8 @@ const props = defineProps({
   country: { type: String, default: '' },
   about: { type: String, default: '' },
   website: { type: String, default: '' },
+  // Replaces the @username line, for cards that aren't a user (an artist)
+  subtitle: { type: String, default: '' },
   flat: { type: Boolean, default: false },
 })
 

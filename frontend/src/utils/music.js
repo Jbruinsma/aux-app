@@ -67,6 +67,17 @@ export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage
   return request('POST', `${API_BASE_URL}/api/music-pieces/create`, form, { notifyOnError: false })
 }
 
+// Partial update of the caller's own piece: only the fields given are sent; the rest stay as they are. Returns the
+// updated MusicPieceOverview. The server crops the cover; send the original
+export function updateMusicPiece(musicPieceId, { name, artistId, isPublic, coverImage } = {}) {
+  const form = new FormData()
+  if (name !== undefined) form.append('name', name)
+  if (artistId !== undefined) form.append('artistId', artistId)
+  if (isPublic !== undefined) form.append('isPublic', isPublic)
+  if (coverImage !== undefined) form.append('coverImage', coverImage)
+  return request('PUT', `${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}`, form, { notifyOnError: false })
+}
+
 // { uploadedPiecesCount, uploadedMusicPieces: [MusicPieceOverview] }, newest first, public and private
 export function fetchUploads() {
   return fetchAPI(`${API_BASE_URL}/api/music-pieces`, { notifyOnError: false })

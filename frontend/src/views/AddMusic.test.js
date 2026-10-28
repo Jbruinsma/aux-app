@@ -21,7 +21,7 @@ afterEach(() => {
   useNotificationStore().hide()
 })
 
-const piece = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' } })
+const piece = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
 const playlist = (access) => ({ playlistId: 'p1', playlistName: 'Mix', access, musicPieces: [piece(1)] })
 
 async function render() {
