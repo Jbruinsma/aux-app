@@ -1,0 +1,80 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "system-ui, sans-serif",
+    "actorBkg": "#F5F5F5",
+    "actorBorder": "#8A8A8A",
+    "actorTextColor": "#222222",
+    "actorLineColor": "#F5F5F5",
+    "signalColor": "#222222",
+    "signalTextColor": "#222222",
+    "noteBkgColor": "#F1ECF3",
+    "noteBorderColor": "#6A4778",
+    "noteTextColor": "#222222",
+    "labelBoxBkgColor": "#F5F5F5",
+    "labelBoxBorderColor": "#8A8A8A",
+    "labelTextColor": "#222222",
+    "loopTextColor": "#222222"
+  }
+}}%%
+sequenceDiagram
+    box rgb(106,71,120) Frontend
+        participant FE as Vue app
+    end
+    box rgb(245,245,245) Backend
+        participant AC as AuthController
+        participant DB as UserRepository / DB
+        participant SS as SessionService
+        participant CU as CurrentUserResolver
+        participant MP as MusicPieceController
+    end
+
+    Note over FE,SS: 1. Login
+    FE->>AC: POST /api/auth/login {email, password}
+    AC->>DB: findByEmail(email)
+    DB-->>AC: UserEntity (bcrypt hash) or null
+    AC->>AC: bcrypt.matches(password, hash or dummyHash)
+    alt wrong email or password
+        rect rgb(253,236,234)
+            AC-->>FE: 401 INVALID_CREDENTIALS
+        end
+    else valid
+        AC->>SS: issueSymmetricToken(userId)
+        SS-->>AC: HS256 JWT (iss=aux, sub=userId, exp=+1h)
+        AC-->>FE: 200 {token, expiresAt, user}
+        FE->>FE: store token
+    end
+
+    Note over FE,MP: 2. Protected request (upload)
+    FE->>CU: POST /api/music-pieces/create<br/>Authorization: Bearer token
+    CU->>CU: read Authorization header
+    alt header missing or not "Bearer "
+        rect rgb(253,236,234)
+            CU-->>FE: 401 INVALID_TOKEN
+        end
+    else header present
+        CU->>SS: verify(token)
+        SS->>SS: check signature, issuer, exp
+        alt bad signature, wrong issuer or expired
+            rect rgb(253,236,234)
+                SS-->>CU: JwtException
+                CU-->>FE: 401 INVALID_TOKEN
+                FE->>FE: end session (frontend logs out on 401)
+            end
+        else token valid
+            SS-->>CU: userId (sub)
+            CU->>DB: findById(userId)
+            alt user deleted
+                rect rgb(253,236,234)
+                    DB-->>CU: empty
+                    CU-->>FE: 401 INVALID_TOKEN
+                end
+            else onboarding not DONE
+                CU-->>FE: 403 ONBOARDING_INCOMPLETE
+            else access granted
+                DB-->>CU: UserEntity
+                CU->>MP: create(@CurrentUser user, file)
+                MP-->>FE: 2xx upload result
+            end
+        end
+    end

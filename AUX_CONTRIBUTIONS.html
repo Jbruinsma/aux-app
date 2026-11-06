@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aux: who built what</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Tokens copied from frontend/STYLE_GUIDE.html (light theme) */
+    :root { --purple:#6a4778; --purple-soft:#f1ecf3; --surface:#ffffff; --surface-alt:#f5f5f5; --ink:#222222; --ink-muted:#6b6b6b; --line:#e5e5e5; --font-sans:Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 400 16px/24px var(--font-sans); background: var(--surface); color: var(--ink); padding: 32px; }
+    .frame { max-width: 1280px; margin: 0 auto; }
+    .kicker { font: 500 14px/20px var(--font-sans); color: var(--ink-muted); margin-bottom: 4px; }
+    h1 { font: 700 28px/34px var(--font-sans); margin-bottom: 4px; }
+    .lead { color: var(--ink-muted); max-width: 75ch; margin-bottom: 24px; }
+    svg { width: 100%; min-width: 960px; display: block; }
+    .tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 14px; line-height: 20px; }
+    th { text-align: left; background: var(--surface-alt); font-weight: 700; padding: 12px; border-bottom: 1px solid var(--line); }
+    td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .note { color: var(--ink-muted); font-size: 14px; line-height: 20px; margin-top: 12px; max-width: 85ch; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <h1>Aux Team Contributions</h1>
+    <p class="lead">Counts come from Git history and GitHub pull requests. (As of 10/30)</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Member</th><th class="num">Commits</th><th class="num">Pull requests</th><th class="num">Lines added</th><th>Work in the Git history</th></tr></thead>
+        <tbody>
+        <tr><td>Justin</td><td class="num">96</td><td class="num">44</td><td class="num">19,040</td><td>The whole Spring Boot backend, CI and deployment, onboarding and Discover pages and iOS/Android shells.</td></tr>
+        <tr><td>Mo</td><td class="num">21</td><td class="num">16</td><td class="num">10,471</td><td>Most of the Vue frontend: landing, login, settings, profile, playlist and access pages, Dashboard, player on the server queue, upload pages, artist page, live updates. Style guide and brand colors/themes.</td></tr>
+        <tr><td>RJ</td><td class="num">6</td><td class="num">2</td><td class="num">1,981</td><td>App-wide notification toasts, theme preference, playback restore and real playlist deletion.</td></tr>
+        <tr><td>Milind</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td>No commits or pull requests.</td></tr>
+        <tr><td>Muaz</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td>No commits or pull requests.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Commits exclude merges. We are ignoring generated files (OpenAPI spec, package-lock.json), IDE files and the iOS/Android shells. Work done outside Git, like the deliverable isn't counted either.</p>
+  </div>
+</body>
+</html>

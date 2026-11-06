@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aux: progress to date</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Tokens copied from frontend/STYLE_GUIDE.html (light theme) */
+    :root { --purple:#6a4778; --purple-soft:#f1ecf3; --surface:#ffffff; --surface-alt:#f5f5f5; --ink:#222222; --ink-muted:#6b6b6b; --line:#e5e5e5; --font-sans:Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 400 16px/24px var(--font-sans); background: var(--surface); color: var(--ink); padding: 32px; }
+    .frame { max-width: 1280px; margin: 0 auto; }
+    .kicker { font: 500 14px/20px var(--font-sans); color: var(--ink-muted); margin-bottom: 4px; }
+    h1 { font: 700 28px/34px var(--font-sans); margin-bottom: 4px; }
+    .lead { color: var(--ink-muted); max-width: 75ch; margin-bottom: 24px; }
+    svg { width: 100%; min-width: 960px; display: block; }
+    .tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 14px; line-height: 20px; }
+    th { text-align: left; background: var(--surface-alt); font-weight: 700; padding: 12px; border-bottom: 1px solid var(--line); }
+    td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .note { color: var(--ink-muted); font-size: 14px; line-height: 20px; margin-top: 12px; max-width: 75ch; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <h1>Aux Development Progress</h1>
+    <p class="lead">Dates and contributors come from the Git history. (As of 10/30)</p>
+
+    <!-- viewBox width 1280 (doc-wide), height fit to content. Labels x=24-364, timeline x=372-1240, 124px per week from Mon 9/14. -->
+    <svg viewBox="0 0 1280 1184" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="aux-progress-gantt-title aux-progress-gantt-desc">
+      <title id="aux-progress-gantt-title">Aux: work completed and contributors, Week 6</title>
+      <desc id="aux-progress-gantt-desc">Gantt chart of Aux features built between September 18 and October 30 and who built each: accounts, uploads, playlists, playback, artist pages, Discover, notifications, the cloud server and R2 storage are done; favorites is partly built; account deletion, deleting songs, compatibility scoring, follows, top charts and creator stats have not started; UI polish and testing are in progress; API docs and CI are ongoing; optimization has not started. Dashed lines mark Deliverable 1 (September 25) and Deliverable 2 (October 30).</desc>
+      <rect width="100%" height="100%" fill="#ffffff"/>
+      <rect x="16" y="100" width="1248" height="340" rx="6" fill="#f5f5f5"/>
+      <text x="24" y="120" fill="#6b6b6b" font-size="12" font-weight="700" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Core features</text>
+      <rect x="16" y="452" width="1248" height="296" rx="6" fill="#f5f5f5"/>
+      <text x="24" y="472" fill="#6b6b6b" font-size="12" font-weight="700" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Social &amp; discovery</text>
+      <rect x="16" y="760" width="1248" height="252" rx="6" fill="#f5f5f5"/>
+      <text x="24" y="780" fill="#6b6b6b" font-size="12" font-weight="700" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Supporting work</text>
+      <rect x="16" y="1024" width="1248" height="76" rx="6" fill="#f5f5f5"/>
+      <text x="24" y="1044" fill="#6b6b6b" font-size="12" font-weight="700" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Optimization</text>
+      <line x1="372" y1="96" x2="372" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="496" y1="96" x2="496" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="620" y1="96" x2="620" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="744" y1="96" x2="744" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="868" y1="96" x2="868" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="992" y1="96" x2="992" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="1116" y1="96" x2="1116" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <line x1="1240" y1="96" x2="1240" y2="1100" stroke="#e5e5e5" stroke-width="1"/>
+      <text x="434" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Before</text>
+      <text x="434" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">9/14</text>
+      <text x="558" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Wk 1</text>
+      <text x="558" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">9/21</text>
+      <text x="682" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Wk 2</text>
+      <text x="682" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">9/28</text>
+      <text x="806" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Wk 3</text>
+      <text x="806" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">10/5</text>
+      <text x="930" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Wk 4</text>
+      <text x="930" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">10/12</text>
+      <text x="1054" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Wk 5</text>
+      <text x="1054" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">10/19</text>
+      <text x="1178" y="72" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Wk 6</text>
+      <text x="1178" y="88" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">10/26</text>
+      <text x="568" y="44" fill="#222222" font-size="12" font-weight="700" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Deliverable 1 · Sep 25</text>
+      <line x1="568" y1="52" x2="568" y2="58" stroke="#222222" stroke-width="1.2"/>
+      <line x1="568" y1="96" x2="568" y2="1100" stroke="#222222" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <text x="1188" y="44" fill="#222222" font-size="12" font-weight="700" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Deliverable 2 · Oct 30</text>
+      <line x1="1188" y1="52" x2="1188" y2="58" stroke="#222222" stroke-width="1.2"/>
+      <line x1="1188" y1="96" x2="1188" y2="1100" stroke="#222222" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <text x="24" y="147" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Accounts, auth &amp; profiles</text>
+      <text x="24" y="163" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo</text>
+      <rect x="272" y="138" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="154" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="496" y="144" width="196" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="191" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">MP3 &amp; image upload (R2)</text>
+      <text x="24" y="207" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo</text>
+      <rect x="272" y="182" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="198" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="620" y="188" width="548" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="235" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Playlists &amp; sharing</text>
+      <text x="24" y="251" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo, RJ</text>
+      <rect x="272" y="226" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="242" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="636" y="232" width="532" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="279" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Playback &amp; listening history</text>
+      <text x="24" y="295" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo, RJ</text>
+      <rect x="272" y="270" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="286" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="816" y="276" width="352" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="323" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Artist pages</text>
+      <text x="24" y="339" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo</text>
+      <rect x="272" y="314" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="330" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="656" y="320" width="512" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="375" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Account deletion</text>
+      <rect x="272" y="358" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="374" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <text x="24" y="419" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Deleting uploaded songs</text>
+      <rect x="272" y="402" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="418" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <text x="24" y="499" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Favorite artists &amp; genre tags</text>
+      <text x="24" y="515" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo</text>
+      <rect x="272" y="490" width="92" height="24" rx="12" fill="#ffffff" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="506" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Partial</text>
+      <rect x="656" y="496" width="512" height="12" rx="3" fill="#f1ecf3" stroke="#6a4778" stroke-width="1"/>
+      <text x="24" y="543" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Discover recommendations</text>
+      <text x="24" y="559" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin</text>
+      <rect x="272" y="534" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="550" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="1044" y="540" width="36" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="595" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Compatibility scoring</text>
+      <rect x="272" y="578" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="594" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <text x="24" y="639" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Follows &amp; follower lists</text>
+      <rect x="272" y="622" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="638" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <text x="24" y="683" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Top charts</text>
+      <rect x="272" y="666" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="682" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <text x="24" y="727" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Creator stats &amp; presence</text>
+      <rect x="272" y="710" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="726" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <text x="24" y="807" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Notifications &amp; live updates</text>
+      <text x="24" y="823" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin, Mo, RJ</text>
+      <rect x="272" y="798" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="814" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="760" y="804" width="320" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="851" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">UI polish &amp; responsive</text>
+      <text x="24" y="867" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Mo, Justin, RJ</text>
+      <rect x="272" y="842" width="92" height="24" rx="12" fill="#ffffff" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="858" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">In progress</text>
+      <rect x="568" y="848" width="620" height="12" rx="3" fill="#f1ecf3" stroke="#6a4778" stroke-width="1"/>
+      <text x="24" y="895" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Unit &amp; integration tests</text>
+      <text x="24" y="911" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Mo, Justin, RJ</text>
+      <rect x="272" y="886" width="92" height="24" rx="12" fill="#ffffff" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="902" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">In progress</text>
+      <rect x="584" y="892" width="604" height="12" rx="3" fill="#f1ecf3" stroke="#6a4778" stroke-width="1"/>
+      <text x="24" y="939" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">API docs &amp; CI</text>
+      <text x="24" y="955" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin</text>
+      <rect x="272" y="930" width="92" height="24" rx="12" fill="#ffffff" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="946" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Ongoing</text>
+      <rect x="568" y="936" width="620" height="12" rx="3" fill="#f1ecf3" stroke="#6a4778" stroke-width="1"/>
+      <text x="24" y="983" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Cloud server &amp; R2 storage</text>
+      <text x="24" y="999" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Built by Justin</text>
+      <rect x="272" y="974" width="92" height="24" rx="12" fill="#f1ecf3" stroke="#f1ecf3" stroke-width="1"/>
+      <text x="318" y="990" fill="#222222" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Done</text>
+      <rect x="584" y="980" width="108" height="12" rx="3" fill="#6a4778"/>
+      <text x="24" y="1079" fill="#222222" font-size="14" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Performance optimization</text>
+      <rect x="272" y="1062" width="92" height="24" rx="12" fill="#f5f5f5" stroke="#8a8a8a" stroke-width="1"/>
+      <text x="318" y="1078" fill="#6b6b6b" font-size="12" font-weight="600" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">Not started</text>
+      <line x1="24" y1="1124" x2="1256" y2="1124" stroke="#e5e5e5" stroke-width="1"/>
+      <rect x="24" y="1146" width="28" height="12" rx="3" fill="#6a4778"/>
+      <text x="64" y="1157" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">Done</text>
+      <rect x="304" y="1146" width="28" height="12" rx="3" fill="#f1ecf3" stroke="#6a4778" stroke-width="1"/>
+      <text x="344" y="1157" fill="#6b6b6b" font-size="12" font-weight="500" font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">In progress, ongoing or partly built</text>
+    </svg>
+  </div>
+</body>
+</html>
