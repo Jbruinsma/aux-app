@@ -179,9 +179,6 @@ optional)
       the uploader no longer collaborates on.
 - [x] The response is the updated piece; the `uploads` event also refreshes the row.
 
-*Pieces don't return `isPublic` yet, so the dialog starts on "Keep as it is" instead of the current visibility
-(`../backend/BACKEND_REQUESTS.md` §2).*
-
 **Done when:** an uploader can rename, re-artist, re-cover and change the visibility of a piece from My uploads.
 
 ### 14. Add tags to pieces and playlists
@@ -189,8 +186,7 @@ optional)
 Pieces and playlists can now have up to 5 tags: curated genres and moods, or anything the user types. Tags are
 optional, but nudge users to add them, since recommendations will use them later. Every music piece, the playlist
 overview, and music and playlist search results now return `tags`, a list of lowercase strings that is empty when
-there are none. Wait until `tags` shows up in the OpenAPI docs before starting. *Blocked: the backend code has tags, but
-the docs haven't been regenerated yet (`../backend/BACKEND_REQUESTS.md` §1).*
+there are none. Tag rules and `GET /api/tags` are in the OpenAPI docs.
 
 **Files:** new `src/components/TagPicker.vue`, `src/views/UploadMusic.vue`, `src/views/CreatePlaylist.vue`,
 `src/views/EditPlaylist.vue`, `src/views/PlaylistDetail.vue`, `src/views/Dashboard.vue`
@@ -228,7 +224,7 @@ saving without tags still works.
 - [x] Show favourite artists on the profile.
 
 *The page lists an artist's songs by running a music search for their name and keeping that artist's pieces, until
-there's an endpoint for it (`../backend/BACKEND_REQUESTS.md` §3).*
+there's an endpoint for it (`../backend/BACKEND_REQUESTS.md` §1).*
 
 ### 16. Autoplay (not decided)
 
@@ -240,11 +236,11 @@ there's an endpoint for it (`../backend/BACKEND_REQUESTS.md` §3).*
 Don't start these until the endpoint is in the OpenAPI docs.
 
 - [ ] **Delete account.** Turn off `ACCOUNT_MOCKED` in `src/utils/account.js` once `DELETE /api/users/me` exists
-      (`../backend/BACKEND_REQUESTS.md` §4).
+      (`../backend/BACKEND_REQUESTS.md` §2).
 - [ ] **People who hear it too.** Fill the Dashboard section once `GET /api/users/matches` exists
-      (`../backend/BACKEND_REQUESTS.md` §5).
-- [ ] **Follow.** Enable the profile's follow button once there's a follow endpoint (`../backend/BACKEND_REQUESTS.md` §6).
+      (`../backend/BACKEND_REQUESTS.md` §3).
+- [ ] **Follow.** Enable the profile's follow button once there's a follow endpoint (`../backend/BACKEND_REQUESTS.md` §4).
 - [ ] **Landing page.** Replace the hardcoded top albums in `LandingPage.vue` once `GET /api/core/top` returns real
-      data (`../backend/BACKEND_REQUESTS.md` §7).
+      data (`../backend/BACKEND_REQUESTS.md` §5).
 - [ ] **Music piece page.** Open a details page with a Play button when an upload is clicked, once
-      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §8).
+      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §6).

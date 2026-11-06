@@ -86,6 +86,30 @@ class DiscoverQueryTest {
         }
     }
 
+    // MusicPieceOverviewRow.getIsPublic reads the `isPublic` column; a missing alias silently returns null
+    @Test
+    void overviewColumnsIncludeIsPublic(@TempDir Path dir) throws SQLException {
+        String url = "jdbc:sqlite:" + dir.resolve("test.db");
+        Flyway.configure().dataSource(url, null, null).load().migrate();
+
+        try (Connection db = DriverManager.getConnection(url)) {
+            exec(db, "INSERT INTO users (user_id, username, email, password_hash, onboarding_step, public_id) "
+                    + "VALUES ('u1', 'u1', 'u1@x', 'x', 'DONE', 'u_1')");
+            exec(db, "INSERT INTO artists (artist_id, artist_name, public_id) VALUES ('A', 'A', 'a_A')");
+            piece(db, "pub", "A", "u1", true);
+            piece(db, "priv", "A", "u1", false);
+
+            String sql = MusicPieceRepository.OVERVIEW_COLUMNS.replace(":userId", "'u1'") + "ORDER BY mp.public_id";
+            Map<String, Integer> isPublic = new java.util.HashMap<>();
+            try (Statement statement = db.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
+                while (rows.next()) {
+                    isPublic.put(rows.getString("musicPieceId"), rows.getInt("isPublic"));
+                }
+            }
+            assertEquals(Map.of("m_pub", 1, "m_priv", 0), isPublic);
+        }
+    }
+
     private static List<String> discover(Connection db) throws SQLException {
         Instant now = NOW;
         Map<String, Object> params = Map.of(

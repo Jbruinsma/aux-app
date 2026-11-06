@@ -91,7 +91,7 @@ public class MusicPieceController {
                     - `artistId` (required): id of an existing artist.
                     - `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its
                       uploader, and by the other collaborators on private playlists the uploader adds it to.
-                    - `mp3File` (required): an MP3, at most 25MB, 5 seconds to 10 minutes long. Counts toward the
+                    - `mp3File` (required): an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the
                       caller's 2GB storage quota.
                     - `coverImage` (required): same rules as a playlist cover. Send the original image; the server
                       crops it to a square and stores it as WebP.

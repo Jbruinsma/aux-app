@@ -11,33 +11,7 @@ Last checked against `main` on 2026-10-28.
 
 ______________________________________________________
 
-## 1. Regenerate the OpenAPI docs
-
-Blocks frontend roadmap task 14 (tags). The code on `main` already has these (commit `fed9ecd` and the Discover
-commit), but `docs/openapi.json` was never regenerated, so none of them are in the docs:
-
-- `GET /api/tags?q=` (`TagController`).
-- `tags` on `MusicPieceOverview`, the playlist overview, and the music and playlist search results.
-- The `tags` form field on `POST /api/music-pieces/create`, `PUT /api/music-pieces/{musicPieceId}`,
-  `POST /api/playlists` and `PUT /api/playlists/{playlistId}` (`MusicPieceDetailsUpdate` in the docs still lists only
-  `name`, `artistId`, `isPublic` and `coverImage`).
-- `GET /api/music-pieces/{musicPieceId}/discover`. The frontend's Discover page already calls it.
-
-Nothing new to build. Once these are in the docs, the frontend starts on tags.
-
-## 2. Say whether the caller's own pieces are public
-
-For My uploads → Edit (roadmap task 13), which is built. `MusicPieceOverview` has no `isPublic`, so the edit dialog
-can't show a piece's current visibility. For now it starts on "Keep as it is" and only sends `isPublic` when the user
-picks Public or Private. It switches to showing the current value by itself once the field arrives.
-
-Add `isPublic` (boolean) to the pieces in:
-- the `uploads` event and `GET /api/music-pieces`
-- the `PUT /api/music-pieces/{musicPieceId}` response
-
-Only needed where the caller is the uploader. Leaving it out (or null) for other people's pieces is fine.
-
-## 3. An artist's songs
+## 1. An artist's songs
 
 For the artist page (`/artist/:artistId`, roadmap task 15), which is built. For now it finds the artist's songs by
 running `GET /api/core/search?category=MUSIC` for the artist's name and keeping the results with that `artistId`
@@ -64,7 +38,7 @@ Questions:
 - Playback: the frontend plays these with `/stream` and no `playlistId`, the same as My uploads. That works for public
   pieces and the caller's own. Is that right, or should there be an artist play queue like `/playlists/{id}/play`?
 
-## 4. Delete account
+## 2. Delete account
 
 ### DELETE /api/users/me
 
@@ -82,7 +56,7 @@ Questions:
   `{ "currentPassword": "…" }` and a wrong one a `403 WRONG_PASSWORD` (not 401: the frontend logs out on 401).
 - What happens to the caller's songs that sit in other people's playlists: removed from them, or kept?
 
-## 5. Dashboard
+## 3. Dashboard
 
 ### GET /api/users/matches
 
@@ -112,7 +86,7 @@ caller has played nothing.
   songs can't link to the playlist they were played from yet. (Clicking a recent song already plays it from that
   playlist; only the link is missing.)
 
-## 6. Following
+## 4. Following
 
 For the profile page's Follow button, which is disabled with "Following is coming soon". `UserProfile` already has
 `isFollowing` and `followingMe`; these are the missing pieces.
@@ -136,7 +110,7 @@ Questions:
 - Should following notify the person followed (a new notification type such as `NEW_FOLLOWER`)?
 - Lists of followers and following (`GET /api/users/{username}/followers`, `.../following`) aren't needed yet.
 
-## 7. Landing page top list
+## 5. Landing page top list
 
 ### GET /api/core/top
 
@@ -151,7 +125,7 @@ Questions:
 - The landing page labels these "top albums", but Aux has no albums. Fine to treat them as top songs? The frontend will
   relabel.
 
-## 8. Music piece page
+## 6. Music piece page
 
 For opening a details page with a Play button when an upload is clicked (frontend roadmap, Blocked list). Nothing is
 built yet.
@@ -174,7 +148,7 @@ doesn't exist or is private and the caller can't play it.
 
 Question: should `playCount` be public, or only shown to the uploader?
 
-## 9. Smaller fixes
+## 7. Smaller fixes
 
 - **Search response has examples but no schema.** `GET /api/core/search` documents its `200` body only through one
   example per category, so the docs' schema view doesn't list the fields, their types or which can be null
