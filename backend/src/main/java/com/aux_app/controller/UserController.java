@@ -1,6 +1,7 @@
 package com.aux_app.controller;
 
 import com.aux_app.dto.users.*;
+import com.aux_app.repository.FollowRepository;
 import com.aux_app.repository.ProfileDetailsRepository;
 import com.aux_app.repository.UserPlayPreferencesRepository;
 import com.aux_app.services.LiveEventService;
@@ -51,6 +52,7 @@ public class UserController {
     private final PlaybackEventService playbackEventService;
     private final SessionService sessions;
     private final LiveEventService liveEvents;
+    private final FollowRepository follows;
 
     public UserController(
             UserRepository users,
@@ -61,7 +63,8 @@ public class UserController {
             UsernameService usernames,
             PlaybackEventService playbackEventService,
             SessionService sessions,
-            LiveEventService liveEvents
+            LiveEventService liveEvents,
+            FollowRepository follows
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
@@ -72,6 +75,7 @@ public class UserController {
         this.playbackEventService = playbackEventService;
         this.sessions = sessions;
         this.liveEvents = liveEvents;
+        this.follows = follows;
     }
 
     @GetMapping("/check-username/{username}")
@@ -152,6 +156,35 @@ public class UserController {
         }
 
         return userProfile;
+    }
+
+    @PutMapping("/{username}/follow")
+    @Operation(summary = "Follow a user", description = "The caller follows `username`. Does nothing if they already follow them.")
+    @ApiResponse(responseCode = "204", description = "Following")
+    @ApiResponse(responseCode = "400", description = "Following yourself (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void follow(
+            @Parameter(description = "Username to follow", example = "justin") @PathVariable String username,
+            @CurrentUser UserEntity user
+    ) {
+        if (username.equalsIgnoreCase(user.getUsername())) {
+            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "You can't follow yourself", "username");
+        }
+        if (follows.follow(user.getUserId(), username, Instant.now()) == 0) {
+            throw new AuxException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found", "username");
+        }
+    }
+
+    @DeleteMapping("/{username}/follow")
+    @Operation(summary = "Unfollow a user", description = "The caller unfollows `username`. Does nothing if they didn't follow them or the user doesn't exist.")
+    @ApiResponse(responseCode = "204", description = "Not following")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unfollow(
+            @Parameter(description = "Username to unfollow", example = "justin") @PathVariable String username,
+            @CurrentUser UserEntity user
+    ) {
+        follows.unfollow(user.getUserId(), username);
     }
 
     @GetMapping("/settings")

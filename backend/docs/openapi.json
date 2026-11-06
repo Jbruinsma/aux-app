@@ -9,6 +9,174 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/users/{username}/follow" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Follow a user",
+        "description" : "The caller follows `username`. Does nothing if they already follow them.",
+        "operationId" : "follow",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "description" : "Username to follow",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "justin"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Following"
+          },
+          "400" : {
+            "description" : "Following yourself (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "User not found (code USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Unfollow a user",
+        "description" : "The caller unfollows `username`. Does nothing if they didn't follow them or the user doesn't exist.",
+        "operationId" : "unfollow",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "description" : "Username to unfollow",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "justin"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Not following"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/me/username" : {
       "put" : {
         "tags" : [ "user-controller" ],
@@ -6342,6 +6510,21 @@
             "type" : "boolean",
             "description" : "Whether this user follows the caller",
             "example" : false
+          },
+          "followersCount" : {
+            "type" : "string",
+            "description" : "How many users follow this user: exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)",
+            "example" : "1.2K"
+          },
+          "followingCount" : {
+            "type" : "string",
+            "description" : "How many users this user follows: exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)",
+            "example" : "856"
+          },
+          "uploadsCount" : {
+            "type" : "string",
+            "description" : "Uploads the caller can see (public ones, plus private ones on the caller's own profile): exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)",
+            "example" : "5"
           }
         }
       },

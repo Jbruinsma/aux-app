@@ -86,31 +86,7 @@ caller has played nothing.
   songs can't link to the playlist they were played from yet. (Clicking a recent song already plays it from that
   playlist; only the link is missing.)
 
-## 4. Following
-
-For the profile page's Follow button, which is disabled with "Following is coming soon". `UserProfile` already has
-`isFollowing` and `followingMe`; these are the missing pieces.
-
-### PUT /api/users/{username}/follow
-
-The caller follows `username`. Does nothing if they already follow them. Response `204`, no body.
-`404 USER_NOT_FOUND`; `400 INVALID_FIELD` when following yourself.
-
-### DELETE /api/users/{username}/follow
-
-The caller unfollows `username`. Does nothing if they didn't follow them. Response `204`, no body.
-
-### Changes to GET /api/users/profile/{username}
-
-Add `followersCount`, `followingCount` and `uploadsCount` (integers). The profile already shows these three stats and
-reads these names, but they show 0 until the response has them. `uploadsCount` should only count pieces the caller can
-see (public ones, plus all of them on your own profile).
-
-Questions:
-- Should following notify the person followed (a new notification type such as `NEW_FOLLOWER`)?
-- Lists of followers and following (`GET /api/users/{username}/followers`, `.../following`) aren't needed yet.
-
-## 5. Landing page top list
+## 4. Landing page top list
 
 ### GET /api/core/top
 
@@ -125,7 +101,7 @@ Questions:
 - The landing page labels these "top albums", but Aux has no albums. Fine to treat them as top songs? The frontend will
   relabel.
 
-## 6. Music piece page
+## 5. Music piece page
 
 For opening a details page with a Play button when an upload is clicked (frontend roadmap, Blocked list). Nothing is
 built yet.
@@ -148,7 +124,7 @@ doesn't exist or is private and the caller can't play it.
 
 Question: should `playCount` be public, or only shown to the uploader?
 
-## 7. Smaller fixes
+## 6. Smaller fixes
 
 - **Search response has examples but no schema.** `GET /api/core/search` documents its `200` body only through one
   example per category, so the docs' schema view doesn't list the fields, their types or which can be null

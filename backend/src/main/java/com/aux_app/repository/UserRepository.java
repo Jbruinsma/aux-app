@@ -50,7 +50,10 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                 formatPlaylists(rows),
                 first.getUserId().equals(currentUserId),
                 Integer.valueOf(1).equals(first.getIsFollowing()),
-                Integer.valueOf(1).equals(first.getFollowingMe()));
+                Integer.valueOf(1).equals(first.getFollowingMe()),
+                UserProfile.compactCount(first.getFollowersCount()),
+                UserProfile.compactCount(first.getFollowingCount()),
+                UserProfile.compactCount(first.getUploadsCount()));
     }
 
     private static @NonNull List<ProfilePlaylist> formatPlaylists(List<ProfileRow> rows) {
@@ -88,6 +91,10 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                                     WHERE f1.follower_user_id = CAST(:currentUserId AS varchar) AND f1.following_user_id = u.user_id) AS isFollowing,
                    EXISTS (SELECT 1 FROM follows f2
                            WHERE f2.follower_user_id = u.user_id AND f2.following_user_id = CAST(:currentUserId AS varchar)) AS followingMe,
+                   (SELECT COUNT(*) FROM follows f3 WHERE f3.following_user_id = u.user_id) AS followersCount,
+                   (SELECT COUNT(*) FROM follows f4 WHERE f4.follower_user_id = u.user_id) AS followingCount,
+                   (SELECT COUNT(*) FROM music_pieces mp WHERE mp.uploader_user_id = u.user_id
+                       AND (mp.is_public = 1 OR u.user_id = CAST(:currentUserId AS varchar))) AS uploadsCount,
                    p.public_id AS playlistId,
                    p.playlist_name AS playlistName,
                    p.playlist_cover_url AS playlistCoverUrl,
@@ -168,6 +175,9 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getAbout();
         Integer getIsFollowing(); // SQLite has no boolean type: 1 or 0
         Integer getFollowingMe(); // SQLite has no boolean type: 1 or 0
+        int getFollowersCount();
+        int getFollowingCount();
+        int getUploadsCount();
         String getPlaylistId();
         String getPlaylistName();
         String getPlaylistCoverUrl();
