@@ -5,7 +5,7 @@ in place, all boxes ticked, so the team can see what's done. Exact request and r
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-10-28.
+Last updated 2026-11-06.
 
 ______________________________________________________
 
@@ -211,6 +211,28 @@ there are none. Tag rules and `GET /api/tags` are in the OpenAPI docs.
 **Done when:** a user can tag a new upload and a new playlist, the tags show on the playlist page and in search, and
 saving without tags still works.
 
+### 17. Follow and unfollow from the profile
+
+The follow endpoints are live, and `GET /api/users/profile/{username}` now returns `followersCount`, `followingCount`
+and `uploadsCount`. The three counts are **strings**, not numbers: exact up to 999, then rounded down, such as `1.2K`,
+`15.8K` or `3.4M`. `uploadsCount` only counts the pieces the caller can see.
+
+**Files:** `src/views/PublicProfile.vue`
+**API:** `PUT /api/users/{username}/follow`, `DELETE /api/users/{username}/follow`, `GET /api/users/profile/{username}`
+
+- [ ] Enable the Follow button and remove the "Following is coming soon." hint and its `aria-describedby`.
+- [ ] Follow sends `PUT`, and Following (unfollow) sends `DELETE`. Both return `204` with no body, and repeating either
+      one does nothing, so a double click is safe.
+- [ ] Flip `isFollowing` straight away, then load the profile again to get the new counts. Don't add or subtract 1 from
+      `followersCount`: it's a string like `1.2K`. Put `isFollowing` back if the request fails.
+- [ ] Handle `404 USER_NOT_FOUND` from `PUT` (the user changed their username or was deleted). `DELETE` never returns
+      404.
+- [ ] Show the counts as they come; don't format them again. Change the `?? 0` fallbacks in `stats` to `?? '0'` and
+      remove the comment saying the counts aren't in the response yet.
+
+**Done when:** following a user turns the button into Following and raises their follower count after the reload, and
+unfollowing reverses both.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -239,8 +261,7 @@ Don't start these until the endpoint is in the OpenAPI docs.
       (`../backend/BACKEND_REQUESTS.md` §2).
 - [ ] **People who hear it too.** Fill the Dashboard section once `GET /api/users/matches` exists
       (`../backend/BACKEND_REQUESTS.md` §3).
-- [ ] **Follow.** Enable the profile's follow button once there's a follow endpoint (`../backend/BACKEND_REQUESTS.md` §4).
 - [ ] **Landing page.** Replace the hardcoded top albums in `LandingPage.vue` once `GET /api/core/top` returns real
-      data (`../backend/BACKEND_REQUESTS.md` §5).
+      data (`../backend/BACKEND_REQUESTS.md` §4).
 - [ ] **Music piece page.** Open a details page with a Play button when an upload is clicked, once
-      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §6).
+      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §5).
