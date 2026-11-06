@@ -92,6 +92,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                     new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
                     new PlaylistOwner(row.getUploaderId(), row.getUploaderPfpUrl(), row.getUploaderUsername()),
                     TagRepository.split(row.getPieceTags()),
+                    Integer.valueOf(1).equals(row.getPieceIsPublic()),
                     Integer.valueOf(1).equals(row.getIsFavorite()),
                     Integer.valueOf(1).equals(row.getIsAvailable())));
         }
@@ -117,6 +118,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                    up.public_id AS uploaderId,
                    up.username AS uploaderUsername,
                    up.profile_picture_url AS uploaderPfpUrl,
+                   mp.is_public AS pieceIsPublic,
                    (uft.user_id IS NOT NULL) AS isFavorite,
                    -- PlaybackEventService.isPlayable in SQL
                    CASE WHEN mp.is_public = 1 OR mp.uploader_user_id = :userId
@@ -174,7 +176,8 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         String getUploaderId();
         String getUploaderUsername();
         String getUploaderPfpUrl();
-        Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
+        Integer getPieceIsPublic(); // SQLite has no boolean type: 1 or 0
+        Integer getIsFavorite(); // 1 or 0
         Integer getIsAvailable(); // 1 or 0
         String getCallerStatus(); // caller's playlist_members row; null if they have none
         String getCallerPermission();

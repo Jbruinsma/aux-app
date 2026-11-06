@@ -20,7 +20,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
-                   CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
+                   mp.is_public AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
             """ + TagRepository.PIECE_TAGS + """
@@ -55,7 +55,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
-                   CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
+                   mp.is_public AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
             """ + TagRepository.PIECE_TAGS + """
@@ -88,7 +88,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         String getUploaderId();
         String getUploaderUsername();
         String getUploaderPfpUrl();
-        Integer getIsFavorite(); // SQLite has no boolean type: 1 or 0
+        Integer getIsPublic(); // SQLite has no boolean type: 1 or 0
+        Integer getIsFavorite(); // 1 or 0
         String getPlaylistId(); // '' when none
         String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }

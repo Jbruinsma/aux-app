@@ -39,7 +39,7 @@ export function uploadArtistBanner(artistId, file, rect) {
 const SEARCH_PAGE = 50
 const SEARCH_MAX_PAGES = 4
 
-// [MusicPieceOverview] credited to the artist. There's no artist endpoint yet (BACKEND_REQUESTS.md §3), so this runs a
+// [MusicPieceOverview] credited to the artist. There's no artist endpoint yet (BACKEND_REQUESTS.md §1), so this runs a
 // music search for the artist's name, which also matches artist names, and keeps the pieces whose artistId is this
 // one. Search shows public pieces plus the caller's own private ones, sorted by name. Stops after 200 results, which only
 // matters for a name that's part of many other names

@@ -162,7 +162,7 @@ class UploadServiceTest {
 
     @Test
     void mp3KeepsOnlyFramesAndMeasuresDuration() {
-        byte[] frames = mp3Frames(MPEG1_128K, 30);
+        byte[] frames = mp3Frames(MPEG1_128K, 31);
         byte[] id3v2 = new byte[110];
         System.arraycopy(new byte[] {'I', 'D', '3', 4, 0, 0, 0, 0, 0, 100}, 0, id3v2, 0, 10);
         byte[] halfFrame = Arrays.copyOf(mp3Frames(MPEG1_128K, 1), 200);
@@ -170,7 +170,7 @@ class UploadServiceTest {
 
         UploadService.Mp3 mp3 = UploadService.parseMp3(concat(id3v2, frames, halfFrame, id3v1));
         assertArrayEquals(frames, mp3.frames());
-        assertEquals(30, mp3.durationSeconds());
+        assertEquals(31, mp3.durationSeconds());
     }
 
     @Test

@@ -99,6 +99,7 @@ public class PlaybackEventService {
                                 row.getUploaderUsername()
                         ),
                         TagRepository.split(row.getTags()),
+                        row.getIsPublic() == 1,
                         row.getIsFavorite() == 1,
                         true // findLastPlayback and findRecentPlaybacks only return pieces the user can play
                 ),
