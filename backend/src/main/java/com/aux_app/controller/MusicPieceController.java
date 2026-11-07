@@ -15,7 +15,6 @@ import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
-import com.aux_app.repository.UserRepository;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.RecommendationService;
@@ -38,7 +37,6 @@ import java.util.UUID;
 @RequestMapping("/api/music-pieces")
 public class MusicPieceController {
 
-    private final UserRepository users;
     private final UploadService uploads;
     private final ArtistRepository artists;
     private final MusicPieceRepository musicPieces;
@@ -48,7 +46,6 @@ public class MusicPieceController {
     private final ApplicationEventPublisher events;
 
     public MusicPieceController(
-            UserRepository users,
             UploadService uploads,
             ArtistRepository artists,
             MusicPieceRepository musicPieces,
@@ -57,7 +54,6 @@ public class MusicPieceController {
             RecommendationService recommendations,
             ApplicationEventPublisher events
     ) {
-        this.users = users;
         this.uploads = uploads;
         this.artists = artists;
         this.musicPieces = musicPieces;
@@ -279,7 +275,8 @@ public class MusicPieceController {
                     Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.
                     Fetch a new one when it runs out. A private piece is only playable by its uploader, or from a
                     private playlist whose owner or accepted member uploaded it (pass that `playlistId`).
-                    Also returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`
+                    Also returns a single-use `playToken` for reporting the listen to `/plays`, and
+                    `minListenSeconds`, how much must play before the listen counts. Pass `playlistId`
                     when playing from a playlist; the playlist must contain the piece and be visible to the caller.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
@@ -306,7 +303,8 @@ public class MusicPieceController {
         return new MusicPieceStream(
                 this.uploads.signedAudioUrl(piece),
                 (int) UploadService.SIGNED_URL_TTL.toSeconds(),
-                playToken
+                playToken,
+                PlaybackEventService.minListenSeconds(piece.getDurationSeconds())
         );
     }
 
@@ -315,8 +313,8 @@ public class MusicPieceController {
             summary = "Record a listen of a music piece",
             description = """
                     JSON body: `playToken` from the `/stream` call that started the listen, and
-                    `listenDurationSeconds`. Send it once the caller has listened at least 30 seconds (or the whole
-                    piece, if shorter). Each token counts once.
+                    `listenDurationSeconds`. Send it once the caller has listened for the `minListenSeconds` from
+                    `/stream`: half the piece, at most 4 minutes. Each token counts once.
                     The server credits at most the time since the token was issued and the piece's length, and
                     rejects a listen that overlaps the caller's previous play. It is fine to fetch the next piece's
                     token early, while the current one is still playing.

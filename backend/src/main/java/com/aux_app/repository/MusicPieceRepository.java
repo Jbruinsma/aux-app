@@ -99,7 +99,7 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
 
     // Public ids of pieces like the seed, best first; see RecommendationService.discover for the rules.
     // Score: 3 per shared seed tag, 1 per other shared tag from the seed artist's top 5, plus 1 per listener
-    // (up to 4) who played both the seed and the piece for 30s+. Equal scores come back in random order.
+    // (up to 4) who played both the seed and the piece. Equal scores come back in random order.
     // Pieces scoring 0 only fill in when they were played in the window, most played first.
     // Since-times are epoch millis. The app writes played_at as millis; seeded rows hold text, so both are read.
     String DISCOVER = """
@@ -125,15 +125,13 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
             co_listens AS (
                 SELECT pe.music_piece_id, MIN(COUNT(DISTINCT pe.user_id), 4) AS score
                 FROM play_events pe
-                WHERE pe.listen_duration_seconds >= 30 AND pe.user_id IN (
-                    SELECT user_id FROM play_events
-                    WHERE music_piece_id = :seedId AND listen_duration_seconds >= 30 AND user_id <> :userId)
+                WHERE pe.user_id IN (
+                    SELECT user_id FROM play_events WHERE music_piece_id = :seedId AND user_id <> :userId)
                 GROUP BY pe.music_piece_id
             ),
             popular AS (
                 SELECT music_piece_id, COUNT(*) AS plays FROM play_events
-                WHERE listen_duration_seconds >= 30
-                  AND (CASE typeof(played_at) WHEN 'integer' THEN played_at ELSE unixepoch(played_at) * 1000 END)
+                WHERE (CASE typeof(played_at) WHEN 'integer' THEN played_at ELSE unixepoch(played_at) * 1000 END)
                       >= :popularSince
                 GROUP BY music_piece_id
             ),

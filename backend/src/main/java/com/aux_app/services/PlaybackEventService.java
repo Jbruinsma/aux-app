@@ -39,8 +39,9 @@ import io.jsonwebtoken.security.Keys;
 @Service
 public class PlaybackEventService {
 
-    // Same as Spotify: shorter listens are skips, not plays. Pieces under 30s need the whole piece.
-    static final int MIN_LISTEN_SECONDS = 30;
+    // A listen counts once half the piece or 4 minutes has played, whichever comes first (Last.fm's scrobble rule).
+    // Shorter listens are skips, not plays.
+    static final int MAX_LISTEN_TO_COUNT_SECONDS = 240;
     // Covers network delay between the end of one play and the report of the next
     static final int OVERLAP_SLACK_SECONDS = 2;
     // Different issuer from session tokens, so neither kind is accepted in place of the other
@@ -170,13 +171,18 @@ public class PlaybackEventService {
         ));
     }
 
+    // Seconds of a piece that must play for the listen to count. Also sent to the player with /stream
+    public static int minListenSeconds(int pieceSeconds) {
+        return Math.min((pieceSeconds + 1) / 2, MAX_LISTEN_TO_COUNT_SECONDS);
+    }
+
     // The listen is the window [now - credited, now]. It must fit after the token was issued, inside the piece's
     // length, and after the user's previous play ended.
     static int creditedSeconds(Instant issuedAt, Instant now, int claimedSeconds, int pieceSeconds, @Nullable Instant lastPlayedAt) {
         long elapsed = Duration.between(issuedAt, now).toSeconds();
         int credited = (int) Math.min(Math.min(claimedSeconds, elapsed), pieceSeconds);
 
-        if (credited < Math.min(MIN_LISTEN_SECONDS, pieceSeconds)) {
+        if (credited < minListenSeconds(pieceSeconds)) {
             throw new AuxException(HttpStatus.BAD_REQUEST, "PLAY_TOO_SHORT", "Listen too short to count as a play", "listenDurationSeconds");
         }
         if (lastPlayedAt != null && now.minusSeconds(credited + OVERLAP_SLACK_SECONDS).isBefore(lastPlayedAt)) {

@@ -51,7 +51,6 @@ class DiscoverQueryTest {
             piece(db, "b1", "B", "u1", true, "chill", "lo-fi");
             piece(db, "b2", "B", "u1", true, "jazz");
             piece(db, "b3", "B", "u1", true); // co-listened
-            piece(db, "b4", "B", "u1", true); // only a short play
             piece(db, "own", "B", "caller", true, "chill");
             piece(db, "fav", "B", "u1", true, "chill");
             piece(db, "recent", "B", "u1", true, "chill");
@@ -63,7 +62,6 @@ class DiscoverQueryTest {
             exec(db, "INSERT INTO user_favorite_tracks (user_id, music_piece_id) VALUES ('caller', 'fav')");
             play(db, "u2", "seed", 60, NOW.minus(Duration.ofDays(2)));
             play(db, "u2", "b3", 60, NOW.minus(Duration.ofDays(2)));
-            play(db, "u2", "b4", 10, NOW.minus(Duration.ofDays(2)));
             play(db, "u3", "pop", 60, NOW.minus(Duration.ofDays(5)));
             play(db, "u3", "stale", 60, NOW.minus(Duration.ofDays(40)));
             play(db, "caller", "old", 60, NOW.minus(Duration.ofDays(10)));
