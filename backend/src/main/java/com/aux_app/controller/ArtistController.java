@@ -15,17 +15,20 @@ import com.aux_app.error.AuxException;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.UserFavoriteArtistRepository;
 import com.aux_app.repository.UserRepository;
+import com.aux_app.services.LiveEventService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -36,17 +39,20 @@ public class ArtistController {
     private final ArtistRepository artists;
     private final UserFavoriteArtistRepository favorites;
     private final UploadService uploads;
+    private final ApplicationEventPublisher events;
 
     public ArtistController(
             UserRepository users,
             ArtistRepository artists,
             UserFavoriteArtistRepository favorites,
-            UploadService uploads
+            UploadService uploads,
+            ApplicationEventPublisher events
     ) {
         this.users = users;
         this.artists = artists;
         this.favorites = favorites;
         this.uploads = uploads;
+        this.events = events;
     }
 
     @GetMapping
@@ -188,6 +194,7 @@ public class ArtistController {
         // Skip the save so a repeat call keeps the original created_at
         if (!this.favorites.existsById(id)) {
             this.favorites.save(new UserFavoriteArtistEntity(user.getUserId(), artist.getArtistId()));
+            publishMatches();
         }
     }
 
@@ -202,6 +209,7 @@ public class ArtistController {
         ArtistEntity artist = this.artists.findByPublicId(artistId);
         if (artist != null) {
             this.favorites.deleteById(new UserFavoriteArtistId(user.getUserId(), artist.getArtistId()));
+            publishMatches();
         }
     }
 
@@ -260,4 +268,9 @@ public class ArtistController {
         return new ArtistSummary(artist.getPublicId(), artist.getArtistName(), artist.getArtistPfpUrl());
     }
 
+
+    // A favorite artist is part of the user's taste, so their score with everyone online shifts
+    private void publishMatches() {
+        events.publishEvent(LiveEventService.Update.everyoneOnline(Set.of(LiveEventService.Section.MATCHES)));
+    }
 }

@@ -93,4 +93,82 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         String getPlaylistId(); // '' when none
         String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }
+
+    // Counted plays that shape taste (CompatibilityService): public pieces only, so a private upload never shows up as
+    // a shared artist, and never the user's own uploads. Users who haven't finished onboarding are left out. `w` is
+    // the play's weight, halving every :halfLifeMillis. :userA null means every user; otherwise only :userA and :userB.
+    // played_at is millis when the app writes it, text in seeded rows, so both are read.
+    String TASTE_PLAYS = """
+            WITH plays AS (
+                SELECT pe.user_id, mp.music_piece_id, mp.artist_id,
+                       power(0.5, (:now - (CASE typeof(pe.played_at) WHEN 'integer' THEN pe.played_at
+                                           ELSE unixepoch(pe.played_at) * 1000 END)) / :halfLifeMillis) AS w
+                FROM play_events pe
+                JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
+                JOIN users u ON u.user_id = pe.user_id
+                WHERE u.onboarding_step = 'DONE' AND mp.is_public = 1 AND mp.uploader_user_id <> pe.user_id
+                  AND (:userA IS NULL OR pe.user_id IN (:userA, :userB))
+            )
+            """;
+
+    // One row per user and artist: log(1 + decayed plays) + 2 if a favorite artist + 0.5 per favorite track of theirs.
+    // Favorites count even without plays.
+    String ARTIST_WEIGHTS = TASTE_PLAYS + """
+            , artist_plays AS (
+                SELECT user_id, artist_id, SUM(w) AS plays FROM plays GROUP BY user_id, artist_id
+            ),
+            fav_tracks AS (
+                SELECT f.user_id, mp.artist_id, COUNT(*) AS n
+                FROM user_favorite_tracks f
+                JOIN music_pieces mp ON mp.music_piece_id = f.music_piece_id
+                WHERE mp.is_public = 1 AND mp.uploader_user_id <> f.user_id
+                GROUP BY f.user_id, mp.artist_id
+            ),
+            taste AS (
+                SELECT user_id, artist_id FROM artist_plays
+                UNION SELECT user_id, artist_id FROM user_favorite_artists
+                UNION SELECT user_id, artist_id FROM fav_tracks
+            )
+            SELECT t.user_id AS userId, a.public_id AS artistId, a.artist_name AS artistName,
+                   a.artist_pfp_url AS artistPfpUrl,
+                   ln(1 + COALESCE(ap.plays, 0)) + 2 * (fa.user_id IS NOT NULL) + 0.5 * COALESCE(ft.n, 0) AS weight
+            FROM taste t
+            JOIN users u ON u.user_id = t.user_id AND u.onboarding_step = 'DONE'
+            JOIN artists a ON a.artist_id = t.artist_id
+            LEFT JOIN artist_plays ap ON ap.user_id = t.user_id AND ap.artist_id = t.artist_id
+            LEFT JOIN user_favorite_artists fa ON fa.user_id = t.user_id AND fa.artist_id = t.artist_id
+            LEFT JOIN fav_tracks ft ON ft.user_id = t.user_id AND ft.artist_id = t.artist_id
+            WHERE :userA IS NULL OR t.user_id IN (:userA, :userB)
+            """;
+
+    // One row per user and curated tag: log(1 + decayed plays of pieces carrying it). User-made tags are ignored.
+    String TAG_WEIGHTS = TASTE_PLAYS + """
+            SELECT p.user_id AS userId, t.tag AS tag, ln(1 + SUM(p.w)) AS weight
+            FROM plays p
+            JOIN music_piece_tags mpt ON mpt.music_piece_id = p.music_piece_id
+            JOIN tags t ON t.tag_id = mpt.tag_id AND t.is_curated = 1
+            GROUP BY p.user_id, t.tag_id
+            """;
+
+    @Query(value = ARTIST_WEIGHTS, nativeQuery = true)
+    List<ArtistWeightRow> findArtistWeights(@Param("now") long now, @Param("halfLifeMillis") double halfLifeMillis,
+                                            @Param("userA") String userA, @Param("userB") String userB);
+
+    @Query(value = TAG_WEIGHTS, nativeQuery = true)
+    List<TagWeightRow> findTagWeights(@Param("now") long now, @Param("halfLifeMillis") double halfLifeMillis,
+                                      @Param("userA") String userA, @Param("userB") String userB);
+
+    interface ArtistWeightRow {
+        String getUserId(); // internal id
+        String getArtistId(); // public id
+        String getArtistName();
+        String getArtistPfpUrl();
+        Double getWeight();
+    }
+
+    interface TagWeightRow {
+        String getUserId(); // internal id
+        String getTag();
+        Double getWeight();
+    }
 }

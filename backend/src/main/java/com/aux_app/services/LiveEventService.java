@@ -34,6 +34,9 @@ import com.aux_app.repository.UserRepository;
 //
 // Where updates are published (who gets notified -> which sections):
 //   PlaybackEventService.recordPlay                 caller                      -> RECENTS, TOP_ARTISTS
+//                                                   everyone online             -> MATCHES (the player's taste changed)
+//   ArtistController.(un)favoriteArtist             everyone online             -> MATCHES
+//   UserController.follow/unfollow                  caller                      -> MATCHES (followed users drop out)
 //   MusicPieceController.createMusicPiece           caller                      -> UPLOADS
 //   PlaylistService.createPlaylist                  owner                       -> LIBRARY
 //   PlaylistService.editPlaylist                    everyone on the playlist    -> LIBRARY, INVITES, NOTIFICATIONS (name, cover)
@@ -65,7 +68,8 @@ public class LiveEventService {
         TOP_ARTISTS("top-artists"),
         LIBRARY("library"),
         UPLOADS("uploads"),
-        NOTIFICATIONS("notifications");
+        NOTIFICATIONS("notifications"),
+        MATCHES("matches");
 
         public final String eventName;
 
@@ -74,8 +78,13 @@ public class LiveEventService {
         }
     }
 
-    // What services publish. userIds are internal user ids (UserEntity.getUserId()), not public ones
-    public record Update(Set<String> userIds, Set<Section> sections) {}
+    // What services publish. userIds are internal user ids (UserEntity.getUserId()), not public ones; null means
+    // everyone with an open stream (use everyoneOnline)
+    public record Update(Set<String> userIds, Set<Section> sections) {
+        public static Update everyoneOnline(Set<Section> sections) {
+            return new Update(null, sections);
+        }
+    }
 
     // userId -> that user's open streams, one per tab
     private final Map<String, Set<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -85,19 +94,22 @@ public class LiveEventService {
     private final UserRepository users;
     private final MusicPieceRepository musicPieces;
     private final NotificationService notifications;
+    private final CompatibilityService compatibility;
 
     public LiveEventService(
             PlaylistMembersService playlistMembers,
             PlaybackEventService playbackEvents,
             UserRepository users,
             MusicPieceRepository musicPieces,
-            NotificationService notifications
+            NotificationService notifications,
+            CompatibilityService compatibility
     ) {
         this.playlistMembers = playlistMembers;
         this.playbackEvents = playbackEvents;
         this.users = users;
         this.musicPieces = musicPieces;
         this.notifications = notifications;
+        this.compatibility = compatibility;
     }
 
     // Called by GET /api/users/me/events. The stream ends when the token does: tokens last 1 hour and can't be
@@ -135,7 +147,8 @@ public class LiveEventService {
     @Async
     @TransactionalEventListener(fallbackExecution = true)
     public void onUpdate(Update update) {
-        for (String userId : update.userIds()) {
+        Set<String> userIds = update.userIds() == null ? Set.copyOf(emitters.keySet()) : update.userIds();
+        for (String userId : userIds) {
             Set<SseEmitter> open = emitters.get(userId);
             // Offline users cost no queries
             if (open == null) continue;
@@ -170,6 +183,7 @@ public class LiveEventService {
             case LIBRARY -> users.findLibrary(userId);
             case UPLOADS -> UploadedMusicPiecesResponse.of(musicPieces.findUploads(userId));
             case NOTIFICATIONS -> notifications.page(userId, null);
+            case MATCHES -> compatibility.matches(userId);
         };
     }
 

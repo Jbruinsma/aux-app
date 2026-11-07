@@ -2,6 +2,7 @@ package com.aux_app.repository;
 
 import com.aux_app.entity.FollowEntity;
 import com.aux_app.entity.FollowId;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 public interface FollowRepository extends JpaRepository<FollowEntity, FollowId> {
 
@@ -32,4 +34,8 @@ public interface FollowRepository extends JpaRepository<FollowEntity, FollowId> 
               AND following_user_id = (SELECT u.user_id FROM users u WHERE u.username = :username COLLATE NOCASE)
             """, nativeQuery = true)
     void unfollow(@Param("followerUserId") String followerUserId, @Param("username") String username);
+
+    // Internal ids of the users `followerUserId` follows
+    @Query(value = "SELECT following_user_id FROM follows WHERE follower_user_id = :followerUserId", nativeQuery = true)
+    List<String> findFollowingIds(@Param("followerUserId") String followerUserId);
 }

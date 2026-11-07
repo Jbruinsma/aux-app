@@ -169,6 +169,8 @@ public class PlaybackEventService {
                 Set.of(user.getUserId()),
                 Set.of(LiveEventService.Section.RECENTS, LiveEventService.Section.TOP_ARTISTS)
         ));
+        // The player's taste changed, and with it their score with everyone online
+        events.publishEvent(LiveEventService.Update.everyoneOnline(Set.of(LiveEventService.Section.MATCHES)));
     }
 
     // Seconds of a piece that must play for the listen to count. Also sent to the player with /stream
