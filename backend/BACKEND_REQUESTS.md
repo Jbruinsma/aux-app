@@ -58,26 +58,12 @@ Questions:
 
 ## 3. Dashboard
 
-### GET /api/users/matches
+### People who hear it too: done, as an event
 
-For Dashboard → People who hear it too (`/dashboard/people-who-hear-it-too`), which shows sample listeners
-(`MATCHES_MOCKED` in `frontend/src/utils/matches.js`) until this exists. Listeners who share the caller's taste, best
-match first.
-
-Response `200`:
-```json
-{
-  "matches": [
-    {
-      "user": { "userId": "u_41x9Rb", "username": "justin", "pfpUrl": "https://…" },
-      "compatibility": 87,
-      "sharedArtists": [{ "artistId": "a_8f3k2Q", "artistName": "Tame Impala", "artistPfpUrl": null }]
-    }
-  ]
-}
-```
-`compatibility` is 0-100 (the style guide's Low to Super levels). `sharedArtists`: up to 3. `matches` is empty when the
-caller has played nothing.
+Shipped as the `matches` event on `GET /api/users/me/events` instead of a REST endpoint, so the Dashboard section
+updates live. Body: `MatchesResponse`, the shape asked for here plus `sharedTags` (up to 3 curated tags, for matches
+on tags alone). Profiles also carry `compatibility`, `sharedArtists` and `sharedTags`. Frontend work is in
+`frontend/ROADMAP.md`; how the score works is in `docs/compatibility.html`.
 
 ### Changes to existing events
 

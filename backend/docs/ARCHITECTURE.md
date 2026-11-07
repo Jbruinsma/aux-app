@@ -147,12 +147,13 @@ Repositories are left out to keep lines readable: every controller and service r
 | `OnboardingService` | Walks new accounts through onboarding steps |
 | `UsernameService` | Username rules, reserved names, `ProfanityFilter` |
 | `PlaybackEventService` | Signed single-use play tokens; credits only listening time the server can bound |
+| `CompatibilityService` | Musical compatibility 0-100 for the `matches` event and profiles; see `docs/compatibility.html` |
 | `PlaylistService` | Abstract base: visibility, tracks, saves, queue paging, seeded shuffle |
 | `PlaylistMembersService` | Extends `PlaylistService`: invites, permissions, leaving |
 | `UploadService` | Re-encodes images to WebP, strips MP3s to audio frames, R2 storage, signed audio URLs |
 | `EmailService` | Sends mail through Resend |
 
-Empty placeholder services (no code yet): `CompatibiltiyService`, `CreatorAnalyticsService`, `FavoritesService`, `GlobalStatsService`, `ListeningHistoryService`, `MediaIngestionService`, `PresenceService`, `RecommendationService`.
+Empty placeholder services (no code yet): `CreatorAnalyticsService`, `FavoritesService`, `GlobalStatsService`, `ListeningHistoryService`, `MediaIngestionService`, `PresenceService`, `RecommendationService`.
 
 ## 4. Playback flow
 

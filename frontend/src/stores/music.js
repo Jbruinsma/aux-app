@@ -18,7 +18,8 @@ import {
 const REFILL_WHEN_LEFT = 3
 // A prefetched URL is only used if it still has this long to live
 const STREAM_MARGIN_MS = 60_000
-// A listen counts after this many seconds actually played, or the whole piece if it's shorter
+// A listen counts once the stream's minListenSeconds have actually played (the server's rule: half the piece, at most
+// 4 minutes). Only used if the stream doesn't say
 const LISTEN_TO_COUNT = 30
 // The server keeps shuffle and repeat (play preferences) but not position or queue order, so those are saved here, per
 // account
@@ -33,11 +34,11 @@ const QUEUE_ERRORS = {
 
 export const useMusicStore = defineStore('music', () => {
   const DEFAULT_TITLE = 'No song playing'
-  const emptyPiece = () => ({ uuid: '', cover: '', title: DEFAULT_TITLE, artist: '', artistId: '', uploader: null, mp3File: null, playToken: null, expiresAt: 0 })
+  const emptyPiece = () => ({ uuid: '', cover: '', title: DEFAULT_TITLE, artist: '', artistId: '', uploader: null, mp3File: null, playToken: null, minListenSeconds: null, expiresAt: 0 })
 
   const showArrow = ref(true)
   const collapsed = ref(true)
-  // { uuid, cover, title, artist, artistId, uploader ({ userId, pfpUrl, username }), mp3File (signed URL), playToken, expiresAt }
+  // { uuid, cover, title, artist, artistId, uploader ({ userId, pfpUrl, username }), mp3File (signed URL), playToken, minListenSeconds, expiresAt }
   const currentMusicPiece = ref(emptyPiece())
   const currentPlaylistUUID = ref('')
   // The fetched queue, in play order: MusicPieceOverview items
@@ -87,13 +88,14 @@ export const useMusicStore = defineStore('music', () => {
       uploader: piece.uploader ?? null,
       mp3File: stream?.url ?? null,
       playToken: stream?.playToken ?? null,
+      minListenSeconds: stream?.minListenSeconds ?? null,
       expiresAt: stream?.expiresAt ?? 0,
     }
   }
 
   async function requestStream(piece) {
-    const { url, expiresInSeconds, playToken } = await fetchStream(piece.musicPieceId, currentPlaylistUUID.value || null)
-    return { url, playToken, expiresAt: Date.now() + expiresInSeconds * 1000 }
+    const { url, expiresInSeconds, playToken, minListenSeconds } = await fetchStream(piece.musicPieceId, currentPlaylistUUID.value || null)
+    return { url, playToken, minListenSeconds, expiresAt: Date.now() + expiresInSeconds * 1000 }
   }
 
   async function streamFor(piece) {
@@ -307,15 +309,18 @@ export const useMusicStore = defineStore('music', () => {
   function recordListening(seconds) {
     if (!isPlaying.value || !(seconds > 0)) return
     listened += seconds
-    if (listened >= LISTEN_TO_COUNT) sendPlay()
+    if (listened >= listenToCount()) sendPlay()
     unsavedSeconds += seconds
     if (unsavedSeconds >= SAVE_EVERY_SECONDS) saveLastPlayback()
   }
 
-  // On track end or skip: reports the listen if it reached 30 seconds, or (nearly) the whole of a shorter piece
+  function listenToCount() {
+    return currentMusicPiece.value.minListenSeconds ?? LISTEN_TO_COUNT
+  }
+
+  // On track end or skip: reports the listen if it played long enough
   function finishListening() {
-    const length = duration.value
-    if (listened >= LISTEN_TO_COUNT || (length > 0 && length < LISTEN_TO_COUNT && listened >= length - 1)) sendPlay()
+    if (listened >= listenToCount()) sendPlay()
   }
 
   function sendPlay() {

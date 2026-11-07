@@ -8,6 +8,7 @@ import com.aux_app.auth.OnboardingUser;
 import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.dto.base.AuxServerError;
 import com.aux_app.dto.playlist.LibraryPlaylist;
+import com.aux_app.dto.users.MatchesResponse;
 import com.aux_app.dto.users.RecentListeningResponse;
 import com.aux_app.dto.users.TopArtistsResponse;
 import io.swagger.v3.core.converter.ModelConverters;
@@ -42,7 +43,7 @@ public class OpenApiConfig {
             openApi.getComponents().addSecuritySchemes(BEARER, new SecurityScheme()
                     .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
                     .description("Token from /api/auth/login or /api/auth/register"));
-            for (Class<?> type : List.of(AuxServerError.class, RecentListeningResponse.class, TopArtistsResponse.class, LibraryPlaylist.class)) {
+            for (Class<?> type : List.of(AuxServerError.class, RecentListeningResponse.class, TopArtistsResponse.class, LibraryPlaylist.class, MatchesResponse.class)) {
                 ModelConverters.getInstance().readAll(type).forEach(openApi.getComponents()::addSchemas);
             }
         };

@@ -49,7 +49,7 @@ it('handles absent history and a last track without a playlist or artist', async
 })
 
 const piece = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
-const stream = (n) => ({ url: `https://audio.example/m${n}?sig=1`, expiresInSeconds: 3600, playToken: `t${n}` })
+const stream = (n) => ({ url: `https://audio.example/m${n}?sig=1`, expiresInSeconds: 3600, playToken: `t${n}`, minListenSeconds: 30 })
 
 // Answers GET /play and /stream like the backend. `pages` maps a cursor (or 'first') to a queue page
 function backend(pages, overrides = {}) {
@@ -58,7 +58,7 @@ function backend(pages, overrides = {}) {
     calls.push(url)
     const path = new URL(url, 'http://x')
     const answer = (body, status = 200) => ({ ok: status < 400, status, json: async () => body })
-    for (const [match, respond] of Object.entries(overrides)) if (url.includes(match)) return respond(answer)
+    for (const [match, respond] of Object.entries(overrides)) if (url.includes(match)) return respond(answer, url)
     const streamMatch = path.pathname.match(/music-pieces\/(m\d+)\/stream/)
     if (streamMatch) return answer(stream(streamMatch[1].slice(1)))
     const cursor = path.searchParams.get('cursor')
@@ -158,7 +158,7 @@ it('skips a piece that became unavailable mid-session, but stops on the last one
 
 const playsSent = () =>fetch.mock.calls.filter(([url]) => url.includes('/plays'))
 
-it('reports a listen once, after 30 seconds actually played, and stays quiet about anti-abuse rejections', async () => {
+it('reports a listen once, after minListenSeconds actually played, and stays quiet about anti-abuse rejections', async () => {
   backend({ first: { musicPieces: [1, 2].map(piece), nextCursor: null } },
     { '/plays': (answer) => answer({ errorDetails: { code: 'PLAY_OVERLAPS' } }, 409) })
   const music = useMusicStore()
@@ -176,18 +176,18 @@ it('reports a listen once, after 30 seconds actually played, and stays quiet abo
   expect(useNotificationStore().visible).toBe(false)
 })
 
-it('counts a short song listened to the end, but not a skip before 30 seconds', async () => {
-  backend({ first: { musicPieces: [1, 2, 3].map(piece), nextCursor: null } }, { '/plays': (answer) => answer({ message: 'ok' }) })
+it("counts a listen at the stream's minListenSeconds, but not a skip before it", async () => {
+  backend({ first: { musicPieces: [1, 2, 3].map(piece), nextCursor: null } }, {
+    '/plays': (answer) => answer({ message: 'ok' }),
+    '/stream': (answer, url) => answer({ ...stream(url.match(/\/m(\d+)\//)[1]), minListenSeconds: 10 }),
+  })
   const music = useMusicStore()
   await music.playPlaylist('p1')
-  music.duration = 200
-  music.recordListening(10)
+  music.recordListening(9.75)
   await music.moveForward()
   expect(playsSent()).toHaveLength(0)
-  music.duration = 20
-  for (let i = 0; i < 78; i++) music.recordListening(0.25)
-  music.finishListening()
-  expect(JSON.parse(playsSent()[0][1].body)).toEqual({ playToken: 't2', listenDurationSeconds: 20 })
+  for (let i = 0; i < 40; i++) music.recordListening(0.25)
+  expect(JSON.parse(playsSent()[0][1].body)).toEqual({ playToken: 't2', listenDurationSeconds: 10 })
 })
 
 it('gets a new token for each repeat of the same song', async () => {

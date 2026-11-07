@@ -2876,7 +2876,7 @@
       "post" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Record a listen of a music piece",
-        "description" : "JSON body: `playToken` from the `/stream` call that started the listen, and\n`listenDurationSeconds`. Send it once the caller has listened at least 30 seconds (or the whole\npiece, if shorter). Each token counts once.\nThe server credits at most the time since the token was issued and the piece's length, and\nrejects a listen that overlaps the caller's previous play. It is fine to fetch the next piece's\ntoken early, while the current one is still playing.\nFeeds listening history, last playback and top music pieces.\n",
+        "description" : "JSON body: `playToken` from the `/stream` call that started the listen, and\n`listenDurationSeconds`. Send it once the caller has listened for the `minListenSeconds` from\n`/stream`: half the piece, at most 4 minutes. Each token counts once.\nThe server credits at most the time since the token was issued and the piece's length, and\nrejects a listen that overlaps the caller's previous play. It is fine to fetch the next piece's\ntoken early, while the current one is still playing.\nFeeds listening history, last playback and top music pieces.\n",
         "operationId" : "recordPlay",
         "parameters" : [ {
           "name" : "musicPieceId",
@@ -3889,7 +3889,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Get a user's profile",
-        "description" : "This will be a public endpoint. The playlists returned depend on who is asking:\n- If the person who makes the request is the profile owner: returns public AND private playlists.\n- If anyone else makes the request, or there is no token: returns public playlists only.\n`isMe` in the response is true when the caller is the profile owner.\nMaybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).\n",
+        "description" : "This will be a public endpoint. The playlists returned depend on who is asking:\n- If the person who makes the request is the profile owner: returns public AND private playlists.\n- If anyone else makes the request, or there is no token: returns public playlists only.\n`isMe` in the response is true when the caller is the profile owner.\nFor a signed-in caller viewing someone else, `compatibility`, `sharedArtists` and `sharedTags` hold\ntheir musical compatibility (see the `matches` event of `GET /api/users/me/events`). They're null\nwhen signed out, on the caller's own profile, or when either user has no plays or favorites yet.\nMaybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).\n",
         "operationId" : "retrieveProfile",
         "parameters" : [ {
           "name" : "username",
@@ -4097,7 +4097,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Stream the caller's live updates",
-        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON: the same body the listed endpoint returns, or, for the events only\nthe stream sends, the body described below the table:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | stream only |\n| `top-artists` | `TopArtistsResponse` | stream only |\n| `library` | array of `LibraryPlaylist` | stream only |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n\n- `recents`: up to 20 distinct pieces from plays recorded with\n  `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several\n  times appears once, with the `playlistId` of its latest play. Same rules as `GET /me/last-playback`:\n  plays of pieces made private since are skipped, and `playlistId` is null when the piece wasn't\n  played from a playlist or the caller can no longer see it. Empty when the caller has played\n  nothing they can still play.\n- `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,\n  all time. Ties go to the artist played most recently. Empty when the caller has played nothing.\n- `library`: playlists the caller owns (public and private), playlists they're an accepted listener\n  or editor of (public and private), plus playlists they saved from others (public only). `isSaved`\n  is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,\n  newest created first.\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
+        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON: the same body the listed endpoint returns, or, for the events only\nthe stream sends, the body described below the table:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | stream only |\n| `top-artists` | `TopArtistsResponse` | stream only |\n| `library` | array of `LibraryPlaylist` | stream only |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n| `matches` | `MatchesResponse` | stream only |\n\n- `recents`: up to 20 distinct pieces from plays recorded with\n  `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several\n  times appears once, with the `playlistId` of its latest play. Same rules as `GET /me/last-playback`:\n  plays of pieces made private since are skipped, and `playlistId` is null when the piece wasn't\n  played from a playlist or the caller can no longer see it. Empty when the caller has played\n  nothing they can still play.\n- `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,\n  all time. Ties go to the artist played most recently. Empty when the caller has played nothing.\n- `library`: playlists the caller owns (public and private), playlists they're an accepted listener\n  or editor of (public and private), plus playlists they saved from others (public only). `isSaved`\n  is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,\n  newest created first.\n- `matches`: up to 20 listeners who share the caller's taste, best first, for the Dashboard's\n  \"People who hear it too\". Leaves out the caller, users they follow, and users who haven't finished\n  onboarding. Taste comes from counted plays of public pieces (not the caller's own uploads), each\n  weighing half as much every 90 days, plus favorite artists. Sent again after every play by anyone\n  (scores shift), and after the caller follows, unfollows or (un)favorites an artist. Empty when the\n  caller has no plays or favorites. How the score works: `docs/compatibility.html`.\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
         "operationId" : "streamEvents",
         "responses" : {
           "200" : {
@@ -4120,7 +4120,7 @@
                 "examples" : {
                   "Snapshot, then a ping and an update" : {
                     "description" : "Snapshot, then a ping and an update",
-                    "value" : "event:invites\ndata:{\"invites\":[]}\n\nevent:recents\ndata:{\"recents\":[]}\n\nevent:top-artists\ndata:{\"artists\":[]}\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Alice's Mix\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\nevent:uploads\ndata:{\"uploadedPiecesCount\":0,\"uploadedMusicPieces\":[]}\n\nevent:notifications\ndata:{\"notifications\":[],\"unreadCount\":0,\"nextCursor\":null}\n\n:ping\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Road Trip\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\n"
+                    "value" : "event:invites\ndata:{\"invites\":[]}\n\nevent:recents\ndata:{\"recents\":[]}\n\nevent:top-artists\ndata:{\"artists\":[]}\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Alice's Mix\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\nevent:uploads\ndata:{\"uploadedPiecesCount\":0,\"uploadedMusicPieces\":[]}\n\nevent:notifications\ndata:{\"notifications\":[],\"unreadCount\":0,\"nextCursor\":null}\n\nevent:matches\ndata:{\"matches\":[{\"user\":{\"userId\":\"u_41x9Rb\",\"pfpUrl\":null,\"username\":\"jordan_k\"},\"compatibility\":48,\"sharedArtists\":[{\"artistId\":\"a_8f3k2Q\",\"artistName\":\"Frank Ocean\",\"artistPfpUrl\":null}],\"sharedTags\":[\"r&b\",\"chill\"]}]}\n\n:ping\n\nevent:library\ndata:[{\"playlistId\":\"p_8F1eB5\",\"playlistName\":\"Road Trip\",\"playlistCoverUrl\":null,\"ownerUsername\":\"alice\",\"totalPieces\":3,\"isSaved\":false}]\n\n"
                   }
                 }
               }
@@ -4793,7 +4793,7 @@
       "get" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Get a playable URL for a music piece",
-        "description" : "Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.\nFetch a new one when it runs out. A private piece is only playable by its uploader, or from a\nprivate playlist whose owner or accepted member uploaded it (pass that `playlistId`).\nAlso returns a single-use `playToken` for reporting the listen to `/plays`. Pass `playlistId`\nwhen playing from a playlist; the playlist must contain the piece and be visible to the caller.\n",
+        "description" : "Returns a signed URL to the MP3 in the private audio bucket, valid for `expiresInSeconds`.\nFetch a new one when it runs out. A private piece is only playable by its uploader, or from a\nprivate playlist whose owner or accepted member uploaded it (pass that `playlistId`).\nAlso returns a single-use `playToken` for reporting the listen to `/plays`, and\n`minListenSeconds`, how much must play before the listen counts. Pass `playlistId`\nwhen playing from a playlist; the playlist must contain the piece and be visible to the caller.\n",
         "operationId" : "getMusicPieceStream",
         "parameters" : [ {
           "name" : "musicPieceId",
@@ -6525,6 +6525,27 @@
             "type" : "string",
             "description" : "Uploads the caller can see (public ones, plus private ones on the caller's own profile): exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)",
             "example" : "5"
+          },
+          "compatibility" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The caller's compatibility with this user, 0-100 (levels as in `CompatibilityMatch`). Null when signed out, on the caller's own profile, or when either of them has no plays or favorites yet; 0 when they share nothing",
+            "example" : 87
+          },
+          "sharedArtists" : {
+            "type" : "array",
+            "description" : "Up to 3 artists both listen to, the one both play most first. Null when `compatibility` is",
+            "items" : {
+              "$ref" : "#/components/schemas/ArtistSummary"
+            }
+          },
+          "sharedTags" : {
+            "type" : "array",
+            "description" : "Up to 3 curated tags both listen to, strongest first. Null when `compatibility` is",
+            "example" : [ "r&b", "chill" ],
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -6723,6 +6744,12 @@
           "playToken" : {
             "type" : "string",
             "description" : "Single-use token to send to `POST /api/music-pieces/{musicPieceId}/plays` once the caller has listened"
+          },
+          "minListenSeconds" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Seconds of the piece that must play before the listen counts: half the piece, at most 240",
+            "example" : 105
           }
         }
       },
@@ -6955,6 +6982,49 @@
             "type" : "boolean",
             "description" : "Whether the caller has saved the playlist; false for the caller's own unsaved playlists",
             "example" : true
+          }
+        }
+      },
+      "CompatibilityMatch" : {
+        "description" : "A listener who shares the caller's taste",
+        "properties" : {
+          "user" : {
+            "$ref" : "#/components/schemas/PlaylistOwner"
+          },
+          "compatibility" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "0-100. Levels: 0-19 Low, 20-39 Medium, 40-59 High, 60-79 Very high, 80-100 Super",
+            "example" : 87
+          },
+          "sharedArtists" : {
+            "type" : "array",
+            "description" : "Up to 3 artists both listen to, the one both play most first. Empty for a match on tags alone",
+            "items" : {
+              "$ref" : "#/components/schemas/ArtistSummary"
+            }
+          },
+          "sharedTags" : {
+            "type" : "array",
+            "description" : "Up to 3 curated tags both listen to, strongest first",
+            "example" : [ "r&b", "chill" ],
+            "items" : {
+              "type" : "string",
+              "description" : "Up to 3 curated tags both listen to, strongest first",
+              "example" : "[\"r&b\",\"chill\"]"
+            }
+          }
+        }
+      },
+      "MatchesResponse" : {
+        "description" : "Listeners who share the caller's taste, best match first",
+        "properties" : {
+          "matches" : {
+            "type" : "array",
+            "description" : "Up to 20. Empty when the caller has no plays or favorites yet",
+            "items" : {
+              "$ref" : "#/components/schemas/CompatibilityMatch"
+            }
           }
         }
       }

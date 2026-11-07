@@ -233,6 +233,58 @@ and `uploadsCount`. The three counts are **strings**, not numbers: exact up to 9
 **Done when:** following a user turns the button into Following and raises their follower count after the reload, and
 unfollowing reverses both.
 
+### 18. People who hear it too from the `matches` event
+
+There won't be a `GET /api/users/matches`. The backend sends a `matches` event on the live stream instead, so the
+Dashboard section stays current. The body has the same shape as the mock in `src/utils/matches.js`, plus `sharedTags`.
+How the score works: `../backend/docs/compatibility.html`.
+
+**Files:** `src/stores/events.js`, `src/views/Dashboard.vue`, `src/utils/matches.js`
+**Needs:** task 2
+**API:** `GET /api/users/me/events`, event `matches` (body `MatchesResponse`)
+
+- [ ] Add a `matches` field to the event store and replace it whole on each `matches` event, like the others.
+- [ ] Read the Dashboard section from the store instead of `fetchMatches`. Remove `fetchMatches`, `MATCHES_MOCKED` and
+      `PREVIEW_MATCHES` from `src/utils/matches.js`; keep `compatibilityLevel` and `nameSeparator`.
+- [ ] Expect the list to change while the page is open: it's sent again after a play by anyone, and after the user
+      follows, unfollows, favorites or unfavorites an artist.
+- [ ] `sharedArtists` is empty when two people match on tags alone (those scores stop at 39, Medium). Name the shared
+      tags instead, for example "You both listen to r&b and chill."
+- [ ] Users the caller follows never appear in the list, so a match disappears after they follow it.
+- [ ] An empty `matches` means the user has no plays or favorite artists yet. Keep the "No matches yet" empty state.
+
+**Done when:** the section shows real listeners with no mock flag, and a new play updates it without a reload.
+
+### 19. Show compatibility on profiles
+
+`GET /api/users/profile/{username}` now returns `compatibility` (0-100), `sharedArtists` and `sharedTags` (up to 3
+each), comparing the signed-in caller with the profile owner.
+
+**Files:** `src/views/PublicProfile.vue`
+**API:** `GET /api/users/profile/{username}`
+
+- [ ] Show the style guide's Compatibility score component: the five-segment meter, the level word, and "You both
+      listen to …" from `sharedArtists` (or `sharedTags` when there are no shared artists). Use `compatibilityLevel`
+      from `src/utils/matches.js`.
+- [ ] Hide the component when `compatibility` is null: signed out, the caller's own profile, or either user has no
+      plays or favorite artists yet.
+- [ ] `0` is a real score: they share nothing. Show Low and leave out the "You both listen to" line.
+- [ ] The score isn't live; it changes when the profile loads again.
+
+**Done when:** another user's profile shows the meter with the same level and score as the matches list, and your own
+profile shows none.
+
+### 20. Count a listen at the server's threshold
+
+Already done with the backend change, listed so the team knows the player changed.
+
+**Files:** `src/stores/music.js`
+**API:** `GET /api/music-pieces/{musicPieceId}/stream`, `POST /api/music-pieces/{musicPieceId}/plays`
+
+- [x] `/stream` returns `minListenSeconds`: half the piece, at most 240 seconds. The player reports the listen once
+      that many seconds have played (falling back to 30 if the field is missing).
+- [x] Removed the short-piece special case from `finishListening`; the server's rule covers short pieces.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -259,8 +311,6 @@ Don't start these until the endpoint is in the OpenAPI docs.
 
 - [ ] **Delete account.** Turn off `ACCOUNT_MOCKED` in `src/utils/account.js` once `DELETE /api/users/me` exists
       (`../backend/BACKEND_REQUESTS.md` §2).
-- [ ] **People who hear it too.** Fill the Dashboard section once `GET /api/users/matches` exists
-      (`../backend/BACKEND_REQUESTS.md` §3).
 - [ ] **Landing page.** Replace the hardcoded top albums in `LandingPage.vue` once `GET /api/core/top` returns real
       data (`../backend/BACKEND_REQUESTS.md` §4).
 - [ ] **Music piece page.** Open a details page with a Play button when an upload is clicked, once

@@ -6,5 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record MusicPieceStream(
         @Schema(description = "Signed URL to the MP3 in the private audio bucket") String url,
         @Schema(description = "Seconds until the URL and play token stop working", example = "3600") int expiresInSeconds,
-        @Schema(description = "Single-use token to send to `POST /api/music-pieces/{musicPieceId}/plays` once the caller has listened") String playToken
+        @Schema(description = "Single-use token to send to `POST /api/music-pieces/{musicPieceId}/plays` once the caller has listened") String playToken,
+        @Schema(description = "Seconds of the piece that must play before the listen counts: half the piece, at most 240", example = "105") int minListenSeconds
 ) {}

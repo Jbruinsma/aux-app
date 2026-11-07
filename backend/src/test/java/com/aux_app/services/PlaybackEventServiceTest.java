@@ -22,25 +22,35 @@ class PlaybackEventServiceTest {
 
     @Test
     void creditCappedByElapsedTimeAndPieceLength() {
-        // Claims 600s, token is 100s old: only 100s credited
-        assertEquals(100, PlaybackEventService.creditedSeconds(NOW.minusSeconds(100), NOW, 600, 300, null));
+        // Claims 600s, token is 100s old: only 100s credited (a 200s piece needs 100s)
+        assertEquals(100, PlaybackEventService.creditedSeconds(NOW.minusSeconds(100), NOW, 600, 200, null));
         // Token is an hour old, piece is 200s: only 200s credited
         assertEquals(200, PlaybackEventService.creditedSeconds(NOW.minusSeconds(3600), NOW, 600, 200, null));
     }
 
     @Test
+    void listenCountsAtHalfThePieceUpToFourMinutes() {
+        assertEquals(15, PlaybackEventService.minListenSeconds(30));
+        assertEquals(106, PlaybackEventService.minListenSeconds(211)); // odd lengths round up
+        assertEquals(240, PlaybackEventService.minListenSeconds(480));
+        assertEquals(240, PlaybackEventService.minListenSeconds(600));
+    }
+
+    @Test
     void shortListensRejected() {
-        assertEquals("PLAY_TOO_SHORT", code(() -> PlaybackEventService.creditedSeconds(NOW.minusSeconds(10), NOW, 600, 300, null)));
-        // A 10s piece only needs 10s
-        assertEquals(10, PlaybackEventService.creditedSeconds(NOW.minusSeconds(10), NOW, 10, 10, null));
+        // A 300s piece needs 150s
+        assertEquals("PLAY_TOO_SHORT", code(() -> PlaybackEventService.creditedSeconds(NOW.minusSeconds(149), NOW, 600, 300, null)));
+        assertEquals(150, PlaybackEventService.creditedSeconds(NOW.minusSeconds(150), NOW, 600, 300, null));
+        // A 600s piece caps at 240s
+        assertEquals(240, PlaybackEventService.creditedSeconds(NOW.minusSeconds(240), NOW, 240, 600, null));
     }
 
     @Test
     void overlappingPlaysRejected() {
         // Previous play ended 60s ago; claiming 120s would start before it
-        assertEquals("PLAY_OVERLAPS", code(() -> PlaybackEventService.creditedSeconds(NOW.minusSeconds(600), NOW, 120, 300, NOW.minusSeconds(60))));
+        assertEquals("PLAY_OVERLAPS", code(() -> PlaybackEventService.creditedSeconds(NOW.minusSeconds(600), NOW, 120, 200, NOW.minusSeconds(60))));
         // Token prefetched during the previous play, but this listen started after it ended
-        assertEquals(50, PlaybackEventService.creditedSeconds(NOW.minusSeconds(600), NOW, 50, 300, NOW.minusSeconds(60)));
+        assertEquals(50, PlaybackEventService.creditedSeconds(NOW.minusSeconds(600), NOW, 50, 100, NOW.minusSeconds(60)));
     }
 
     @Test

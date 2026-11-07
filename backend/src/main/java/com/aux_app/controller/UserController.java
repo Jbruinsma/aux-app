@@ -4,6 +4,7 @@ import com.aux_app.dto.users.*;
 import com.aux_app.repository.FollowRepository;
 import com.aux_app.repository.ProfileDetailsRepository;
 import com.aux_app.repository.UserPlayPreferencesRepository;
+import com.aux_app.services.CompatibilityService;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.SessionService;
@@ -23,6 +24,7 @@ import com.aux_app.entity.UserPlayPreferencesEntity;
 import com.aux_app.error.AuxException;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,6 +35,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.OnboardingService;
@@ -53,6 +56,8 @@ public class UserController {
     private final SessionService sessions;
     private final LiveEventService liveEvents;
     private final FollowRepository follows;
+    private final CompatibilityService compatibility;
+    private final ApplicationEventPublisher events;
 
     public UserController(
             UserRepository users,
@@ -64,7 +69,9 @@ public class UserController {
             PlaybackEventService playbackEventService,
             SessionService sessions,
             LiveEventService liveEvents,
-            FollowRepository follows
+            FollowRepository follows,
+            CompatibilityService compatibility,
+            ApplicationEventPublisher events
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
@@ -76,6 +83,8 @@ public class UserController {
         this.sessions = sessions;
         this.liveEvents = liveEvents;
         this.follows = follows;
+        this.compatibility = compatibility;
+        this.events = events;
     }
 
     @GetMapping("/check-username/{username}")
@@ -131,6 +140,9 @@ public class UserController {
                     - If the person who makes the request is the profile owner: returns public AND private playlists.
                     - If anyone else makes the request, or there is no token: returns public playlists only.
                     `isMe` in the response is true when the caller is the profile owner.
+                    For a signed-in caller viewing someone else, `compatibility`, `sharedArtists` and `sharedTags` hold
+                    their musical compatibility (see the `matches` event of `GET /api/users/me/events`). They're null
+                    when signed out, on the caller's own profile, or when either user has no plays or favorites yet.
                     Maybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
@@ -155,6 +167,12 @@ public class UserController {
             );
         }
 
+        if (user != null && !userProfile.isMe()) {
+            CompatibilityMatch match = compatibility.pair(user.getUserId(), users.findByUsernameIgnoreCase(username));
+            if (match != null) {
+                return userProfile.withCompatibility(match);
+            }
+        }
         return userProfile;
     }
 
@@ -174,6 +192,8 @@ public class UserController {
         if (follows.follow(user.getUserId(), username, Instant.now()) == 0) {
             throw new AuxException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found", "username");
         }
+        // Followed users leave the caller's matches
+        events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.MATCHES)));
     }
 
     @DeleteMapping("/{username}/follow")
@@ -185,6 +205,7 @@ public class UserController {
             @CurrentUser UserEntity user
     ) {
         follows.unfollow(user.getUserId(), username);
+        events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.MATCHES)));
     }
 
     @GetMapping("/settings")
@@ -388,6 +409,7 @@ public class UserController {
                     | `library` | array of `LibraryPlaylist` | stream only |
                     | `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |
                     | `notifications` | `NotificationPage`, first page | `GET /api/notifications` |
+                    | `matches` | `MatchesResponse` | stream only |
 
                     - `recents`: up to 20 distinct pieces from plays recorded with
                       `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several
@@ -401,6 +423,12 @@ public class UserController {
                       or editor of (public and private), plus playlists they saved from others (public only). `isSaved`
                       is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,
                       newest created first.
+                    - `matches`: up to 20 listeners who share the caller's taste, best first, for the Dashboard's
+                      "People who hear it too". Leaves out the caller, users they follow, and users who haven't finished
+                      onboarding. Taste comes from counted plays of public pieces (not the caller's own uploads), each
+                      weighing half as much every 90 days, plus favorite artists. Sent again after every play by anyone
+                      (scores shift), and after the caller follows, unfollows or (un)favorites an artist. Empty when the
+                      caller has no plays or favorites. How the score works: `docs/compatibility.html`.
 
                     **Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space
                     after the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.
@@ -437,6 +465,9 @@ public class UserController {
 
                             event:notifications
                             data:{"notifications":[],"unreadCount":0,"nextCursor":null}
+
+                            event:matches
+                            data:{"matches":[{"user":{"userId":"u_41x9Rb","pfpUrl":null,"username":"jordan_k"},"compatibility":48,"sharedArtists":[{"artistId":"a_8f3k2Q","artistName":"Frank Ocean","artistPfpUrl":null}],"sharedTags":["r&b","chill"]}]}
 
                             :ping
 

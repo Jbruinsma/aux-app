@@ -25,7 +25,7 @@ export function fetchStream(musicPieceId, playlistId = null) {
   return fetchAPI(`${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}/stream${query}`, quiet)
 }
 
-// Reports a listen of at least 30 seconds (or the whole piece if shorter), once per playToken.
+// Reports a listen once the stream's minListenSeconds have played, once per playToken.
 // 409 PLAY_OVERLAPS, 409 PLAY_ALREADY_RECORDED and 400 PLAY_TOO_SHORT are anti-abuse checks, not user errors
 export const IGNORED_PLAY_ERRORS = ['PLAY_OVERLAPS', 'PLAY_ALREADY_RECORDED', 'PLAY_TOO_SHORT']
 

@@ -53,7 +53,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                 Integer.valueOf(1).equals(first.getFollowingMe()),
                 UserProfile.compactCount(first.getFollowersCount()),
                 UserProfile.compactCount(first.getFollowingCount()),
-                UserProfile.compactCount(first.getUploadsCount()));
+                UserProfile.compactCount(first.getUploadsCount()),
+                null, null, null); // compatibility: added by the controller for a signed-in viewer
     }
 
     private static @NonNull List<ProfilePlaylist> formatPlaylists(List<ProfileRow> rows) {
