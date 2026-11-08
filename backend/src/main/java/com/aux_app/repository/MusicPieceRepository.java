@@ -83,7 +83,7 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
             SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
-                   mp.is_public AS isPublic, (uft.user_id IS NOT NULL) AS isFavorite,
+                   CAST(mp.is_public AS INTEGER) AS isPublic, (uft.user_id IS NOT NULL) AS isFavorite,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM music_pieces mp

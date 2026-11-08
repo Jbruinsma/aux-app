@@ -118,7 +118,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                    up.public_id AS uploaderId,
                    up.username AS uploaderUsername,
                    up.profile_picture_url AS uploaderPfpUrl,
-                   mp.is_public AS pieceIsPublic,
+                   CAST(mp.is_public AS INTEGER) AS pieceIsPublic,
                    (uft.user_id IS NOT NULL) AS isFavorite,
                    -- PlaybackEventService.isPlayable in SQL
                    CASE WHEN mp.is_public = 1 OR mp.uploader_user_id = :userId
