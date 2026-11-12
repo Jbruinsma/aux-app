@@ -11,6 +11,7 @@ import com.aux_app.dto.search.UserSearchResult;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.MusicPieceRepository;
+import com.aux_app.repository.PlayEventRepository;
 import com.aux_app.repository.PlaylistRepository;
 import com.aux_app.repository.TagRepository;
 import com.aux_app.repository.UserRepository;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
@@ -37,11 +40,18 @@ public class CoreController {
     private final UserRepository users;
     private final MusicPieceRepository musicPieces;
     private final PlaylistRepository playlists;
+    private final PlayEventRepository playEvents;
 
-    public CoreController(UserRepository users, MusicPieceRepository musicPieces, PlaylistRepository playlists) {
+    public CoreController(
+            UserRepository users,
+            MusicPieceRepository musicPieces,
+            PlaylistRepository playlists,
+            PlayEventRepository playEvents
+    ) {
         this.users = users;
         this.musicPieces = musicPieces;
         this.playlists = playlists;
+        this.playEvents = playEvents;
     }
 
     @GetMapping("/users")
@@ -58,22 +68,17 @@ public class CoreController {
     @GetMapping("/top")
     @Operation(
             summary = "Get the top music pieces",
-            description = "Public. NOT IMPLEMENTED YET: returns one placeholder entry whose fields all read `NOT IMPLEMENTED`."
+            description = "Public. The 10 public music pieces played most in the last 7 days, most played first. "
+                    + "Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played."
     )
     @ApiResponse(responseCode = "200", description = "OK")
     @ResponseStatus(HttpStatus.OK)
     public List<TopMusicPiece> getTopMusicPieces() {
-        return List.of(
-                new TopMusicPiece(
-                        "NOT IMPLEMENTED",
-                        "NOT IMPLEMENTED",
-                        new ArtistSummary(
-                                "NOT IMPLEMENTED",
-                                "NOT IMPLEMENTED",
-                                "NOT IMPLEMENTED"
-                        )
-                )
-        );
+        long since = Instant.now().minus(7, ChronoUnit.DAYS).toEpochMilli();
+        return playEvents.findTopPieces(since, DEFAULT_LIMIT).stream()
+                .map(r -> new TopMusicPiece(r.getName(), r.getCoverUrl(),
+                        new ArtistSummary(r.getArtistId(), r.getArtistName(), r.getArtistPfpUrl())))
+                .toList();
     }
 
     @GetMapping("/search")
