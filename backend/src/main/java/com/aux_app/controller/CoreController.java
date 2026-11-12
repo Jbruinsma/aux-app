@@ -15,6 +15,7 @@ import com.aux_app.repository.PlayEventRepository;
 import com.aux_app.repository.PlaylistRepository;
 import com.aux_app.repository.TagRepository;
 import com.aux_app.repository.UserRepository;
+import com.aux_app.services.CachedValue;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -42,6 +44,8 @@ public class CoreController {
     private final MusicPieceRepository musicPieces;
     private final PlaylistRepository playlists;
     private final PlayEventRepository playEvents;
+    // Every landing page visit asks for it, and it counts a week of plays, so it's worked out at most every 5 minutes
+    private final CachedValue<List<TopMusicPiece>> topPieces = new CachedValue<>(Duration.ofMinutes(5), this::loadTopPieces);
 
     public CoreController(
             UserRepository users,
@@ -70,11 +74,16 @@ public class CoreController {
     @Operation(
             summary = "Get the top music pieces",
             description = "Public. The 10 public music pieces played most in the last 7 days, most played first. "
-                    + "Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played."
+                    + "Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played. "
+                    + "Worked out at most every 5 minutes, so a new play can take that long to show."
     )
     @ApiResponse(responseCode = "200", description = "OK")
     @ResponseStatus(HttpStatus.OK)
     public List<TopMusicPiece> getTopMusicPieces() {
+        return topPieces.get();
+    }
+
+    private List<TopMusicPiece> loadTopPieces() {
         long since = Instant.now().minus(7, ChronoUnit.DAYS).toEpochMilli();
         return playEvents.findTopPieces(since, DEFAULT_LIMIT).stream()
                 .map(r -> new TopMusicPiece(r.getName(), r.getCoverUrl(),

@@ -30,6 +30,7 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
     List<MusicPieceOverviewRow> findUploadRows(@Param("userId") String userId);
 
     // Search by piece or artist name. `pattern` is a LIKE pattern (caller escapes %, _ and \\).
+    // Artist names are matched once in the subquery, not by joining every piece to its artist first.
     // Private pieces only show up for their uploader (`userId` may be null).
     @Query(value = """
             SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
@@ -39,7 +40,8 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
             FROM music_pieces mp
             JOIN artists a ON a.artist_id = mp.artist_id
             WHERE (mp.is_public = 1 OR mp.uploader_user_id = :userId)
-              AND (mp.name LIKE :pattern ESCAPE '\\' OR a.artist_name LIKE :pattern ESCAPE '\\')
+              AND (mp.name LIKE :pattern ESCAPE '\\'
+                   OR mp.artist_id IN (SELECT artist_id FROM artists WHERE artist_name LIKE :pattern ESCAPE '\\'))
             ORDER BY mp.name COLLATE NOCASE
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
@@ -49,9 +51,9 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
 
     @Query(value = """
             SELECT COUNT(*) FROM music_pieces mp
-            JOIN artists a ON a.artist_id = mp.artist_id
             WHERE (mp.is_public = 1 OR mp.uploader_user_id = :userId)
-              AND (mp.name LIKE :pattern ESCAPE '\\' OR a.artist_name LIKE :pattern ESCAPE '\\')
+              AND (mp.name LIKE :pattern ESCAPE '\\'
+                   OR mp.artist_id IN (SELECT artist_id FROM artists WHERE artist_name LIKE :pattern ESCAPE '\\'))
             """, nativeQuery = true)
     int countSearchMusicPieces(@Param("pattern") String pattern, @Param("userId") String userId);
 
@@ -104,10 +106,11 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
     }
 
     @Query(value = OVERVIEW_COLUMNS + """
-            LEFT JOIN (SELECT music_piece_id, COUNT(*) AS plays FROM play_events GROUP BY music_piece_id) pc
-                   ON pc.music_piece_id = mp.music_piece_id
             WHERE mp.artist_id = :artistId AND (mp.is_public = 1 OR mp.uploader_user_id = :userId)
-            ORDER BY COALESCE(pc.plays, 0) DESC, mp.created_at DESC, mp.music_piece_id
+            -- Counted per piece through idx_play_events_music_piece_played_at; a GROUP BY over play_events would
+            -- read every play in the app on each page
+            ORDER BY (SELECT COUNT(*) FROM play_events pe WHERE pe.music_piece_id = mp.music_piece_id) DESC,
+                     mp.created_at DESC, mp.music_piece_id
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<MusicPieceOverviewRow> findArtistPieceRows(@Param("artistId") String artistId, @Param("userId") String userId,
@@ -115,7 +118,7 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
 
     // Public ids of pieces like the seed, best first; see RecommendationService.discover for the rules.
     // Score: 3 per shared seed tag, 1 per other shared tag from the seed artist's top 5, plus 1 per listener
-    // (up to 4) who played both the seed and the piece. Equal scores come back in random order.
+    // (up to 4) among the seed's recent listeners who also played the piece. Equal scores come back in random order.
     // Pieces scoring 0 only fill in when they were played in the window, most played first.
     // Since-times are epoch millis. The app writes played_at as millis; seeded rows hold text, so both are read.
     String DISCOVER = """
@@ -138,11 +141,15 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
                 WHERE tag_id IN (SELECT tag_id FROM seed_tags UNION SELECT tag_id FROM artist_tags)
                 GROUP BY music_piece_id
             ),
+            -- Listeners from the latest 500 plays of the seed: a hit would otherwise pull in every play of most users
             co_listens AS (
                 SELECT pe.music_piece_id, MIN(COUNT(DISTINCT pe.user_id), 4) AS score
                 FROM play_events pe
                 WHERE pe.user_id IN (
-                    SELECT user_id FROM play_events WHERE music_piece_id = :seedId AND user_id <> :userId)
+                    SELECT user_id FROM (
+                        SELECT user_id FROM play_events WHERE music_piece_id = :seedId
+                        ORDER BY played_at DESC LIMIT 500)
+                    WHERE user_id <> :userId)
                 GROUP BY pe.music_piece_id
             ),
             popular AS (
@@ -151,24 +158,30 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
                       >= :popularSince
                 GROUP BY music_piece_id
             ),
+            -- Read once here instead of once per candidate
+            recent AS (
+                SELECT music_piece_id FROM play_events
+                WHERE user_id = :userId
+                  AND (CASE typeof(played_at) WHEN 'integer' THEN played_at ELSE unixepoch(played_at) * 1000 END)
+                      >= :recentSince
+            ),
+            -- Only pieces something above scored, not every piece in the app
             candidates AS (
                 SELECT mp.public_id, mp.artist_id,
                        COALESCE(ts.score, 0) + COALESCE(cl.score, 0) AS score,
                        COALESCE(pop.plays, 0) AS plays
-                FROM music_pieces mp
+                FROM (SELECT music_piece_id FROM tag_scores UNION SELECT music_piece_id FROM co_listens
+                      UNION SELECT music_piece_id FROM popular) c
+                JOIN music_pieces mp ON mp.music_piece_id = c.music_piece_id
                 LEFT JOIN tag_scores ts ON ts.music_piece_id = mp.music_piece_id
                 LEFT JOIN co_listens cl ON cl.music_piece_id = mp.music_piece_id
                 LEFT JOIN popular pop ON pop.music_piece_id = mp.music_piece_id
                 WHERE mp.is_public = 1
                   AND mp.music_piece_id <> :seedId
                   AND mp.uploader_user_id <> :userId
-                  AND (ts.score IS NOT NULL OR cl.score IS NOT NULL OR pop.plays IS NOT NULL)
                   AND NOT EXISTS (SELECT 1 FROM user_favorite_tracks f
                                   WHERE f.user_id = :userId AND f.music_piece_id = mp.music_piece_id)
-                  AND NOT EXISTS (SELECT 1 FROM play_events r
-                                  WHERE r.user_id = :userId AND r.music_piece_id = mp.music_piece_id
-                                    AND (CASE typeof(r.played_at) WHEN 'integer' THEN r.played_at
-                                         ELSE unixepoch(r.played_at) * 1000 END) >= :recentSince)
+                  AND mp.music_piece_id NOT IN (SELECT music_piece_id FROM recent)
             ),
             ranked AS (
                 SELECT public_id, score, plays, random() AS tiebreak,

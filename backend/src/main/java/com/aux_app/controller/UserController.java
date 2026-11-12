@@ -454,8 +454,9 @@ public class UserController {
                     - `matches`: up to 20 listeners who share the caller's taste, best first, for the Dashboard's
                       "People who hear it too". Leaves out the caller, users they follow, and users who haven't finished
                       onboarding. Taste comes from counted plays of public pieces (not the caller's own uploads), each
-                      weighing half as much every 90 days, plus favorite artists. Sent again after every play by anyone
-                      (scores shift), and after the caller follows, unfollows or (un)favorites an artist. Empty when the
+                      weighing half as much every 90 days, plus favorite artists. When anyone plays or (un)favorites an
+                      artist, scores shift and the event is sent again within about a minute (batched, not per play).
+                      It's sent right away after the caller follows or unfollows someone. Empty when the
                       caller has no plays or favorites. How the score works: `docs/compatibility.html`.
 
                     **Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space
