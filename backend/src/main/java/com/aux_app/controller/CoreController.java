@@ -18,6 +18,7 @@ import com.aux_app.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -96,6 +97,7 @@ public class CoreController {
             description = "OK. `results` holds users, music pieces or playlists depending on `category`.",
             content = @Content(
                     mediaType = "application/json",
+                    schema = @Schema(implementation = SearchEntity.class),
                     examples = {
                             @ExampleObject(name = "USERS", value = """
                                     {
@@ -121,7 +123,8 @@ public class CoreController {
                                             "artistId": "a_8f3k2Q",
                                             "artistName": "Tame Impala",
                                             "artistPfpUrl": "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-                                          }
+                                          },
+                                          "tags": ["dreamy", "indie"]
                                         }
                                       ]
                                     }
@@ -135,13 +138,14 @@ public class CoreController {
                                           "playlistName": "Late Night Drive",
                                           "playlistCoverUrl": "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
                                           "ownerUsername": "justin",
-                                          "pieceCount": 5
+                                          "pieceCount": 5,
+                                          "tags": ["late night", "chill"]
                                         }
                                       ]
                                     }
                                     """)
                     }))
-    @ApiResponse(responseCode = "400", description = "Missing category or query, or limit/offset out of range")
+    @ApiResponse(responseCode = "400", description = "Missing category (code MISSING_CATEGORY), blank query (code BLANK_QUERY), limit outside 1 to 50 (code INVALID_LIMIT), negative offset (code INVALID_OFFSET), or bad field (code INVALID_FIELD)")
     @ResponseStatus(HttpStatus.OK)
     public SearchEntity<?> search(@OptionalCurrentUser UserEntity user, @Valid SearchQuery query) {
         if (query.category() == null) {

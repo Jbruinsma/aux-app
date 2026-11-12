@@ -5172,6 +5172,9 @@
             "description" : "OK. `results` holds users, music pieces or playlists depending on `category`.",
             "content" : {
               "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SearchEntity"
+                },
                 "examples" : {
                   "USERS" : {
                     "description" : "USERS",
@@ -5196,7 +5199,8 @@
                           "artistId" : "a_8f3k2Q",
                           "artistName" : "Tame Impala",
                           "artistPfpUrl" : "https://aux.justinabruinsma.com/artist-pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-                        }
+                        },
+                        "tags" : [ "dreamy", "indie" ]
                       } ]
                     }
                   },
@@ -5209,7 +5213,8 @@
                         "playlistName" : "Late Night Drive",
                         "playlistCoverUrl" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp",
                         "ownerUsername" : "justin",
-                        "pieceCount" : 5
+                        "pieceCount" : 5,
+                        "tags" : [ "late night", "chill" ]
                       } ]
                     }
                   }
@@ -5218,7 +5223,7 @@
             }
           },
           "400" : {
-            "description" : "Missing category or query, or limit/offset out of range",
+            "description" : "Missing category (code MISSING_CATEGORY), blank query (code BLANK_QUERY), limit outside 1 to 50 (code INVALID_LIMIT), negative offset (code INVALID_OFFSET), or bad field (code INVALID_FIELD)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -7130,6 +7135,125 @@
             "format" : "int32",
             "description" : "How many results to skip; defaults to 0",
             "example" : 0
+          }
+        }
+      },
+      "SearchEntity" : {
+        "type" : "object",
+        "description" : "One page of search results",
+        "properties" : {
+          "totalResults" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "All matches for the query, not just this page",
+            "example" : 10
+          },
+          "results" : {
+            "type" : "array",
+            "description" : "This page of results, sorted by name. Every item has the same shape, picked by `category`: `UserSearchResult` for `USERS`, `MusicPieceSearchResult` for `MUSIC`, `PlaylistSearchResult` for `PLAYLISTS`",
+            "items" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/UserSearchResult"
+              }, {
+                "$ref" : "#/components/schemas/MusicPieceSearchResult"
+              }, {
+                "$ref" : "#/components/schemas/PlaylistSearchResult"
+              } ]
+            }
+          }
+        }
+      },
+      "UserSearchResult" : {
+        "type" : "object",
+        "description" : "A user found by search",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "description" : "Public id of the user",
+            "example" : "u_41x9Rb"
+          },
+          "username" : {
+            "type" : "string",
+            "description" : "Username",
+            "example" : "justin"
+          },
+          "profilePictureUrl" : {
+            "type" : "string",
+            "description" : "Profile picture URL; a relative path (`/default_profile_picture.svg`) for users without a custom one",
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          }
+        }
+      },
+      "MusicPieceSearchResult" : {
+        "type" : "object",
+        "description" : "A music piece found by search",
+        "properties" : {
+          "musicPieceId" : {
+            "type" : "string",
+            "description" : "Public id of the music piece",
+            "example" : "m_92kd0Z"
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "Title",
+            "example" : "Let It Happen"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover URL",
+            "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The artist"
+          },
+          "tags" : {
+            "type" : "array",
+            "description" : "Up to 5 lowercase tags, in name order; empty if none",
+            "example" : [ "chill", "lo-fi" ],
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "PlaylistSearchResult" : {
+        "type" : "object",
+        "description" : "A playlist found by search",
+        "properties" : {
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist",
+            "example" : "p_7c2dK1"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "description" : "Playlist name",
+            "example" : "Late Night Drive"
+          },
+          "playlistCoverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover URL",
+            "example" : "https://aux.justinabruinsma.com/playlist-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "ownerUsername" : {
+            "type" : "string",
+            "description" : "Username of the playlist owner",
+            "example" : "justin"
+          },
+          "pieceCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Number of tracks in the playlist",
+            "example" : 5
+          },
+          "tags" : {
+            "type" : "array",
+            "description" : "Up to 5 lowercase tags, in name order; empty if none",
+            "example" : [ "late night", "chill" ],
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },

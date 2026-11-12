@@ -11,13 +11,6 @@ Last checked against `main` on 2026-11-12.
 
 ______________________________________________________
 
-## 1. Smaller fixes
-
-- **Search response has examples but no schema.** `GET /api/core/search` documents its `200` body only through one
-  example per category, so the docs' schema view doesn't list the fields, their types or which can be null
-  (`UserSearchResult`, `MusicPieceSearchResult` and `PlaylistSearchResult` exist in code). Adding the schema would help;
-  the frontend uses this for dashboard search and for finding people to invite.
-
 ## Open questions
 
 - Should a password change end the user's other sessions? Tokens are stateless JWTs, so they stay valid until they

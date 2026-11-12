@@ -134,11 +134,13 @@ Repositories are left out to keep lines readable: every controller and service r
 | Controller | Base path | Covers |
 |---|---|---|
 | `AuthController` | `/api/auth` | Register, login, password reset, email change |
-| `UserController` | `/api/users` | Onboarding, profile, settings, library, listening history |
+| `UserController` | `/api/users` | Onboarding, profile, settings, follows, last playback, live event stream, account deletion |
 | `CoreController` | `/api/core` | User list, top pieces, search |
-| `ArtistController` | `/api/artists` | Artists, artist images, favorites |
-| `MusicPieceController` | `/api/music-pieces` | List, upload, stream, report plays |
+| `ArtistController` | `/api/artists` | Artists, artist images, favorites, an artist's pieces |
+| `MusicPieceController` | `/api/music-pieces` | List, upload, edit, details, discover, stream, report plays |
 | `PlaylistController` | `/api/playlists` | Playlists, tracks, saves, members, invites, play queue |
+| `NotificationController` | `/api/notifications` | Notification pages, mark read |
+| `TagController` | `/api/tags` | Tag suggestions |
 
 | Service | Job |
 |---|---|
@@ -152,8 +154,11 @@ Repositories are left out to keep lines readable: every controller and service r
 | `PlaylistMembersService` | Extends `PlaylistService`: invites, permissions, leaving |
 | `UploadService` | Re-encodes images to WebP, strips MP3s to audio frames, R2 storage, signed audio URLs |
 | `EmailService` | Sends mail through Resend |
-
-Empty placeholder services (no code yet): `CreatorAnalyticsService`, `FavoritesService`, `GlobalStatsService`, `ListeningHistoryService`, `MediaIngestionService`, `PresenceService`, `RecommendationService`.
+| `TagService` | Tag rules and setting a piece's or playlist's tags |
+| `RecommendationService` | Music like a piece, for `/discover` |
+| `NotificationService` | Notification pages and read state |
+| `LiveEventService` | Open event streams; pushes fresh sections after data changes |
+| `AccountService` | Deletes an account and everything the user had |
 
 ## 4. Playback flow
 
@@ -192,7 +197,7 @@ sequenceDiagram
 
 ## 5. Data model
 
-Flyway migrations: `V1__baseline.sql`, `V2__Public_ids.java` (adds a random base62 `public_id` to users, playlists, artists, and music_pieces), `V3__playlist_members.sql`.
+Flyway migrations: `V1__baseline.sql`, `V2__Public_ids.java` (adds a random base62 `public_id` to users, playlists, artists, and music_pieces), `V3__playlist_members.sql`, `V4__notifications.sql`, `V5__user_play_preferences.sql`, `V6__tags.sql`.
 
 ### Core tables
 
