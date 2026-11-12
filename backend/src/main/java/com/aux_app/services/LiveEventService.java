@@ -3,13 +3,16 @@ package com.aux_app.services;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -28,14 +31,15 @@ import com.aux_app.repository.UserRepository;
 //   1. connect() registers an emitter and sends a snapshot of every Section
 //   2. A service changes data, then publishes new LiveEventService.Update(userIds, sections)
 //      through Spring's ApplicationEventPublisher. Services never call this class directly
-//   3. onUpdate() runs after that transaction commits, re-reads each section, and sends it to each user's emitters
+//   3. onUpdate() runs after that transaction commits and queues the sections for each online user. A worker
+//      re-reads each section and sends it to that user's emitters
 //
 // A section is always sent whole, never as a diff, so the client just replaces what it has.
 //
 // Where updates are published (who gets notified -> which sections):
 //   PlaybackEventService.recordPlay                 caller                      -> RECENTS, TOP_ARTISTS
-//                                                   everyone online             -> MATCHES (the player's taste changed)
-//   ArtistController.(un)favoriteArtist             everyone online             -> MATCHES
+//                                                   everyone online             -> MATCHES, batched (the player's taste changed)
+//   ArtistController.(un)favoriteArtist             everyone online             -> MATCHES, batched
 //   UserController.follow/unfollow                  caller                      -> MATCHES (followed users drop out)
 //   MusicPieceController.createMusicPiece           caller                      -> UPLOADS
 //   PlaylistService.createPlaylist                  owner                       -> LIBRARY
@@ -55,6 +59,11 @@ import com.aux_app.repository.UserRepository;
 //   NotificationService.markRead/markAllRead        caller                      -> NOTIFICATIONS (other tabs' badges)
 //   AccountService.deleteAccount                    everyone online             -> every section
 // "Everyone on the playlist" is PlaylistRepository.findAudience: owner, members (pending too) and savers.
+// Queue: pending holds, per online user, the set of sections waiting to go out, so ten updates to one user's
+// library before the worker gets to it are sent once. It can never hold more than online users x sections, however
+// many updates arrive, and at most one task per user waits on the executor.
+// "Batched": an everyone-online MATCHES update isn't sent right away. It marks matches stale, and pushMatches sends
+// them at most once every MATCHES_PUSH_MILLIS. MATCHES for named users (follow/unfollow) still goes out right away.
 //
 // Not covered yet: username or profile picture changes (they show in other users' library and invites).
 @Service
@@ -90,6 +99,17 @@ public class LiveEventService {
     // userId -> that user's open streams, one per tab
     private final Map<String, Set<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
+    // Every play shifts everyone's matches, and matches are the costliest section: pushing them on each play would
+    // recompute them for every online user every few seconds. So plays only mark them stale; see pushMatches
+    static final long MATCHES_PUSH_MILLIS = 60_000;
+    private final AtomicBoolean matchesStale = new AtomicBoolean();
+
+    // userId -> sections waiting to be sent. Sets are only changed inside the map's atomic merge/remove
+    private final Map<String, Set<Section>> pending = new ConcurrentHashMap<>();
+    // Users with a send task queued or running, so each has at most one
+    private final Set<String> scheduled = ConcurrentHashMap.newKeySet();
+    private final TaskExecutor executor;
+
     private final PlaylistMembersService playlistMembers;
     private final PlaybackEventService playbackEvents;
     private final UserRepository users;
@@ -103,7 +123,8 @@ public class LiveEventService {
             UserRepository users,
             MusicPieceRepository musicPieces,
             NotificationService notifications,
-            CompatibilityService compatibility
+            CompatibilityService compatibility,
+            @Qualifier("applicationTaskExecutor") TaskExecutor executor
     ) {
         this.playlistMembers = playlistMembers;
         this.playbackEvents = playbackEvents;
@@ -111,6 +132,7 @@ public class LiveEventService {
         this.musicPieces = musicPieces;
         this.notifications = notifications;
         this.compatibility = compatibility;
+        this.executor = executor;
     }
 
     // Called by GET /api/users/me/events. The stream ends when the token does: tokens last 1 hour and can't be
@@ -155,22 +177,65 @@ public class LiveEventService {
     // AFTER_COMMIT (the default) so the re-read sees the new data, and a rolled-back change reaches no one.
     // fallbackExecution: most service methods aren't @Transactional (each repository call commits on its own);
     // for those the update runs right away, which is fine because they publish after their last write.
-    // @Async so a slow client never holds up the request that made the change.
-    @Async
+    // Only queues (see enqueue), so the request that made the change never waits on a slow client or a query.
     @TransactionalEventListener(fallbackExecution = true)
     public void onUpdate(Update update) {
-        Set<String> userIds = update.userIds() == null ? Set.copyOf(emitters.keySet()) : update.userIds();
-        for (String userId : userIds) {
-            Set<SseEmitter> open = emitters.get(userId);
-            // Offline users cost no queries
-            if (open == null) continue;
+        Set<Section> sections = update.sections();
+        if (update.userIds() == null && sections.contains(Section.MATCHES)) {
+            matchesStale.set(true);
+            sections = EnumSet.copyOf(sections);
+            sections.remove(Section.MATCHES);
+        }
+        enqueue(update.userIds(), sections);
+    }
 
-            for (Section section : update.sections()) {
-                // One query per user and section, however many tabs they have open
-                SseEmitter.SseEventBuilder event = event(section, load(userId, section));
-                for (SseEmitter emitter : open) {
-                    send(userId, emitter, event);
-                }
+    // Sends the batched everyone-online MATCHES, at most once a period, and only if something changed since the last
+    @Scheduled(fixedRate = MATCHES_PUSH_MILLIS)
+    public void pushMatches() {
+        if (!matchesStale.getAndSet(false)) return;
+        compatibility.refresh();
+        enqueue(null, Set.of(Section.MATCHES));
+    }
+
+    // userIds null means everyone with an open stream
+    private void enqueue(Set<String> userIds, Set<Section> sections) {
+        if (sections.isEmpty()) return;
+        for (String userId : userIds == null ? emitters.keySet() : userIds) {
+            // Offline users cost nothing
+            if (!emitters.containsKey(userId)) continue;
+            pending.merge(userId, EnumSet.copyOf(sections), (waiting, more) -> {
+                waiting.addAll(more);
+                return waiting;
+            });
+            if (scheduled.add(userId)) {
+                executor.execute(() -> drain(userId));
+            }
+        }
+    }
+
+    // Sends what's pending for one user. Clearing `scheduled` and then re-checking `pending` means an update that
+    // lands while this runs is either picked up here or schedules a new task, never lost
+    private void drain(String userId) {
+        do {
+            Set<Section> sections = pending.remove(userId);
+            try {
+                if (sections != null) push(userId, sections);
+            } catch (RuntimeException e) {
+                // A failed load must not leave the user marked scheduled, or they'd never get another update
+                log.warn("Live update for user {} failed", userId, e);
+            }
+            scheduled.remove(userId);
+        } while (pending.containsKey(userId) && scheduled.add(userId));
+    }
+
+    private void push(String userId, Set<Section> sections) {
+        Set<SseEmitter> open = emitters.get(userId);
+        if (open == null) return;
+        for (Section section : sections) {
+            // One query per user and section, however many tabs they have open
+            SseEmitter.SseEventBuilder event = event(section, load(userId, section));
+            for (SseEmitter emitter : open) {
+                send(userId, emitter, event);
             }
         }
     }

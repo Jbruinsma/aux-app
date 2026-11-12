@@ -9,6 +9,7 @@ import com.aux_app.repository.FollowRepository;
 import com.aux_app.repository.PlayEventRepository;
 import com.aux_app.repository.UserRepository;
 import org.jspecify.annotations.Nullable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,8 +54,12 @@ public class CompatibilityService {
         this.follows = follows;
     }
 
-    // Artist weights keyed by artist public id, tag weights by tag
-    record Taste(Map<String, Double> artists, Map<String, Double> tags) {}
+    // Artist weights keyed by artist public id, tag weights by tag. The norms are worked out once, not per pair
+    record Taste(Map<String, Double> artists, Map<String, Double> tags, double artistNorm, double tagNorm) {
+        Taste(Map<String, Double> artists, Map<String, Double> tags) {
+            this(artists, tags, norm(artists), norm(tags));
+        }
+    }
 
     // Shared keys hold every shared item, strongest first; responses keep the first SHARED_LIMIT
     record Score(int compatibility, List<String> sharedArtists, List<String> sharedTags) {
@@ -62,14 +68,31 @@ public class CompatibilityService {
         }
     }
 
-    private record Tastes(Map<String, Taste> byUser, Map<String, ArtistSummary> artists) {}
+    // index is null for a pair() load
+    private record Tastes(Map<String, Taste> byUser, Map<String, ArtistSummary> artists, @Nullable Index index) {}
+
+    // The same tastes as arrays, so matches() can score the caller against everyone without hashing strings:
+    // tags as a dense vector (only curated tags count, so it's short), artists as sorted ids with their weights.
+    // A weight is never 0 (ln(1 + plays) plus favorites), so a 0 in the tag vector means the tag isn't there.
+    private record Index(String[] userIds, Map<String, Integer> positions, double[][] tags, double[] tagNorms,
+                         int[][] artistIds, double[][] artistWeights, double[] artistNorms) {}
+
+    // How much two weight maps share: how many keys, and their dot product
+    private record Overlap(int shared, double dot) {}
+
+    // Every user's taste, for matches(). Loading it reads every counted play (seconds at 500k plays), and matches()
+    // runs once per online user on each MATCHES push, so they all share one load. It's reloaded in the background
+    // (refresh() before LiveEventService's batched push, and refreshTastes every few minutes for changes nothing
+    // announces, like a piece made private), so requests keep using the old tastes instead of waiting for a load.
+    // The TTL is only a backstop in case those stop.
+    // ponytail: still scores the caller against every user, O(users) per call, just cheaply. Precompute each
+    // user's neighbours on refresh (or sample candidates) if that gets slow
+    private final CachedValue<Tastes> allTastes = new CachedValue<>(Duration.ofMinutes(15), () -> load(null, null));
 
     // For the `matches` live event. Leaves out the caller and users they follow. Best first; ties go to more shared
-    // artists. Empty when the caller has no plays or favorites.
-    // ponytail: loads every user's taste on each call, and LiveEventService calls this once per online user after
-    // every play. Cache the Tastes per update (or precompute) once that gets slow.
+    // artists. Empty when the caller has no plays or favorites. Tastes can be up to one refresh() old.
     public MatchesResponse matches(String userId) {
-        Tastes tastes = load(null, null);
+        Tastes tastes = allTastes.get();
         Taste mine = tastes.byUser().get(userId);
         if (mine == null) {
             return new MatchesResponse(List.of());
@@ -78,26 +101,51 @@ public class CompatibilityService {
         Set<String> skip = new HashSet<>(follows.findFollowingIds(userId));
         skip.add(userId);
 
-        List<Map.Entry<String, Score>> scored = new ArrayList<>();
-        tastes.byUser().forEach((otherId, theirs) -> {
-            if (skip.contains(otherId)) return;
-            Score s = score(mine, theirs);
-            if (s.sharesAnything()) scored.add(Map.entry(otherId, s));
-        });
-        scored.sort(Comparator.<Map.Entry<String, Score>>comparingInt(e -> e.getValue().compatibility()).reversed()
-                .thenComparing(e -> e.getValue().sharedArtists().size(), Comparator.reverseOrder())
-                .thenComparing(Map.Entry::getKey));
-        List<Map.Entry<String, Score>> top = scored.subList(0, Math.min(MATCHES_LIMIT, scored.size()));
+        // Ranked on counts and dot products only; the sorted shared lists are built for the top MATCHES_LIMIT
+        Index index = tastes.index();
+        int me = index.positions().get(userId);
+        Comparator<Ranked> best = Comparator.comparingInt(Ranked::compatibility).reversed()
+                .thenComparing(Ranked::sharedArtists, Comparator.reverseOrder())
+                .thenComparing(Ranked::userId);
+        // Worst kept match on top, so it's the one dropped
+        PriorityQueue<Ranked> kept = new PriorityQueue<>(best.reversed());
+        for (int other = 0; other < index.userIds().length; other++) {
+            if (other == me || skip.contains(index.userIds()[other])) continue;
+            Overlap tags = tagOverlap(index.tags()[me], index.tags()[other]);
+            Overlap artists = artistOverlap(index.artistIds()[me], index.artistWeights()[me],
+                    index.artistIds()[other], index.artistWeights()[other]);
+            if (tags.shared() == 0 && artists.shared() == 0) continue;
+            int compatibility = compatibility(artists, index.artistNorms()[me] * index.artistNorms()[other],
+                    tags, index.tagNorms()[me] * index.tagNorms()[other]);
+            kept.add(new Ranked(index.userIds()[other], compatibility, artists.shared()));
+            if (kept.size() > MATCHES_LIMIT) kept.poll();
+        }
+        List<Ranked> top = new ArrayList<>(kept);
+        top.sort(best);
 
-        Map<String, UserEntity> people = users.findAllById(top.stream().map(Map.Entry::getKey).toList()).stream()
+        Map<String, UserEntity> people = users.findAllById(top.stream().map(Ranked::userId).toList()).stream()
                 .collect(Collectors.toMap(UserEntity::getUserId, Function.identity()));
         return new MatchesResponse(top.stream()
-                .filter(e -> people.containsKey(e.getKey()))
-                .map(e -> toMatch(people.get(e.getKey()), e.getValue(), tastes.artists()))
+                .filter(r -> people.containsKey(r.userId()))
+                .map(r -> toMatch(people.get(r.userId()), score(mine, tastes.byUser().get(r.userId())), tastes.artists()))
                 .toList());
     }
 
-    // For a profile: the viewer's compatibility with its owner. Null when either has no plays or favorites yet.
+    private record Ranked(String userId, int compatibility, int sharedArtists) {}
+
+    // Reloads every user's taste now; matches() keeps using the old ones meanwhile
+    public void refresh() {
+        allTastes.reload();
+    }
+
+    // Also runs at startup, so the first visitor doesn't wait for the load
+    @Scheduled(initialDelay = 0, fixedRate = 5 * 60_000)
+    public void refreshTastes() {
+        refresh();
+    }
+
+    // For a profile: the viewer's compatibility with its owner. Reads only the two users' plays, so it's cheap
+    // and always current. Null when either has no plays or favorites yet.
     public @Nullable CompatibilityMatch pair(String viewerId, UserEntity owner) {
         Tastes tastes = load(viewerId, owner.getUserId());
         Taste mine = tastes.byUser().get(viewerId);
@@ -109,18 +157,22 @@ public class CompatibilityService {
     }
 
     static Score score(Taste a, Taste b) {
-        List<String> sharedArtists = shared(a.artists(), b.artists());
-        List<String> sharedTags = shared(a.tags(), b.tags());
-        long compatibility;
-        if (!sharedArtists.isEmpty()) {
-            double raw = ARTIST_SHARE * cosine(a.artists(), b.artists()) + (1 - ARTIST_SHARE) * cosine(a.tags(), b.tags());
-            compatibility = Math.round(100 * raw * confidence(sharedArtists.size()));
-        } else if (!sharedTags.isEmpty()) {
-            compatibility = Math.min(TAG_ONLY_CAP, Math.round(100 * cosine(a.tags(), b.tags()) * confidence(sharedTags.size())));
-        } else {
-            compatibility = 0;
+        int compatibility = compatibility(overlap(a.artists(), b.artists()), a.artistNorm() * b.artistNorm(),
+                overlap(a.tags(), b.tags()), a.tagNorm() * b.tagNorm());
+        return new Score(compatibility, shared(a.artists(), b.artists()), shared(a.tags(), b.tags()));
+    }
+
+    // Norms are the product of both users' norms
+    private static int compatibility(Overlap artists, double artistNorms, Overlap tags, double tagNorms) {
+        double tagCosine = cosine(tags.dot(), tagNorms);
+        if (artists.shared() > 0) {
+            double raw = ARTIST_SHARE * cosine(artists.dot(), artistNorms) + (1 - ARTIST_SHARE) * tagCosine;
+            return (int) Math.round(100 * raw * confidence(artists.shared()));
         }
-        return new Score((int) compatibility, sharedArtists, sharedTags);
+        if (tags.shared() > 0) {
+            return (int) Math.min(TAG_ONLY_CAP, Math.round(100 * tagCosine * confidence(tags.shared())));
+        }
+        return 0;
     }
 
     private static double confidence(int shared) {
@@ -136,12 +188,51 @@ public class CompatibilityService {
                 .toList();
     }
 
-    static double cosine(Map<String, Double> a, Map<String, Double> b) {
+    // Walks the smaller map
+    private static Overlap overlap(Map<String, Double> a, Map<String, Double> b) {
+        if (a.size() > b.size()) return overlap(b, a);
+        int shared = 0;
         double dot = 0;
         for (Map.Entry<String, Double> e : a.entrySet()) {
-            dot += e.getValue() * b.getOrDefault(e.getKey(), 0.0);
+            Double other = b.get(e.getKey());
+            if (other != null) {
+                shared++;
+                dot += e.getValue() * other;
+            }
         }
-        double norms = norm(a) * norm(b);
+        return new Overlap(shared, dot);
+    }
+
+    private static Overlap tagOverlap(double[] a, double[] b) {
+        int shared = 0;
+        double dot = 0;
+        for (int i = 0; i < a.length; i++) {
+            if (a[i] != 0 && b[i] != 0) {
+                shared++;
+                dot += a[i] * b[i];
+            }
+        }
+        return new Overlap(shared, dot);
+    }
+
+    // Both id arrays are sorted, so one merge pass finds the shared artists
+    private static Overlap artistOverlap(int[] idsA, double[] weightsA, int[] idsB, double[] weightsB) {
+        int shared = 0;
+        double dot = 0;
+        for (int i = 0, j = 0; i < idsA.length && j < idsB.length; ) {
+            if (idsA[i] == idsB[j]) {
+                shared++;
+                dot += weightsA[i++] * weightsB[j++];
+            } else if (idsA[i] < idsB[j]) {
+                i++;
+            } else {
+                j++;
+            }
+        }
+        return new Overlap(shared, dot);
+    }
+
+    private static double cosine(double dot, double norms) {
         return norms == 0 ? 0 : dot / norms;
     }
 
@@ -153,22 +244,63 @@ public class CompatibilityService {
     private Tastes load(@Nullable String userA, @Nullable String userB) {
         long now = Instant.now().toEpochMilli();
         double halfLife = HALF_LIFE.toMillis();
-        Map<String, Taste> byUser = new HashMap<>();
+        Map<String, Map<String, Double>> artistWeights = new HashMap<>();
+        Map<String, Map<String, Double>> tagWeights = new HashMap<>();
         Map<String, ArtistSummary> artists = new HashMap<>();
 
         for (PlayEventRepository.ArtistWeightRow row : playEvents.findArtistWeights(now, halfLife, userA, userB)) {
-            taste(byUser, row.getUserId()).artists().put(row.getArtistId(), row.getWeight());
+            artistWeights.computeIfAbsent(row.getUserId(), id -> new HashMap<>()).put(row.getArtistId(), row.getWeight());
             artists.putIfAbsent(row.getArtistId(),
                     new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()));
         }
         for (PlayEventRepository.TagWeightRow row : playEvents.findTagWeights(now, halfLife, userA, userB)) {
-            taste(byUser, row.getUserId()).tags().put(row.getTag(), row.getWeight());
+            tagWeights.computeIfAbsent(row.getUserId(), id -> new HashMap<>()).put(row.getTag(), row.getWeight());
         }
-        return new Tastes(byUser, artists);
+
+        Map<String, Taste> byUser = new HashMap<>();
+        for (String userId : union(artistWeights.keySet(), tagWeights.keySet())) {
+            byUser.put(userId, new Taste(artistWeights.getOrDefault(userId, Map.of()), tagWeights.getOrDefault(userId, Map.of())));
+        }
+        return new Tastes(byUser, artists, userA == null ? index(byUser) : null);
     }
 
-    private static Taste taste(Map<String, Taste> byUser, String userId) {
-        return byUser.computeIfAbsent(userId, id -> new Taste(new HashMap<>(), new HashMap<>()));
+    private static Index index(Map<String, Taste> byUser) {
+        Map<String, Integer> tagIds = new HashMap<>();
+        Map<String, Integer> artistIds = new HashMap<>();
+        for (Taste taste : byUser.values()) {
+            taste.tags().keySet().forEach(tag -> tagIds.putIfAbsent(tag, tagIds.size()));
+            taste.artists().keySet().forEach(artist -> artistIds.putIfAbsent(artist, artistIds.size()));
+        }
+
+        String[] userIds = byUser.keySet().toArray(String[]::new);
+        int n = userIds.length;
+        Map<String, Integer> positions = new HashMap<>();
+        double[][] tags = new double[n][];
+        double[] tagNorms = new double[n];
+        int[][] ids = new int[n][];
+        double[][] weights = new double[n][];
+        double[] artistNorms = new double[n];
+        for (int u = 0; u < n; u++) {
+            Taste taste = byUser.get(userIds[u]);
+            positions.put(userIds[u], u);
+
+            tags[u] = new double[tagIds.size()];
+            for (Map.Entry<String, Double> e : taste.tags().entrySet()) tags[u][tagIds.get(e.getKey())] = e.getValue();
+            tagNorms[u] = taste.tagNorm();
+
+            List<Map.Entry<String, Double>> sorted = taste.artists().entrySet().stream()
+                    .sorted(Comparator.comparingInt(e -> artistIds.get(e.getKey()))).toList();
+            ids[u] = sorted.stream().mapToInt(e -> artistIds.get(e.getKey())).toArray();
+            weights[u] = sorted.stream().mapToDouble(Map.Entry::getValue).toArray();
+            artistNorms[u] = taste.artistNorm();
+        }
+        return new Index(userIds, positions, tags, tagNorms, ids, weights, artistNorms);
+    }
+
+    private static Set<String> union(Set<String> a, Set<String> b) {
+        Set<String> all = new HashSet<>(a);
+        all.addAll(b);
+        return all;
     }
 
     private static CompatibilityMatch toMatch(UserEntity user, Score score, Map<String, ArtistSummary> artists) {
