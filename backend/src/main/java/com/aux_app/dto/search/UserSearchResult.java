@@ -6,5 +6,5 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record UserSearchResult(
         @Schema(description = "Public id of the user", example = "u_41x9Rb") String userId,
         @Schema(description = "Username", example = "justin") String username,
-        @Schema(description = "Profile picture URL", example = "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String profilePictureUrl
+        @Schema(description = "Profile picture URL; a relative path (`/default_profile_picture.svg`) for users without a custom one", example = "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String profilePictureUrl
 ) {}

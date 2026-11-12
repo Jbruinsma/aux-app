@@ -385,11 +385,4 @@ public class PlaylistController {
     ) {
         return playlists.playPlaylist(playlistId, user, start, shuffle, cursor);
     }
-
-    // TODO POST /{username}/create                        multipart: uuid, owner, name, isPublic, cover
-    // TODO POST /{username}/{playlistId}/edit            multipart: name, isPublic, musicDeleted (JSON string), cover
-    // TODO POST /{username}/{playlistId}/add             multipart: mp3s (files), uuids (JSON string)
-    // TODO POST /{username}/{playlistId}/add/friends     json: friends
-    // TODO GET  /summary/{username}/{playlistId}/music_piece/{index}/{mp3_uuid}
-    // TODO POST /update/{username}/{playlistId}/music_piece/{index}/{mp3_uuid}   multipart: name, artist, cover
 }
