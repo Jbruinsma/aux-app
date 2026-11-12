@@ -1709,6 +1709,76 @@
       }
     },
     "/api/music-pieces/{musicPieceId}" : {
+      "get" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Get a music piece",
+        "description" : "Public; a token is optional. The piece's details page: the track-list fields plus\n`durationSeconds`, `playCount` (every recorded listen, all time, shown to everyone) and `createdAt`.\nThe piece must be playable by the caller on its own: public, or uploaded by the caller. With no\ntoken only public pieces are found, and `isFavorite` is false. Play it with `/stream` and no\n`playlistId`.\n",
+        "operationId" : "getMusicPiece",
+        "parameters" : [ {
+          "name" : "musicPieceId",
+          "in" : "path",
+          "description" : "Public id of the music piece",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "m_92kd0Z"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPieceDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Music piece not found or not playable by the caller (code MUSIC_PIECE_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      },
       "put" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Edit a music piece's details",
@@ -4097,7 +4167,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Stream the caller's live updates",
-        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON: the same body the listed endpoint returns, or, for the events only\nthe stream sends, the body described below the table:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | stream only |\n| `top-artists` | `TopArtistsResponse` | stream only |\n| `library` | array of `LibraryPlaylist` | stream only |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n| `matches` | `MatchesResponse` | stream only |\n\n- `recents`: up to 20 distinct pieces from plays recorded with\n  `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several\n  times appears once, with the `playlistId` of its latest play. Same rules as `GET /me/last-playback`:\n  plays of pieces made private since are skipped, and `playlistId` is null when the piece wasn't\n  played from a playlist or the caller can no longer see it. Empty when the caller has played\n  nothing they can still play.\n- `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,\n  all time. Ties go to the artist played most recently. Empty when the caller has played nothing.\n- `library`: playlists the caller owns (public and private), playlists they're an accepted listener\n  or editor of (public and private), plus playlists they saved from others (public only). `isSaved`\n  is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,\n  newest created first.\n- `matches`: up to 20 listeners who share the caller's taste, best first, for the Dashboard's\n  \"People who hear it too\". Leaves out the caller, users they follow, and users who haven't finished\n  onboarding. Taste comes from counted plays of public pieces (not the caller's own uploads), each\n  weighing half as much every 90 days, plus favorite artists. Sent again after every play by anyone\n  (scores shift), and after the caller follows, unfollows or (un)favorites an artist. Empty when the\n  caller has no plays or favorites. How the score works: `docs/compatibility.html`.\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
+        "description" : "Server-sent events. Read it with `fetch` and the usual `Authorization: Bearer` header, never with\n`EventSource`: it can't send headers, and the token must not go in the URL.\n\n**On connect** the server sends every event below once, with the current data. **After that** it\nsends an event again, whole, each time its data changes; replace what you have, there are no diffs.\nEach `data` is one line of JSON: the same body the listed endpoint returns, or, for the events only\nthe stream sends, the body described below the table:\n\n| `event` | `data` | Same as |\n|---|---|---|\n| `invites` | `PendingPlaylistInvites` | `GET /api/playlists/invites` |\n| `recents` | `RecentListeningResponse` | stream only |\n| `top-artists` | `TopArtistsResponse` | stream only |\n| `library` | array of `LibraryPlaylist` | stream only |\n| `uploads` | `UploadedMusicPiecesResponse` | `GET /api/music-pieces` |\n| `notifications` | `NotificationPage`, first page | `GET /api/notifications` |\n| `matches` | `MatchesResponse` | stream only |\n\n- `recents`: up to 20 distinct pieces from plays recorded with\n  `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several\n  times appears once, with the `playlistId` of its latest play and that playlist's\n  `playlistOwnerUsername`, for the link `/playlist/{ownerUsername}/{playlistId}`. Same rules as\n  `GET /me/last-playback`: plays of pieces made private since are skipped, and `playlistId` and\n  `playlistOwnerUsername` are null when the piece wasn't played from a playlist or the caller can no\n  longer see it. Empty when the caller has played nothing they can still play.\n- `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,\n  all time. Ties go to the artist played most recently. Empty when the caller has played nothing.\n- `library`: playlists the caller owns (public and private), playlists they're an accepted listener\n  or editor of (public and private), plus playlists they saved from others (public only). `isSaved`\n  is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,\n  newest created first.\n- `matches`: up to 20 listeners who share the caller's taste, best first, for the Dashboard's\n  \"People who hear it too\". Leaves out the caller, users they follow, and users who haven't finished\n  onboarding. Taste comes from counted plays of public pieces (not the caller's own uploads), each\n  weighing half as much every 90 days, plus favorite artists. Sent again after every play by anyone\n  (scores shift), and after the caller follows, unfollows or (un)favorites an artist. Empty when the\n  caller has no plays or favorites. How the score works: `docs/compatibility.html`.\n\n**Wire format.** Each event is an `event:` line, a `data:` line, then a blank line. There is no space\nafter the colon (the SSE format allows one, so strip one if present). No `id:` or `retry:` lines.\nA `:ping` comment line arrives every 25 seconds so proxies keep the connection open; ignore it.\n\n**End of stream.** The server ends the response normally when the token expires (tokens last\n1 hour). Reconnect with a current token, backing off on repeated failures; the first events after\na reconnect are a full snapshot, so nothing is missed. A 401 on reconnect means the session ended.\n\n**Errors** come back as JSON before the stream starts, whatever `Accept` header was sent.\n",
         "operationId" : "streamEvents",
         "responses" : {
           "200" : {
@@ -5264,6 +5334,96 @@
         }, { } ]
       }
     },
+    "/api/artists/{artistId}/music-pieces" : {
+      "get" : {
+        "tags" : [ "artist-controller" ],
+        "summary" : "List an artist's music pieces",
+        "description" : "Public; a token is optional. Pieces credited to the artist that the caller can play on their own:\nevery public one, plus the caller's own private ones. Most played first (all plays, all time),\nnewest as the tie-break. Pages of 50: send `nextCursor` back as `cursor` for the next page.\nThe order follows live play counts, so a piece can move between pages while they're being read.\nPlay them with `/stream` and no `playlistId`.\n",
+        "operationId" : "getArtistMusicPieces",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "description" : "Public id of the artist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "a_8f3k2Q"
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` from the previous page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK; `musicPieces` is empty if the artist has no playable pieces",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPiecePage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad cursor (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      }
+    },
     "/api/artists/favorites/{username}" : {
       "get" : {
         "tags" : [ "artist-controller" ],
@@ -5334,6 +5494,91 @@
             }
           }
         }
+      }
+    },
+    "/api/users/me" : {
+      "delete" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Delete the caller's account",
+        "description" : "JSON body: `currentPassword`. Deletes the account and everything the user had: profile, picture\nand banner, playlists they own (as `DELETE /api/playlists/{playlistId}` does), memberships, invites\nand notifications, saved playlists, follows both ways, favorites and play history. Their uploads\nare deleted with their files, and leave every playlist they were in, other people's included;\nother people's plays and favorites of them go too. Artists they created stay, but nobody can edit\ntheir pfp or banner anymore. Open event streams close, and the token gets 401 from then on.\nRate limited like `/api/auth/**`.\n",
+        "operationId" : "deleteAccount",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AccountDeletion"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Account deleted"
+          },
+          "400" : {
+            "description" : "Missing or bad field (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Wrong current password (code WRONG_PASSWORD); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
       }
     },
     "/api/playlists/{playlistId}/pieces/{pieceId}" : {
@@ -6727,6 +6972,75 @@
           }
         }
       },
+      "MusicPieceDetails" : {
+        "type" : "object",
+        "description" : "A music piece's details page: everything in MusicPieceOverview, plus length, plays and upload date",
+        "properties" : {
+          "musicPieceId" : {
+            "type" : "string",
+            "description" : "Public id of the music piece",
+            "example" : "m_92kd0Z"
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "Title",
+            "example" : "Let It Happen"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover URL",
+            "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The artist"
+          },
+          "uploader" : {
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The user who uploaded the piece"
+          },
+          "tags" : {
+            "type" : "array",
+            "description" : "Up to 5 lowercase tags, in name order; empty if none",
+            "example" : [ "chill", "lo-fi" ],
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "isPublic" : {
+            "type" : "boolean",
+            "description" : "Whether the music piece is public"
+          },
+          "isFavorite" : {
+            "type" : "boolean",
+            "description" : "Whether the caller has favorited the piece; false with no token",
+            "example" : true
+          },
+          "isAvailable" : {
+            "type" : "boolean",
+            "description" : "Always true here: pieces the caller can't play are a 404",
+            "example" : true
+          },
+          "durationSeconds" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Length in seconds; null for pieces uploaded before lengths were stored",
+            "example" : 214
+          },
+          "playCount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Every recorded listen, all time, from everyone",
+            "example" : 1280
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the piece was uploaded (UTC)",
+            "example" : "2026-10-03T21:28:57Z"
+          }
+        }
+      },
       "MusicPieceStream" : {
         "type" : "object",
         "description" : "A short-lived URL the player can stream the MP3 from",
@@ -6855,6 +7169,37 @@
           }
         }
       },
+      "MusicPiecePage" : {
+        "type" : "object",
+        "description" : "One page of music pieces",
+        "properties" : {
+          "musicPieces" : {
+            "type" : "array",
+            "description" : "This page's pieces, in order",
+            "items" : {
+              "$ref" : "#/components/schemas/MusicPieceOverview"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send back as `cursor` to get the next page; null on the last page"
+          }
+        }
+      },
+      "AccountDeletion" : {
+        "type" : "object",
+        "description" : "Confirms an account deletion",
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string",
+            "description" : "The user's current password, 8-32 chars",
+            "example" : "correct-horse-battery",
+            "maxLength" : 32,
+            "minLength" : 8
+          }
+        },
+        "required" : [ "currentPassword" ]
+      },
       "PlaylistMemberRemovalResponse" : {
         "type" : "object",
         "description" : "The membership that was removed",
@@ -6922,6 +7267,11 @@
             "type" : "string",
             "description" : "Public id of the playlist it was played from, or null",
             "example" : "p_8sK2mQ"
+          },
+          "playlistOwnerUsername" : {
+            "type" : "string",
+            "description" : "Username of that playlist's owner, for the link /playlist/{ownerUsername}/{playlistId}; null when playlistId is null",
+            "example" : "justin"
           }
         }
       },

@@ -57,7 +57,9 @@ public class RateLimiter implements HandlerInterceptor {
         long now = clock.getAsLong();
         sweep(now);
 
-        boolean auth = request.getRequestURI().startsWith("/api/auth/");
+        // Account deletion checks the password too, so it shares the auth cap
+        boolean auth = request.getRequestURI().startsWith("/api/auth/")
+                || ("DELETE".equals(request.getMethod()) && "/api/users/me".equals(request.getRequestURI()));
         String contentType = request.getContentType();
         boolean upload = contentType != null && contentType.toLowerCase().startsWith("multipart/");
         int limit = auth ? AUTH_LIMIT : upload ? UPLOAD_LIMIT : DEFAULT_LIMIT;

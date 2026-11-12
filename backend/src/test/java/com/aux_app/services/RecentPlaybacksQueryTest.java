@@ -56,8 +56,13 @@ class RecentPlaybacksQueryTest {
                     // is_public is declared BOOLEAN, so a raw select came back as Boolean and broke the Integer getter
                     assertEquals(Types.INTEGER, rows.getMetaData().getColumnType(rows.findColumn("isPublic")));
 
+                    int owner = rows.findColumn("playlistOwnerUsername");
+                    assertEquals(Types.VARCHAR, rows.getMetaData().getColumnType(owner));
+                    assertEquals("", rows.getString(owner));
+
                     assertTrue(rows.next());
                     assertEquals("p_pl", rows.getString(playlistId));
+                    assertEquals("caller", rows.getString(owner));
                     assertEquals("chill", rows.getString(tags));
                 }
             }

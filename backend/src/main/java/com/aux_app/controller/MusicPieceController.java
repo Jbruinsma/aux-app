@@ -1,7 +1,9 @@
 package com.aux_app.controller;
 
 import com.aux_app.auth.CurrentUser;
+import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.dto.music_piece.MusicPieceCreationDetails;
+import com.aux_app.dto.music_piece.MusicPieceDetails;
 import com.aux_app.dto.music_piece.MusicPieceDetailsUpdate;
 import com.aux_app.dto.music_piece.DiscoverResponse;
 import com.aux_app.dto.base.Message;
@@ -15,6 +17,7 @@ import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
+import com.aux_app.repository.PlayEventRepository;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.RecommendationService;
@@ -40,6 +43,7 @@ public class MusicPieceController {
     private final UploadService uploads;
     private final ArtistRepository artists;
     private final MusicPieceRepository musicPieces;
+    private final PlayEventRepository plays;
     private final PlaybackEventService playbackEvents;
     private final TagService tags;
     private final RecommendationService recommendations;
@@ -49,6 +53,7 @@ public class MusicPieceController {
             UploadService uploads,
             ArtistRepository artists,
             MusicPieceRepository musicPieces,
+            PlayEventRepository plays,
             PlaybackEventService playbackEvents,
             TagService tags,
             RecommendationService recommendations,
@@ -57,6 +62,7 @@ public class MusicPieceController {
         this.uploads = uploads;
         this.artists = artists;
         this.musicPieces = musicPieces;
+        this.plays = plays;
         this.playbackEvents = playbackEvents;
         this.tags = tags;
         this.recommendations = recommendations;
@@ -154,6 +160,42 @@ public class MusicPieceController {
         events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.UPLOADS)));
 
         return this.musicPieces.findOverviews(List.of(newMusicPiece.getPublicId()), user.getUserId()).getFirst();
+    }
+
+    @GetMapping("/{musicPieceId}")
+    @Operation(
+            summary = "Get a music piece",
+            description = """
+                    Public; a token is optional. The piece's details page: the track-list fields plus
+                    `durationSeconds`, `playCount` (every recorded listen, all time, shown to everyone) and `createdAt`.
+                    The piece must be playable by the caller on its own: public, or uploaded by the caller. With no
+                    token only public pieces are found, and `isFavorite` is false. Play it with `/stream` and no
+                    `playlistId`.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "404", description = "Music piece not found or not playable by the caller (code MUSIC_PIECE_NOT_FOUND)")
+    public MusicPieceDetails getMusicPiece(
+            @OptionalCurrentUser UserEntity user,
+            @Parameter(description = "Public id of the music piece", example = "m_92kd0Z") @PathVariable String musicPieceId
+    ) {
+        MusicPieceEntity piece = this.musicPieces.findByPublicId(musicPieceId);
+        String userId = user == null ? null : user.getUserId();
+
+        if (piece == null || !piece.isPlayableBy(userId)) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "MUSIC_PIECE_NOT_FOUND",
+                    "Music piece not found",
+                    "musicPieceId"
+            );
+        }
+
+        return MusicPieceDetails.of(
+                this.musicPieces.findOverviews(List.of(piece.getPublicId()), userId).getFirst(),
+                piece.getDurationSeconds(),
+                this.plays.countByMusicPieceId(piece.getMusicPieceId()),
+                piece.getCreatedAt()
+        );
     }
 
     @PutMapping(value = "/{musicPieceId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

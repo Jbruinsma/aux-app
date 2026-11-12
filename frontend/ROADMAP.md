@@ -304,6 +304,53 @@ Already done with the backend change, listed so the team knows the player change
 **Done when:** the landing page shows this week's most-played songs from the server, and a fresh database shows no Top
 section instead of a blank one.
 
+### 22. Load the artist page's songs from the artist endpoint
+
+**Files:** `src/utils/artist.js`, `src/views/ArtistPage.vue`
+**API:** `GET /api/artists/{artistId}/music-pieces` (public, token optional)
+
+- [ ] Replace the search workaround in `fetchArtistPieces` with the new endpoint. It's ordered most played first.
+- [ ] Load more pages with `nextCursor`, the same way playlist track lists do.
+- [ ] Show the uploader on each row now that the pieces carry `uploader`.
+
+**Done when:** the artist page lists songs most played first, with no `/api/core/search` calls in the network tab.
+
+### 23. Link Recently played to its playlist
+
+**Files:** `src/views/Dashboard.vue`
+**API:** `recents` event on `GET /api/users/me/events`
+
+- [ ] Each recent now carries `playlistOwnerUsername` next to `playlistId`. Link the card's playlist to
+      `/playlist/{playlistOwnerUsername}/{playlistId}`; show no link when `playlistId` is null.
+- [ ] Add `playlistOwnerUsername` to the mock recents in `src/utils/dashboardPreview.js`.
+
+**Done when:** a song played from a playlist links to that playlist from Recently played.
+
+### 24. Delete account for real
+
+**Files:** `src/utils/account.js`, `src/views/Settings.vue`
+**API:** `DELETE /api/users/me`
+
+- [ ] Turn off `ACCOUNT_MOCKED`.
+- [ ] Ask for the current password before deleting, like Change email does, and send it as `currentPassword`. The mocked
+      call sends no body today.
+- [ ] Show `403 WRONG_PASSWORD` on the password field. It's a 403, not a 401, so `request` won't log the user out.
+- [ ] On success, log out and go to the landing page.
+
+**Done when:** deleting an account logs out, and logging back in with it fails.
+
+### 25. Build the music piece page
+
+**Files:** new view and route, `src/views/Dashboard.vue` (My uploads)
+**API:** `GET /api/music-pieces/{musicPieceId}` (public, token optional)
+
+- [ ] Add a details page with the cover, title, artist, uploader, tags, length, play count and upload date.
+- [ ] Add a Play button that plays the piece on its own with `playPieces([musicPiece])`.
+- [ ] Open the page when an upload is clicked.
+- [ ] Show a not-found state on `404 MUSIC_PIECE_NOT_FOUND`.
+
+**Done when:** clicking an upload opens its page, and Play starts it.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -316,8 +363,8 @@ section instead of a blank one.
 - [x] Link artist names in track rows, search results and Top artists to the page.
 - [x] Show favourite artists on the profile.
 
-*The page lists an artist's songs by running a music search for their name and keeping that artist's pieces, until
-there's an endpoint for it (`../backend/BACKEND_REQUESTS.md` §1).*
+*The page lists an artist's songs by running a music search for their name. Moving it to the artist endpoint is task
+22.*
 
 ### 16. Autoplay (not decided)
 
@@ -328,7 +375,4 @@ there's an endpoint for it (`../backend/BACKEND_REQUESTS.md` §1).*
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-- [ ] **Delete account.** Turn off `ACCOUNT_MOCKED` in `src/utils/account.js` once `DELETE /api/users/me` exists
-      (`../backend/BACKEND_REQUESTS.md` §2).
-- [ ] **Music piece page.** Open a details page with a Play button when an upload is clicked, once
-      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §4).
+Nothing is blocked right now.
