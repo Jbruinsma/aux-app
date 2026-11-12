@@ -53,6 +53,7 @@ import com.aux_app.repository.UserRepository;
 //   PlaylistMembersService.updatePermission         that member                 -> INVITES, NOTIFICATIONS (a pending invite shows it)
 //   PlaylistMembersService.remove                   removed user                -> INVITES, LIBRARY, NOTIFICATIONS
 //   NotificationService.markRead/markAllRead        caller                      -> NOTIFICATIONS (other tabs' badges)
+//   AccountService.deleteAccount                    everyone online             -> every section
 // "Everyone on the playlist" is PlaylistRepository.findAudience: owner, members (pending too) and savers.
 //
 // Not covered yet: username or profile picture changes (they show in other users' library and invites).
@@ -138,6 +139,17 @@ public class LiveEventService {
         }
 
         return emitter;
+    }
+
+    // Ends every open stream of a user, e.g. after their account is deleted
+    public void disconnect(String userId) {
+        Set<SseEmitter> open = emitters.remove(userId);
+        if (open == null) return;
+        for (SseEmitter emitter : open) {
+            synchronized (emitter) {
+                emitter.complete();
+            }
+        }
     }
 
     // AFTER_COMMIT (the default) so the re-read sees the new data, and a rolled-back change reaches no one.

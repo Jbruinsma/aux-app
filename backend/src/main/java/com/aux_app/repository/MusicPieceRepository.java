@@ -97,6 +97,22 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
             """, nativeQuery = true)
     List<MusicPieceOverviewRow> findOverviewRows(@Param("publicIds") List<String> publicIds, @Param("userId") String userId);
 
+    // Pieces credited to the artist (internal id) that `userId` can play on their own: public ones, plus their own
+    // private ones (`userId` may be null). Most played first, all time, newest as the tie-break.
+    default List<MusicPieceOverview> findArtistPieces(String artistId, String userId, int limit, int offset) {
+        return findArtistPieceRows(artistId, userId, limit, offset).stream().map(MusicPieceRepository::toOverview).toList();
+    }
+
+    @Query(value = OVERVIEW_COLUMNS + """
+            LEFT JOIN (SELECT music_piece_id, COUNT(*) AS plays FROM play_events GROUP BY music_piece_id) pc
+                   ON pc.music_piece_id = mp.music_piece_id
+            WHERE mp.artist_id = :artistId AND (mp.is_public = 1 OR mp.uploader_user_id = :userId)
+            ORDER BY COALESCE(pc.plays, 0) DESC, mp.created_at DESC, mp.music_piece_id
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<MusicPieceOverviewRow> findArtistPieceRows(@Param("artistId") String artistId, @Param("userId") String userId,
+                                                    @Param("limit") int limit, @Param("offset") int offset);
+
     // Public ids of pieces like the seed, best first; see RecommendationService.discover for the rules.
     // Score: 3 per shared seed tag, 1 per other shared tag from the seed artist's top 5, plus 1 per listener
     // (up to 4) who played both the seed and the piece. Equal scores come back in random order.

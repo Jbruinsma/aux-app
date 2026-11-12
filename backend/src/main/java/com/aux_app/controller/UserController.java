@@ -4,6 +4,7 @@ import com.aux_app.dto.users.*;
 import com.aux_app.repository.FollowRepository;
 import com.aux_app.repository.ProfileDetailsRepository;
 import com.aux_app.repository.UserPlayPreferencesRepository;
+import com.aux_app.services.AccountService;
 import com.aux_app.services.CompatibilityService;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
@@ -57,6 +58,7 @@ public class UserController {
     private final LiveEventService liveEvents;
     private final FollowRepository follows;
     private final CompatibilityService compatibility;
+    private final AccountService accounts;
     private final ApplicationEventPublisher events;
 
     public UserController(
@@ -71,6 +73,7 @@ public class UserController {
             LiveEventService liveEvents,
             FollowRepository follows,
             CompatibilityService compatibility,
+            AccountService accounts,
             ApplicationEventPublisher events
     ) {
         this.users = users;
@@ -84,6 +87,7 @@ public class UserController {
         this.liveEvents = liveEvents;
         this.follows = follows;
         this.compatibility = compatibility;
+        this.accounts = accounts;
         this.events = events;
     }
 
@@ -389,6 +393,29 @@ public class UserController {
         return playPreferences.findById(userId).orElseGet(() -> new UserPlayPreferencesEntity(userId));
     }
 
+    @DeleteMapping("/me")
+    @Operation(
+            summary = "Delete the caller's account",
+            description = """
+                    JSON body: `currentPassword`. Deletes the account and everything the user had: profile, picture
+                    and banner, playlists they own (as `DELETE /api/playlists/{playlistId}` does), memberships, invites
+                    and notifications, saved playlists, follows both ways, favorites and play history. Their uploads
+                    are deleted with their files, and leave every playlist they were in, other people's included;
+                    other people's plays and favorites of them go too. Artists they created stay, but nobody can edit
+                    their pfp or banner anymore. Open event streams close, and the token gets 401 from then on.
+                    Rate limited like `/api/auth/**`.
+                    """)
+    @ApiResponse(responseCode = "204", description = "Account deleted")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)")
+    @ApiResponse(responseCode = "403", description = "Wrong current password (code WRONG_PASSWORD)")
+    @ApiResponse(responseCode = "429", description = "Too many requests from this IP (code RATE_LIMITED)")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(@CurrentUser UserEntity user, @Valid @RequestBody AccountDeletion request) {
+        accounts.deleteAccount(user, request.currentPassword());
+        // After the commit: the stream would otherwise stay open until the token expires
+        liveEvents.disconnect(user.getUserId());
+    }
+
     @GetMapping(value = "/me/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(
             summary = "Stream the caller's live updates",
@@ -413,10 +440,11 @@ public class UserController {
 
                     - `recents`: up to 20 distinct pieces from plays recorded with
                       `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several
-                      times appears once, with the `playlistId` of its latest play. Same rules as `GET /me/last-playback`:
-                      plays of pieces made private since are skipped, and `playlistId` is null when the piece wasn't
-                      played from a playlist or the caller can no longer see it. Empty when the caller has played
-                      nothing they can still play.
+                      times appears once, with the `playlistId` of its latest play and that playlist's
+                      `playlistOwnerUsername`, for the link `/playlist/{ownerUsername}/{playlistId}`. Same rules as
+                      `GET /me/last-playback`: plays of pieces made private since are skipped, and `playlistId` and
+                      `playlistOwnerUsername` are null when the piece wasn't played from a playlist or the caller can no
+                      longer see it. Empty when the caller has played nothing they can still play.
                     - `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,
                       all time. Ties go to the artist played most recently. Empty when the caller has played nothing.
                     - `library`: playlists the caller owns (public and private), playlists they're an accepted listener

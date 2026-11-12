@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface PlayEventRepository extends JpaRepository<PlayEventEntity, String> {
 
+    long countByMusicPieceId(String musicPieceId);
+
     // Null if the user has never played anything
     PlayEventEntity findFirstByUserIdOrderByPlayedAtDesc(String userId);
 
@@ -23,6 +25,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    CAST(mp.is_public AS INTEGER) AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN po.username END, '') AS playlistOwnerUsername,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM play_events pe
@@ -32,6 +36,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             LEFT JOIN user_favorite_tracks f ON f.user_id = pe.user_id AND f.music_piece_id = mp.music_piece_id
             LEFT JOIN playlists p ON p.playlist_id = pe.context_playlist_id
             LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = pe.user_id
+            LEFT JOIN users po ON po.user_id = p.owner_id
             WHERE pe.user_id = :userId
               AND (mp.is_public = 1 OR mp.uploader_user_id = :userId
                    OR (COALESCE(p.is_public, 0) = 0 AND (p.owner_id = :userId OR m.status = 'ACCEPTED')
@@ -58,6 +63,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    CAST(mp.is_public AS INTEGER) AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN po.username END, '') AS playlistOwnerUsername,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM latest l
@@ -67,6 +74,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             LEFT JOIN user_favorite_tracks f ON f.user_id = :userId AND f.music_piece_id = mp.music_piece_id
             LEFT JOIN playlists p ON p.playlist_id = l.context_playlist_id
             LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = :userId
+            LEFT JOIN users po ON po.user_id = p.owner_id
             WHERE l.rn = 1
               AND (mp.is_public = 1 OR mp.uploader_user_id = :userId
                    OR (COALESCE(p.is_public, 0) = 0 AND (p.owner_id = :userId OR m.status = 'ACCEPTED')
@@ -91,6 +99,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         Integer getIsPublic(); // SQLite has no boolean type: 1 or 0
         Integer getIsFavorite(); // 1 or 0
         String getPlaylistId(); // '' when none
+        String getPlaylistOwnerUsername(); // '' when getPlaylistId() is ''
         String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }
 

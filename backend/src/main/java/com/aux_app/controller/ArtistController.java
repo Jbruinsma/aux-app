@@ -5,6 +5,8 @@ import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.dto.artist.ArtistCreationDetails;
 import com.aux_app.dto.artist.ArtistDetails;
 import com.aux_app.dto.artist.ArtistSummary;
+import com.aux_app.dto.music_piece.MusicPieceOverview;
+import com.aux_app.dto.music_piece.MusicPiecePage;
 import com.aux_app.dto.users.BannerUpdate;
 import com.aux_app.dto.users.ProfilePictureUpdate;
 import com.aux_app.entity.ArtistEntity;
@@ -13,6 +15,7 @@ import com.aux_app.entity.UserFavoriteArtistEntity;
 import com.aux_app.entity.UserFavoriteArtistId;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.ArtistRepository;
+import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserFavoriteArtistRepository;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.LiveEventService;
@@ -35,8 +38,11 @@ import java.util.UUID;
 @RequestMapping("/api/artists")
 public class ArtistController {
 
+    private static final int PIECE_PAGE_SIZE = 50;
+
     private final UserRepository users;
     private final ArtistRepository artists;
+    private final MusicPieceRepository musicPieces;
     private final UserFavoriteArtistRepository favorites;
     private final UploadService uploads;
     private final ApplicationEventPublisher events;
@@ -44,12 +50,14 @@ public class ArtistController {
     public ArtistController(
             UserRepository users,
             ArtistRepository artists,
+            MusicPieceRepository musicPieces,
             UserFavoriteArtistRepository favorites,
             UploadService uploads,
             ApplicationEventPublisher events
     ) {
         this.users = users;
         this.artists = artists;
+        this.musicPieces = musicPieces;
         this.favorites = favorites;
         this.uploads = uploads;
         this.events = events;
@@ -131,6 +139,38 @@ public class ArtistController {
                 artist.getArtistBannerUrl(),
                 isFavorite,
                 artist.isEditableBy(userId)
+        );
+    }
+
+    @GetMapping("/{artistId}/music-pieces")
+    @Operation(
+            summary = "List an artist's music pieces",
+            description = """
+                    Public; a token is optional. Pieces credited to the artist that the caller can play on their own:
+                    every public one, plus the caller's own private ones. Most played first (all plays, all time),
+                    newest as the tie-break. Pages of 50: send `nextCursor` back as `cursor` for the next page.
+                    The order follows live play counts, so a piece can move between pages while they're being read.
+                    Play them with `/stream` and no `playlistId`.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK; `musicPieces` is empty if the artist has no playable pieces")
+    @ApiResponse(responseCode = "400", description = "Bad cursor (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND)")
+    public MusicPiecePage getArtistMusicPieces(
+            @Parameter(description = "Public id of the artist", example = "a_8f3k2Q") @PathVariable String artistId,
+            @Parameter(description = "`nextCursor` from the previous page") @RequestParam(required = false) String cursor,
+            @OptionalCurrentUser UserEntity user
+    ) {
+        ArtistEntity artist = findArtist(artistId);
+        int offset = parseOffsetCursor(cursor);
+
+        // ponytail: offset cursor over a live play-count order can skip or repeat a piece mid-read; fine at our size
+        List<MusicPieceOverview> page = this.musicPieces.findArtistPieces(
+                artist.getArtistId(), user == null ? null : user.getUserId(), PIECE_PAGE_SIZE + 1, offset);
+        boolean more = page.size() > PIECE_PAGE_SIZE;
+
+        return new MusicPiecePage(
+                more ? page.subList(0, PIECE_PAGE_SIZE) : page,
+                more ? Integer.toString(offset + PIECE_PAGE_SIZE) : null
         );
     }
 
@@ -262,6 +302,18 @@ public class ArtistController {
         }
 
         return artist;
+    }
+
+    // The client treats the cursor as opaque; today it's the offset of the next page
+    private static int parseOffsetCursor(String cursor) {
+        if (cursor == null) return 0;
+        try {
+            int offset = Integer.parseInt(cursor);
+            if (offset >= 0) return offset;
+        } catch (NumberFormatException ignored) {
+            // falls through to the 400
+        }
+        throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "Invalid cursor", "cursor");
     }
 
     private static ArtistSummary toSummary(ArtistEntity artist) {
