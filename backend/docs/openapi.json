@@ -5035,7 +5035,7 @@
       "get" : {
         "tags" : [ "core-controller" ],
         "summary" : "Get the top music pieces",
-        "description" : "Public. NOT IMPLEMENTED YET: returns one placeholder entry whose fields all read `NOT IMPLEMENTED`.",
+        "description" : "Public. The 10 public music pieces played most in the last 7 days, most played first. Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played.",
         "operationId" : "getTopMusicPieces",
         "responses" : {
           "200" : {

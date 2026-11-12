@@ -5,7 +5,7 @@ in place, all boxes ticked, so the team can see what's done. Exact request and r
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-11-06.
+Last updated 2026-11-12.
 
 ______________________________________________________
 
@@ -285,6 +285,25 @@ Already done with the backend change, listed so the team knows the player change
       that many seconds have played (falling back to 30 if the field is missing).
 - [x] Removed the short-piece special case from `finishListening`; the server's rule covers short pieces.
 
+### 21. Show the real top list on the landing page
+
+`GET /api/core/top` now returns this week's most-played songs, so the hardcoded albums can go.
+
+**Files:** `src/views/LandingPage.vue`
+**API:** `GET /api/core/top` (public, no token)
+
+- [ ] Replace the hardcoded `topAlbums` with a call to `GET /api/core/top` in `onMounted`, next to the
+      `/api/core/users` call. Show the first 3.
+- [ ] Load each cover through `resolveCoverURL`, which can't take null, so guard it like `src/stores/music.js` does
+      (`piece.coverUrl ? resolveCoverURL(piece.coverUrl) : ''`).
+- [ ] These are songs, not albums: change the lead to something like "The songs getting the most plays on Aux this
+      week." and rename `album` in the template.
+- [ ] Hide the Top section when the list is empty (nothing played that week) or the call fails, the same way the
+      profile picture row hides.
+
+**Done when:** the landing page shows this week's most-played songs from the server, and a fresh database shows no Top
+section instead of a blank one.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -311,7 +330,5 @@ Don't start these until the endpoint is in the OpenAPI docs.
 
 - [ ] **Delete account.** Turn off `ACCOUNT_MOCKED` in `src/utils/account.js` once `DELETE /api/users/me` exists
       (`../backend/BACKEND_REQUESTS.md` §2).
-- [ ] **Landing page.** Replace the hardcoded top albums in `LandingPage.vue` once `GET /api/core/top` returns real
-      data (`../backend/BACKEND_REQUESTS.md` §4).
 - [ ] **Music piece page.** Open a details page with a Play button when an upload is clicked, once
-      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §5).
+      `GET /api/music-pieces/{musicPieceId}` exists (`../backend/BACKEND_REQUESTS.md` §4).

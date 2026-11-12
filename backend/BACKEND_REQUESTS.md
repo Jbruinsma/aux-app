@@ -7,7 +7,7 @@ endpoint before it exists, it's mocked in the frontend and the flag to switch it
 The Dashboard and the header get their data from the live event stream (`GET /api/users/me/events`), so changes to
 that data are asked for on the event, not on the REST endpoint it mirrors.
 
-Last checked against `main` on 2026-10-28.
+Last checked against `main` on 2026-11-12.
 
 ______________________________________________________
 
@@ -72,22 +72,7 @@ on tags alone). Profiles also carry `compatibility`, `sharedArtists` and `shared
   songs can't link to the playlist they were played from yet. (Clicking a recent song already plays it from that
   playlist; only the link is missing.)
 
-## 4. Landing page top list
-
-### GET /api/core/top
-
-The endpoint and its `TopMusicPiece` schema exist, but it returns a `NOT IMPLEMENTED` placeholder, so
-`frontend/src/views/LandingPage.vue` shows three hardcoded albums instead. Public.
-
-Return the most-played public pieces as `[TopMusicPiece]` (`name`, `coverUrl`, `artistSummary`). The landing page shows
-3, so a limit of 3 to 10 is plenty.
-
-Questions:
-- Over what window: all time, or the last 7 or 30 days? Last 7 days would keep the landing page changing.
-- The landing page labels these "top albums", but Aux has no albums. Fine to treat them as top songs? The frontend will
-  relabel.
-
-## 5. Music piece page
+## 4. Music piece page
 
 For opening a details page with a Play button when an upload is clicked (frontend roadmap, Blocked list). Nothing is
 built yet.
@@ -110,7 +95,7 @@ doesn't exist or is private and the caller can't play it.
 
 Question: should `playCount` be public, or only shown to the uploader?
 
-## 6. Smaller fixes
+## 5. Smaller fixes
 
 - **Search response has examples but no schema.** `GET /api/core/search` documents its `200` body only through one
   example per category, so the docs' schema view doesn't list the fields, their types or which can be null

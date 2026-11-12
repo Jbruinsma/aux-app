@@ -94,6 +94,32 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }
 
+    // The :limit public pieces played most since :since (epoch millis), most plays first, newest piece as the
+    // tie-break. An uploader's plays of their own piece don't count, so nobody can play themselves onto the landing
+    // page. played_at is millis when the app writes it, text in seeded rows, so both are read.
+    @Query(value = """
+            SELECT mp.name AS name, mp.cover_url AS coverUrl,
+                   a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
+            FROM play_events pe
+            JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
+            JOIN artists a ON a.artist_id = mp.artist_id
+            WHERE mp.is_public = 1 AND mp.uploader_user_id <> pe.user_id
+              AND (CASE typeof(pe.played_at) WHEN 'integer' THEN pe.played_at
+                   ELSE unixepoch(pe.played_at) * 1000 END) >= :since
+            GROUP BY mp.music_piece_id
+            ORDER BY COUNT(*) DESC, mp.created_at DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<TopPieceRow> findTopPieces(@Param("since") long since, @Param("limit") int limit);
+
+    interface TopPieceRow {
+        String getName();
+        String getCoverUrl();
+        String getArtistId();
+        String getArtistName();
+        String getArtistPfpUrl();
+    }
+
     // Counted plays that shape taste (CompatibilityService): public pieces only, so a private upload never shows up as
     // a shared artist, and never the user's own uploads. Users who haven't finished onboarding are left out. `w` is
     // the play's weight, halving every :halfLifeMillis. :userA null means every user; otherwise only :userA and :userB.
