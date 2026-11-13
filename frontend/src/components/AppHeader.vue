@@ -1,14 +1,14 @@
 <template>
   <header class="top">
     <div class="topin">
-      <router-link class="logo" :to="loggedIn ? '/dashboard' : '/'">Aux</router-link>
+      <router-link class="logo" :to="loggedIn ? { name: 'Dashboard' } : '/'">Aux</router-link>
 
       <nav v-if="loggedIn && userStore.onboarded" aria-label="Main">
         <router-link
           v-for="item in MEMBER_NAV"
           :key="item"
           :to="`/${item.toLowerCase()}`"
-          :class="{ active: route.name === item }"
+          :class="{ active: route.name === item || route.meta?.nav === item }"
         >{{ item }}</router-link>
       </nav>
       <nav v-else-if="!loggedIn" aria-label="Main">
@@ -65,8 +65,8 @@ import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { rerouteToPublicProfile, rerouteToSettings } from '@/utils/reroutes.js'
 
-const GUEST_NAV = ['Music', 'Charts', 'Friends', 'Explore']
-const MEMBER_NAV = ['Music', 'Charts', 'Friends', 'Explore']
+const GUEST_NAV = ['Music', 'Explore', 'Friends', 'Charts']
+const MEMBER_NAV = ['Music', 'Explore', 'Friends', 'Charts']
 
 const route = useRoute()
 const router = useRouter()

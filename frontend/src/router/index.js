@@ -15,6 +15,8 @@ import AddFriends from '@/views/AddFriends.vue'
 import EditPlaylist from '@/views/EditPlaylist.vue'
 import Onboarding from '@/views/Onboarding.vue'
 import Discover from '@/views/Discover.vue'
+import ExplorePage from '@/views/ExplorePage.vue'
+import ExploreTag from '@/views/ExploreTag.vue'
 import ArtistPage from '@/views/ArtistPage.vue'
 import { useUserStore } from '@/stores/user.js'
 
@@ -47,8 +49,23 @@ const routes = [
       return userStore.onboarded ? { name: 'Dashboard' } : true
     },
   },
-  { path: '/dashboard/:section?', name: 'Dashboard', component: Dashboard },
-  ...['Music', 'Charts', 'Friends', 'Explore'].map((title) => ({
+  // The dashboard is the Music tab. /dashboard still works for old links and bookmarks
+  { path: '/music', name: 'Dashboard', component: Dashboard, meta: { nav: 'Music' } },
+  { path: '/dashboard/:section?', redirect: { name: 'Dashboard' } },
+  {
+    path: '/explore',
+    name: 'Explore',
+    component: ExplorePage,
+    beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
+  },
+  {
+    path: '/explore/tag/:tag',
+    name: 'ExploreTag',
+    component: ExploreTag,
+    meta: { nav: 'Explore' },
+    beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
+  },
+  ...['Friends', 'Charts'].map((title) => ({
     path: `/${title.toLowerCase()}`,
     name: title,
     component: ComingSoon,

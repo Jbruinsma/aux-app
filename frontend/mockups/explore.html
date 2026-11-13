@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explore and dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+:root,[data-theme="light"]{--focus-ring:#6a4778;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
+[data-theme="dark"]{--focus-ring:#b593c4;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
+:root{--dur-fast:150ms;--ease:cubic-bezier(.2,0,0,1);--font-sans:Montserrat, "Segoe UI", Helvetica, Arial, sans-serif;--radius-md:6px;--radius-pill:999px;--radius-sm:3px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--surface-alt);color:var(--ink);font:400 16px/24px var(--font-sans);margin:0}
+button,input{color:inherit;font:inherit}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+ul,ol{list-style:none;margin:0;padding:0}
+
+/* Page around the frames */
+.page{margin:0 auto;max-width:1240px;padding:var(--space-8) var(--space-6)}
+.page-head{align-items:flex-start;display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between}
+.page-head h1{font:700 28px/34px var(--font-sans)}
+.page-head p{color:var(--ink-muted);font:500 14px/20px var(--font-sans);max-width:720px}
+.theme-btn{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;font:600 14px/20px var(--font-sans);padding:10px 18px}
+.label{font:700 20px/28px var(--font-sans);margin:var(--space-8) 0 var(--space-4)}
+.stage{display:flex;flex-wrap:wrap;gap:var(--space-8);justify-content:center}
+.stage figure{margin:0}
+.stage figcaption{color:var(--ink-muted);font:600 12px/16px var(--font-sans);margin-top:var(--space-3);text-align:center}
+.notes{display:grid;gap:var(--space-6);grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:var(--space-8)}
+.notes section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-4)}
+.notes h2{font:700 20px/28px var(--font-sans);margin-bottom:var(--space-2)}
+.notes ul{font:500 14px/20px var(--font-sans);list-style:disc;padding-left:20px}
+.notes li+li{margin-top:var(--space-2)}
+.notes code{background:var(--surface-alt);border-radius:var(--radius-sm);font:600 13px/20px var(--font-sans);padding:1px 6px}
+
+/* Frames */
+.browser{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-md);height:820px;overflow:hidden;width:100%}
+.browser-bar{align-items:center;background:var(--surface-alt);border-bottom:1px solid var(--line);display:flex;gap:6px;height:32px;padding:0 var(--space-3)}
+.browser-bar span{background:var(--line-strong);border-radius:var(--radius-pill);height:10px;width:10px}
+.phone{background:var(--surface);border:8px solid #111111;border-radius:44px;height:844px;overflow:hidden;position:relative;width:390px}
+.app{container-type:inline-size;height:100%;overflow-y:auto;scrollbar-width:none}
+.browser .app{height:calc(100% - 32px)}
+.phone .app{height:calc(100% - 47px);margin-top:47px}
+
+/* App header */
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.topin{align-items:center;display:flex;gap:var(--space-6);margin:0 auto;max-width:1120px;padding:var(--space-3) var(--space-8)}
+.logo{color:var(--primary);font:800 24px/1 var(--font-sans);letter-spacing:-.02em}
+[data-theme="dark"] .logo{color:var(--link)}
+.nav{display:flex;flex:1;gap:var(--space-4)}
+.nav span{border-bottom:3px solid transparent;color:var(--ink-muted);font:600 14px/20px var(--font-sans);padding:var(--space-2) 0}
+.nav span.on{border-bottom-color:var(--primary);color:var(--ink)}
+.acts{align-items:center;display:flex;gap:var(--space-4)}
+.av{background:#1b1b1b;border-radius:var(--radius-pill);height:32px;width:32px}
+.logout{color:var(--link);font:600 14px/20px var(--font-sans)}
+
+/* Page body */
+.wrap{margin:0 auto;max-width:1120px;padding:0 var(--space-8)}
+.hero{border-bottom:1px solid var(--line);padding:var(--space-8) 0}
+.hero h1{font:700 28px/34px var(--font-sans)}
+.hero .meta{margin-top:var(--space-1)}
+.meta{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.block{border-bottom:1px solid var(--line);padding:var(--space-8) 0}
+.block:last-child{border-bottom:0}
+.head{align-items:flex-end;display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);justify-content:space-between;margin-bottom:var(--space-6)}
+.head h2{font:700 20px/28px var(--font-sans)}
+.see-all{color:var(--link);font:600 14px/20px var(--font-sans);text-decoration:none}
+.see-all:hover{text-decoration:underline}
+
+/* Search */
+.search-bar{background:var(--surface);border-bottom:1px solid var(--line);padding:var(--space-2) 0 var(--space-4);position:sticky;top:57px;z-index:4}
+.explore .hero{border-bottom:0;padding-bottom:var(--space-2)}
+.search-row{align-items:center;display:flex;gap:var(--space-3);max-width:640px}
+.search{flex:1;position:relative}
+.search svg{color:var(--ink-muted);left:var(--space-3);pointer-events:none;position:absolute;top:50%;transform:translateY(-50%)}
+.search input{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);color:var(--ink);font:400 16px/24px var(--font-sans);padding:10px var(--space-3) 10px 40px;width:100%}
+.cancel{background:none;border:0;color:var(--link);cursor:pointer;display:none;font:600 16px/24px var(--font-sans);padding:var(--space-2) 0}
+.tabs{display:flex;gap:var(--space-6)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--ink-muted);cursor:pointer;font:600 14px/20px var(--font-sans);padding:0 0 var(--space-2)}
+.tab.on{border-bottom-color:var(--primary);color:var(--link)}
+.results{display:none}
+.searching .results{display:block}
+.searching .browse{display:none}
+
+/* Genre and mood tiles */
+.tags{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.tag{align-items:flex-end;background:var(--purple-soft);border:0;border-radius:var(--radius-md);color:var(--link);cursor:pointer;display:flex;font:700 16px/24px var(--font-sans);height:72px;overflow:hidden;padding:var(--space-3);position:relative;text-align:left}
+.tag:hover{background:var(--primary);color:var(--on-primary)}
+.tag svg{opacity:.35;position:absolute;right:-6px;top:-6px}
+
+/* Track rows (style guide component) */
+.tracks{column-gap:var(--space-8);display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.tr{align-items:center;border-bottom:1px solid var(--line);display:grid;gap:var(--space-3);grid-template-columns:20px 32px 40px minmax(0,1fr) 120px;padding:var(--space-2) 0}
+.tr:hover{background:var(--surface-alt)}
+.tr.plain{grid-template-columns:32px 40px minmax(0,1fr)}
+.rank{color:var(--ink-muted);font:600 14px/20px var(--font-sans);text-align:right}
+.tp{align-items:center;background:none;border:1px solid var(--line-strong);border-radius:var(--radius-pill);color:var(--ink);cursor:pointer;display:flex;height:32px;justify-content:center;padding:0;width:32px}
+.tr.playing{background:var(--purple-soft)}
+.tr.playing .tp{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.tr.playing .tt{color:var(--link)}
+.ta{border-radius:var(--radius-sm);height:40px;width:40px}
+.tx{min-width:0}
+.tt{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ts{color:var(--ink-muted);font:500 14px/20px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{align-items:center;display:flex;gap:var(--space-2)}
+.bar span{background:var(--purple);border-radius:2px;height:6px}
+.bar small{color:var(--ink-muted);font:600 12px/16px var(--font-sans);white-space:nowrap}
+
+/* Cards */
+.cards{display:grid;gap:var(--space-4);grid-auto-columns:160px;grid-auto-flow:column;overflow-x:auto;padding-bottom:var(--space-3);scrollbar-width:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
+.card .art{aspect-ratio:1;display:block;width:100%}
+.card-body{background:var(--surface-alt);border-top:1px solid var(--line);padding:var(--space-3) var(--space-4)}
+.card-t{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-s{color:var(--ink-muted);font:500 14px/20px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card.new .art{align-items:center;background:var(--surface-alt);color:var(--ink-muted);display:flex;justify-content:center}
+.card.new .card-body{background:var(--surface)}
+.card.playing .card-body{background:var(--purple-soft)}
+.card.playing .card-t{color:var(--link)}
+
+/* Match cards */
+.matches{display:grid;gap:var(--space-4);grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.match{background:var(--surface-alt);border-radius:var(--radius-md);display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4)}
+.match-top{align-items:center;display:flex;gap:var(--space-3)}
+.match-av{align-items:center;background:var(--primary);border-radius:var(--radius-pill);color:var(--on-primary);display:flex;flex:none;font:700 17px/1 var(--font-sans);height:44px;justify-content:center;width:44px}
+.match-line{font:400 15px/22px var(--font-sans)}
+.match-line b{font-weight:700}
+.level{color:var(--link);font-weight:700}
+.meter{align-items:center;display:flex;gap:var(--space-1)}
+.seg{background:var(--surface);border-radius:2px;flex:1;height:8px}
+.seg.f{background:var(--primary)}
+.pct{color:var(--ink-muted);font:600 12px/16px var(--font-sans);margin-left:var(--space-2)}
+
+/* Search result rows */
+.count{margin-bottom:var(--space-4)}
+.people{display:grid;gap:var(--space-6);grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.person{align-items:center;display:flex;flex-direction:column;gap:var(--space-3)}
+.person .pa{align-items:center;aspect-ratio:1;background:var(--primary);border-radius:var(--radius-pill);color:var(--on-primary);display:flex;font:800 40px/1 var(--font-sans);justify-content:center;width:100%}
+.person p{font:600 16px/24px var(--font-sans)}
+
+/* Art placeholders */
+.art{background:linear-gradient(180deg,#9fb3c8 0%,#d6dde3 48%,#56685d 49%,#25302a 100%)}
+.a1{background:linear-gradient(135deg,#cfcfcf 0%,#7a7a7a 55%,#2d2d2d 100%)}
+.a2{background:linear-gradient(160deg,#6a4778 0%,#b593c4 60%,#f1ecf3 100%)}
+.a3{background:linear-gradient(200deg,#f0b47a 0%,#c0544e 55%,#3a1d2b 100%)}
+.a4{background:linear-gradient(120deg,#203a43 0%,#2c5364 50%,#9cc3c9 100%)}
+.a5{background:linear-gradient(90deg,#e6d3a3 0%,#a77d4b 100%)}
+
+/* Mini player for context */
+.mini{align-items:center;background:var(--surface-alt);border:1px solid var(--line);border-radius:var(--radius-md);bottom:22px;display:flex;gap:var(--space-3);height:64px;left:8px;padding:0 var(--space-2);position:absolute;right:8px;z-index:6}
+.mini .art{border-radius:var(--radius-sm);flex:none;height:44px;width:44px}
+.mini .tx{flex:1}
+.mini-play{align-items:center;background:var(--primary);border-radius:var(--radius-pill);color:var(--on-primary);display:flex;flex:none;height:40px;justify-content:center;width:40px}
+.home-ind{background:var(--ink);border-radius:var(--radius-pill);bottom:8px;height:5px;left:50%;opacity:.8;position:absolute;transform:translateX(-50%);width:134px;z-index:7}
+.phone .app>.pad{padding-bottom:110px}
+
+/* Mobile layout, driven by the frame's width */
+@container (max-width:720px){
+  .topin{flex-wrap:wrap;gap:0;justify-content:space-between;padding:var(--space-3) var(--space-4) 0}
+  .nav{flex-basis:100%;order:3;padding-top:var(--space-3)}
+  .wrap{padding:0 var(--space-4)}
+  .hero{padding:var(--space-6) 0 var(--space-4)}
+  .explore .hero{padding-bottom:var(--space-1)}
+  .search-bar{top:93px}
+  .searching .cancel{display:block}
+  .block{padding:var(--space-6) 0}
+  .tags{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tracks{grid-template-columns:minmax(0,1fr)}
+  .tr{grid-template-columns:20px 32px 40px minmax(0,1fr)}
+  .tr .bar{display:none}
+  .tracks .tr:nth-child(n+6){display:none}
+  .tags .tag:nth-child(n+7){display:none}
+  .cards{grid-auto-columns:136px}
+  .matches{grid-template-columns:minmax(0,1fr)}
+  .people{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .person .pa{font-size:28px}
+  .dash-hero{border-bottom:0;padding-bottom:0}
+}
+@container (min-width:721px){
+  .mobile-only{display:none}
+}
+@media (max-width:440px){.page{padding:var(--space-4)}.phone{border-width:0;border-radius:0;height:100dvh;width:calc(100vw - 32px)}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Explore and dashboard</h1>
+      <p>Search moves from the dashboard to Explore, which becomes a real page on every size. Type in any Explore search field to see results; on mobile, Cancel goes back to browsing.</p>
+    </div>
+    <button type="button" class="theme-btn" id="theme">Dark mode</button>
+  </header>
+
+  <h2 class="label">Explore, desktop</h2>
+  <div class="browser"><div class="browser-bar"><span></span><span></span><span></span></div><div class="app" data-view="explore"></div></div>
+
+  <h2 class="label">Explore and dashboard, mobile</h2>
+  <div class="stage">
+    <figure><div class="phone"><div class="app" data-view="explore"></div><div data-mini></div></div><figcaption>Explore, browsing</figcaption></figure>
+    <figure><div class="phone"><div class="app" data-view="explore" data-query="ken"></div><div data-mini></div></div><figcaption>Explore, searching</figcaption></figure>
+    <figure><div class="phone"><div class="app" data-view="dashboard"></div><div data-mini></div></div><figcaption>Dashboard, reordered</figcaption></figure>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Explore</h2>
+      <ul>
+        <li>Search moves here from the dashboard and stays the same (People, Music, Playlists). Typing swaps the browse sections for results.</li>
+        <li>The search field sticks under the header as you scroll; the title scrolls away. While searching, a Cancel button clears the search and goes back to browsing.</li>
+        <li><b>Genres and moods</b>: the top curated tags from <code>GET /api/tags</code>, as tiles. 12 on desktop, 6 on mobile with "See all".</li>
+        <li><b>Top this week</b>: the style guide's track row, with rank and play count bar. 10 in two columns on desktop, top 5 on mobile with "See all".</li>
+        <li><b>More like Violent Crimes</b>: <code>/discover</code> seeded with your last song; "See all" opens the Discover page.</li>
+        <li><b>People who hear it too</b> moves here from the dashboard.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Dashboard</h2>
+      <ul>
+        <li>No search. The welcome area is just the greeting.</li>
+        <li>Order on every size: Recent listening, Your library, My uploads, Your top artists.</li>
+        <li>On mobile, the library is a sideways row like the others, with Create as the first tile. Desktop keeps the grid.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Needs the backend</h2>
+      <ul>
+        <li><code>GET /api/core/top</code> returns no song id, uploader or play count, so its songs can't be played or show the bar. It needs those fields, or a signed-in version.</li>
+        <li>Nothing lists songs for a tag, so a genre tile has nowhere to go yet. Something like <code>GET /api/tags/{tag}/music-pieces</code>.</li>
+        <li>Until then the frontend would mock both, per CLAUDE.md.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>To decide</h2>
+      <ul>
+        <li>Where a genre tile goes: its own page (<code>/explore/tag/chill</code>), or a filtered list inside Explore?</li>
+        <li>Should Explore show anything else, such as new uploads or popular playlists? Both would need new endpoints.</li>
+        <li>Are Music, Charts and Friends staying in the nav? Top this week overlaps with Charts.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TAGS = ['Hip-hop', 'R&B', 'Chill', 'Indie', 'Lo-fi', 'Pop', 'Electronic', 'Late night', 'Rock', 'Workout', 'Jazz', 'Focus'];
+  var TOP = [
+    ['Violent Crimes', 'Kanye West', '', 42], ['Money Trees', 'Kendrick Lamar', 'a1', 38], ['Pink + White', 'Frank Ocean', 'a2', 31],
+    ['Good Days', 'SZA', 'a3', 27], ['Let It Happen', 'Tame Impala', 'a4', 24], ['Motion Sickness', 'Phoebe Bridgers', 'a5', 19],
+    ['Nights', 'Frank Ocean', 'a2', 17], ['Ivy', 'Frank Ocean', 'a1', 14], ['Alright', 'Kendrick Lamar', 'a3', 12], ['Ghost Town', 'Kanye West', '', 9]
+  ];
+  var LIKE = [['Runaway', 'Kanye West', 'a1'], ['Saint Pablo', 'Kanye West', 'a3'], ['DNA.', 'Kendrick Lamar', 'a4'], ['Self Control', 'Frank Ocean', 'a2'], ['Kill Bill', 'SZA', 'a5'], ['Redbone', 'Childish Gambino', '']];
+  var MATCHES = [['jordan.k', 'Super', 87, 5, ['Frank Ocean', 'SZA', 'Mitski']], ['maya', 'Very high', 71, 4, ['Kanye West', 'Kendrick Lamar']], ['dev_r', 'High', 52, 3, ['Tame Impala']]];
+  var PLAYLISTS = [['Road trip', '12 songs', 'a4'], ['Late night', '8 songs', 'a2'], ['Gym', '20 songs', 'a3'], ['Saved: Indie mix', 'by maya', 'a5']];
+  var UPLOADS = [['Violent Crimes', 'Kanye West', ''], ['Money Trees', 'Kendrick Lamar', 'a1'], ['Nights', 'Frank Ocean', 'a2']];
+  var ARTISTS = [['Kanye West', '42 plays', ''], ['Kendrick Lamar', '31 plays', 'a1'], ['Frank Ocean', '18 plays', 'a2'], ['SZA', '12 plays', 'a3']];
+  var SEARCH = {
+    music: [['Kendrick Lamar', 'Kendrick Lamar', 'a1'], ['Money Trees', 'Kendrick Lamar', 'a1'], ['Alright', 'Kendrick Lamar', 'a3'], ['Ken', 'Tyler, The Creator', 'a4']],
+    people: ['kenji', 'kenny.b', 'akena'],
+    playlists: [['Kendrick essentials', 'by maya', 'a2'], ['Kenny\'s mix', 'by kenny.b', 'a5']]
+  };
+
+  var PLAY = '<svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>';
+  var NOTE = '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+  var PLUS = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+  var MAG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+
+  function header(on) {
+    var nav = ['Music', 'Explore', 'Friends', 'Charts'].map(function (n) { return '<span class="' + (n === on ? 'on' : '') + '">' + n + '</span>'; }).join('');
+    return '<header class="top"><div class="topin"><span class="logo">Aux</span><nav class="nav">' + nav + '</nav><div class="acts"><span class="av"></span><span class="logout">Log out</span></div></div></header>';
+  }
+  function row(t, i, max) {
+    return '<li class="tr' + (i === 0 ? ' playing' : '') + '"><span class="rank">' + (i + 1) + '</span><button type="button" class="tp" aria-label="Play ' + t[0] + '">' + PLAY + '</button><span class="art ta ' + t[2] + '"></span><span class="tx"><p class="tt">' + t[0] + '</p><p class="ts">' + t[1] + '</p></span><span class="bar"><span style="width:' + Math.round(t[3] / max * 80) + 'px"></span><small>' + t[3] + ' plays</small></span></li>';
+  }
+  function card(c, playing) {
+    return '<li class="card' + (playing ? ' playing' : '') + '"><span class="art ' + c[2] + '"></span><div class="card-body"><p class="card-t">' + c[0] + '</p><p class="card-s">' + c[1] + '</p></div></li>';
+  }
+  function match(m) {
+    var segs = ''; for (var i = 0; i < 5; i++) segs += '<span class="seg' + (i < m[3] ? ' f' : '') + '"></span>';
+    return '<li class="match"><div class="match-top"><span class="match-av">' + m[0][0].toUpperCase() + '</span><p class="match-line">Your compatibility with <b>' + m[0] + '</b> is <span class="level">' + m[1] + '</span></p></div><div class="meter">' + segs + '<span class="pct">' + m[2] + '%</span></div><p class="meta">You both listen to ' + m[4].join(', ') + '.</p></li>';
+  }
+  function block(title, sub, body, link) {
+    return '<section class="block"><div class="head"><div><h2>' + title + '</h2>' + (sub ? '<p class="meta">' + sub + '</p>' : '') + '</div>' + (link ? '<a class="see-all" href="#">' + link + '</a>' : '') + '</div>' + body + '</section>';
+  }
+
+  function explore(query) {
+    var tags = TAGS.map(function (t) { return '<button type="button" class="tag">' + t + NOTE + '</button>'; }).join('');
+    var browse =
+      block('Genres and moods', '', '<div class="tags">' + tags + '</div>', '<span class="mobile-only">See all</span>') +
+      block('Top this week', 'The most played songs on Aux in the last 7 days.', '<ol class="tracks">' + TOP.map(function (t, i) { return row(t, i, TOP[0][3]); }).join('') + '</ol>', '<span class="mobile-only">See all</span>') +
+      block('More like Violent Crimes', 'Picked from the last song you played.', '<ul class="cards">' + LIKE.map(function (c) { return card(c); }).join('') + '</ul>', 'See all') +
+      block('People who hear it too', 'Listeners who share your favorite artists, with your compatibility score.', '<ul class="matches">' + MATCHES.map(match).join('') + '</ul>');
+    return header('Explore') + '<main class="pad explore"><section class="hero"><div class="wrap"><h1>Explore</h1><p class="meta">Search Aux, or find something new.</p></div></section><div class="search-bar"><div class="wrap"><div class="search-row"><label class="search">' + MAG +
+      '<input type="search" placeholder="Search people, music and playlists" aria-label="Search Aux" value="' + (query || '') + '"></label><button type="button" class="cancel">Cancel</button></div></div></div>' +
+      '<div class="wrap"><div class="browse">' + browse + '</div><div class="results"></div></div></main>';
+  }
+  function results(q, cat) {
+    var tabs = [['music', 'Music'], ['people', 'People'], ['playlists', 'Playlists']].map(function (t) { return '<button type="button" class="tab' + (t[0] === cat ? ' on' : '') + '" data-cat="' + t[0] + '">' + t[1] + '</button>'; }).join('');
+    var body;
+    if (cat === 'people') body = '<ul class="people">' + SEARCH.people.map(function (p) { return '<li class="person"><span class="pa">' + p[0].toUpperCase() + '</span><p>' + p + '</p></li>'; }).join('') + '</ul>';
+    else if (cat === 'playlists') body = '<ul class="cards">' + SEARCH.playlists.map(function (c) { return card(c); }).join('') + '</ul>';
+    else body = '<ol class="tracks">' + SEARCH.music.map(function (t, i) { return row(t.concat([0]), i, 1).replace(/<span class="rank">\d+<\/span>/, '').replace('class="tr playing"', 'class="tr plain"').replace('class="tr"', 'class="tr plain"').replace(/<span class="bar">.*?<\/span><\/li>/, '</li>'); }).join('') + '</ol>';
+    var n = cat === 'people' ? SEARCH.people.length : cat === 'playlists' ? SEARCH.playlists.length : SEARCH.music.length;
+    return '<section class="block"><div class="head"><h2>Results for “' + q.replace(/</g, '&lt;') + '”</h2><div class="tabs" role="tablist">' + tabs + '</div></div><p class="meta count">' + n + ' results</p>' + body + '</section>';
+  }
+  function dashboard() {
+    var lib = '<li class="card new"><span class="art">' + PLUS + '</span><div class="card-body"><p class="card-t">Create</p><p class="card-s">New playlist</p></div></li>' + PLAYLISTS.map(function (c) { return card(c); }).join('');
+    return header('Music') + '<main class="pad"><section class="hero dash-hero"><div class="wrap"><h1>Welcome back, test1</h1></div></section><div class="wrap">' +
+      block('Recent listening', 'The last songs you played, newest first.', '<ul class="cards">' + UPLOADS.concat(LIKE.slice(0, 2)).map(function (c, i) { return card(c, i === 0); }).join('') + '</ul>') +
+      block('Your library', '4 playlists', '<ul class="cards">' + lib + '</ul>', 'See all') +
+      block('My uploads', '3 songs, newest first.', '<ul class="cards">' + UPLOADS.map(function (c) { return card(c); }).join('') + '</ul>') +
+      block('Your top artists', "The artists you've played most, all time.", '<ul class="cards">' + ARTISTS.map(function (c) { return card(c); }).join('') + '</ul>') +
+      '</div></main>';
+  }
+
+  document.querySelectorAll('[data-view]').forEach(function (app) {
+    if (app.dataset.view === 'dashboard') { app.innerHTML = dashboard(); return; }
+    var query = app.dataset.query || '';
+    var cat = 'music';
+    app.innerHTML = explore(query);
+    var main = app.querySelector('.explore');
+    var input = app.querySelector('input');
+    var out = app.querySelector('.results');
+    function render() {
+      var q = input.value.trim();
+      main.classList.toggle('searching', q.length > 0);
+      out.innerHTML = q ? results(q, cat) : '';
+    }
+    input.addEventListener('input', render);
+    out.addEventListener('click', function (e) { var t = e.target.closest('[data-cat]'); if (t) { cat = t.dataset.cat; render(); } });
+    app.querySelector('.cancel').addEventListener('click', function () { input.value = ''; render(); });
+    render();
+  });
+  document.querySelectorAll('[data-mini]').forEach(function (m) {
+    m.outerHTML = '<div class="mini"><span class="art"></span><span class="tx"><p class="tt">Violent Crimes</p><p class="ts">Kanye West</p></span><span class="mini-play">' + PLAY + '</span></div><span class="home-ind"></span>';
+  });
+
+  var root = document.documentElement, btn = document.getElementById('theme');
+  try { var s = localStorage.getItem('aux-theme'); if (s === 'dark' || s === 'light') root.setAttribute('data-theme', s); } catch (e) {}
+  function sync() { btn.textContent = root.getAttribute('data-theme') === 'dark' ? 'Light mode' : 'Dark mode'; }
+  sync();
+  btn.addEventListener('click', function () {
+    var n = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', n); sync();
+    try { localStorage.setItem('aux-theme', n); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

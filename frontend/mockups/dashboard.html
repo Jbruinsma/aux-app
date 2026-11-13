@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard redo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+:root,[data-theme="light"]{--focus-ring:#6a4778;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
+[data-theme="dark"]{--focus-ring:#b593c4;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
+:root{--dur-fast:150ms;--ease:cubic-bezier(.2,0,0,1);--font-sans:Montserrat, "Segoe UI", Helvetica, Arial, sans-serif;--radius-md:6px;--radius-pill:999px;--radius-sm:3px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--surface-alt);color:var(--ink);font:400 16px/24px var(--font-sans);margin:0}
+button{color:inherit;font:inherit}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+h1,h2,p{margin:0}
+ul,ol{list-style:none;margin:0;padding:0}
+
+/* Page around the frames */
+.page{margin:0 auto;max-width:1280px;padding:var(--space-8) var(--space-6)}
+.page-head{align-items:flex-start;display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between}
+.page-head h1{font:700 28px/34px var(--font-sans)}
+.page-head p{color:var(--ink-muted);font:500 14px/20px var(--font-sans);max-width:760px}
+.theme-btn{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;font:600 14px/20px var(--font-sans);padding:10px 18px}
+.label{font:700 20px/28px var(--font-sans);margin:var(--space-8) 0 var(--space-4)}
+.stage{display:flex;flex-wrap:wrap;gap:var(--space-8);justify-content:center}
+.stage figure{margin:0}
+.stage figcaption{color:var(--ink-muted);font:600 12px/16px var(--font-sans);margin-top:var(--space-3);text-align:center}
+.notes{display:grid;gap:var(--space-6);grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:var(--space-8)}
+.notes section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-4)}
+.notes h2{font:700 20px/28px var(--font-sans);margin-bottom:var(--space-2)}
+.notes ul{font:500 14px/20px var(--font-sans);list-style:disc;padding-left:20px}
+.notes li+li{margin-top:var(--space-2)}
+
+/* Frames */
+.browser{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-md);overflow:hidden;width:100%}
+.browser-bar{align-items:center;background:var(--surface-alt);border-bottom:1px solid var(--line);display:flex;gap:6px;height:32px;padding:0 var(--space-3)}
+.browser-bar span{background:var(--line-strong);border-radius:var(--radius-pill);height:10px;width:10px}
+.phone{background:var(--surface);border:8px solid #111111;border-radius:44px;height:844px;overflow:hidden;position:relative;width:390px}
+.app{container-type:inline-size;height:100%;overflow-y:auto;scrollbar-width:none}
+.browser .app{height:auto;overflow:visible}
+.phone .app{height:calc(100% - 47px);margin-top:47px}
+.phone main{padding-bottom:100px}
+
+/* App header */
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.topin{align-items:center;display:flex;gap:var(--space-6);margin:0 auto;max-width:1120px;padding:var(--space-3) var(--space-8)}
+.logo{color:var(--primary);font:800 24px/1 var(--font-sans);letter-spacing:-.02em}
+[data-theme="dark"] .logo{color:var(--link)}
+.nav{display:flex;flex:1;gap:var(--space-4)}
+.nav span{border-bottom:3px solid transparent;color:var(--ink-muted);font:600 14px/20px var(--font-sans);padding:var(--space-2) 0}
+.nav span.on{border-bottom-color:var(--primary);color:var(--ink)}
+.acts{align-items:center;display:flex;gap:var(--space-4)}
+.av{background:#1b1b1b;border-radius:var(--radius-pill);height:32px;width:32px}
+.logout{color:var(--link);font:600 14px/20px var(--font-sans)}
+
+/* Layout */
+.wrap{margin:0 auto;max-width:1120px;padding:0 var(--space-8)}
+.hero{padding:var(--space-8) 0 0}
+.hero h1{font:700 28px/34px var(--font-sans)}
+.mini-play{border:0;cursor:pointer;padding:0}
+.meta{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.block{border-bottom:1px solid var(--line);min-width:0;padding:var(--space-8) 0}
+.split{column-gap:var(--space-8);display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+.split .block{border-bottom:0}
+.head{align-items:flex-end;display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);justify-content:space-between;margin-bottom:var(--space-6)}
+.head h2{font:700 20px/28px var(--font-sans)}
+.head>div{flex:1;min-width:0}
+.link{color:var(--link);font:600 14px/20px var(--font-sans);text-decoration:none}
+.link:hover{text-decoration:underline}
+.btn{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;font:600 14px/20px var(--font-sans);padding:10px 18px}
+.btn:hover{background:var(--surface-alt)}
+.more{margin-top:var(--space-6)}
+
+/* Song cards (sideways rows) */
+.cards{display:grid;gap:var(--space-4);grid-auto-columns:160px;grid-auto-flow:column;overflow-x:auto;padding-bottom:var(--space-3);scrollbar-width:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;position:relative}
+.card .art{aspect-ratio:1;display:block;width:100%}
+.card-play{align-items:center;background:var(--primary);border-radius:var(--radius-pill);bottom:var(--space-3);color:var(--on-primary);display:flex;height:40px;justify-content:center;opacity:0;position:absolute;right:var(--space-3);width:40px}
+.card:hover .card-play,.card.playing .card-play{opacity:1}
+.card-wrap{display:block;position:relative}
+.card-body{background:var(--surface-alt);border-top:1px solid var(--line);padding:var(--space-3) var(--space-4)}
+.card-t{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-s{color:var(--ink-muted);font:500 14px/20px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card.playing .card-body{background:var(--purple-soft)}
+.card.playing .card-t{color:var(--link)}
+
+/* Playlist tiles (PlaylistGrid style) */
+.tiles{display:grid;gap:var(--space-4);grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.tile{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .art{aspect-ratio:1;border-radius:var(--radius-sm);display:block;margin-bottom:var(--space-2);width:100%}
+.tile-name{font:600 15px/22px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile-new .art{align-items:center;background:var(--surface-alt);color:var(--ink-muted);display:flex;justify-content:center}
+.tile-new:hover .art{background:var(--purple-soft);color:var(--link)}
+.lib-tabs{display:flex;gap:var(--space-6)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--ink-muted);cursor:pointer;font:600 14px/20px var(--font-sans);padding:0 0 var(--space-2)}
+.tab.on{border-bottom-color:var(--primary);color:var(--link)}
+
+/* Top artist rows */
+.artists li{align-items:center;border-bottom:1px solid var(--line);display:grid;gap:var(--space-3);grid-template-columns:20px 44px minmax(0,1fr) auto;padding:var(--space-2) 0}
+.artists li:hover{background:var(--surface-alt)}
+.rank{color:var(--ink-muted);font:600 14px/20px var(--font-sans);text-align:right}
+.artists .art{border-radius:var(--radius-pill);height:44px;width:44px}
+.a-name{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{align-items:center;display:flex;gap:var(--space-2)}
+.bar span{background:var(--purple);border-radius:2px;height:6px}
+.bar small{color:var(--ink-muted);font:600 12px/16px var(--font-sans);min-width:56px;text-align:right;white-space:nowrap}
+
+/* Art placeholders */
+.art{background:linear-gradient(180deg,#9fb3c8 0%,#d6dde3 48%,#56685d 49%,#25302a 100%)}
+.a1{background:linear-gradient(135deg,#cfcfcf 0%,#7a7a7a 55%,#2d2d2d 100%)}
+.a2{background:linear-gradient(160deg,#6a4778 0%,#b593c4 60%,#f1ecf3 100%)}
+.a3{background:linear-gradient(200deg,#f0b47a 0%,#c0544e 55%,#3a1d2b 100%)}
+.a4{background:linear-gradient(120deg,#203a43 0%,#2c5364 50%,#9cc3c9 100%)}
+.a5{background:linear-gradient(90deg,#e6d3a3 0%,#a77d4b 100%)}
+
+/* Mini player, mobile only */
+.mini{align-items:center;background:var(--surface-alt);border:1px solid var(--line);border-radius:var(--radius-md);bottom:22px;display:flex;gap:var(--space-3);height:64px;left:8px;padding:0 var(--space-2);position:absolute;right:8px;z-index:6}
+.mini .art{border-radius:var(--radius-sm);flex:none;height:44px;width:44px}
+.mini-text{flex:1;min-width:0}
+.mini-play{align-items:center;background:var(--primary);border-radius:var(--radius-pill);color:var(--on-primary);display:flex;flex:none;height:40px;justify-content:center;width:40px}
+.home-ind{background:var(--ink);border-radius:var(--radius-pill);bottom:8px;height:5px;left:50%;opacity:.8;position:absolute;transform:translateX(-50%);width:134px;z-index:7}
+
+@container (max-width:1000px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .split .block{border-bottom:1px solid var(--line)}
+}
+@container (max-width:720px){
+  .topin{flex-wrap:wrap;gap:0;justify-content:space-between;padding:var(--space-3) var(--space-4) 0}
+  .nav{flex-basis:100%;order:3;padding-top:var(--space-3)}
+  .wrap{padding:0 var(--space-4)}
+  .hero{padding-top:var(--space-6)}
+  .hero h1{font-size:24px;line-height:30px}
+  .block{padding:var(--space-6) 0}
+  .head{margin-bottom:var(--space-4)}
+  .cards{grid-auto-columns:136px}
+  .desktop-only{display:none}
+  .tiles{gap:var(--space-4);grid-auto-columns:136px;grid-auto-flow:column;grid-template-columns:none;overflow-x:auto;padding-bottom:var(--space-3);scrollbar-width:none}
+  .artists li:nth-child(n+6){display:none}
+  .artists .bar span{display:none}
+  .card-play{opacity:1}
+}
+@container (min-width:721px){
+  .mobile-only{display:none}
+  .tiles .tile:nth-child(n+11){display:none}
+}
+@media (max-width:440px){.page{padding:var(--space-4)}.phone{border-width:0;border-radius:0;height:100dvh;width:calc(100vw - 32px)}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Dashboard redo</h1>
+      <p>Your own music first: what you played, your playlists, your uploads, then your top artists. Search and People Who Hear It Too move to Explore (see <code>explore.html</code>).</p>
+    </div>
+    <button type="button" class="theme-btn" id="theme">Dark mode</button>
+  </header>
+
+  <h2 class="label">Desktop</h2>
+  <div class="browser"><div class="browser-bar"><span></span><span></span><span></span></div><div class="app" data-dash></div></div>
+
+  <h2 class="label">Mobile</h2>
+  <div class="stage">
+    <figure><div class="phone"><div class="app" data-dash></div><div data-mini></div></div><figcaption>Top of the page</figcaption></figure>
+    <figure><div class="phone"><div class="app" data-dash data-scroll="900"></div><div data-mini></div></div><figcaption>Scrolled down</figcaption></figure>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Order and layout</h2>
+      <ul>
+        <li>The same order on every size: Recent Listening, Your Library, then My Uploads and Your Top Artists.</li>
+        <li>Desktop: Recent Listening and Your Library span the full width. My Uploads and Your Top Artists share the last row (3:2), and stack below 1000px.</li>
+        <li>Mobile: every section is a sideways row, so each one takes about the same height and the page stays short.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>What changed</h2>
+      <ul>
+        <li>The welcome area is just the greeting. Search and the playlist count are gone (search moves to Explore).</li>
+        <li>Your Library: Create is the first tile instead of the last. Desktop shows two rows and "Show all (n)", as today. The All / Mine / Saved tabs stay.</li>
+        <li>Your Top Artists becomes a ranked list (rank, round picture, name, play count bar) instead of cards. Mobile shows the top 5 and drops the bar.</li>
+        <li>People Who Hear It Too moves to Explore.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>To decide</h2>
+      <ul>
+        <li>Is the 3:2 split of Uploads and Top Artists on desktop right, or should they also be full width?</li>
+        <li>Should "See all" on Your Top Artists (mobile) open a full list, or should the section just show 10?</li>
+        <li>Does the greeting need anything next to it, such as an "Upload music" button, now that search is gone?</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var RECENT = [['Violent Crimes', 'Kanye West', ''], ['Money Trees', 'Kendrick Lamar', 'a1'], ['Nights', 'Frank Ocean', 'a2'], ['Good Days', 'SZA', 'a3'], ['Let It Happen', 'Tame Impala', 'a4'], ['Motion Sickness', 'Phoebe Bridgers', 'a5'], ['Runaway', 'Kanye West', 'a1'], ['DNA.', 'Kendrick Lamar', 'a4']];
+  var PLAYLISTS = [['Road trip', '12 songs', 'a4'], ['Late night', '8 songs', 'a2'], ['Gym', '20 songs', 'a3'], ['Indie mix', 'by maya', 'a5'], ['Sunday', '6 songs', 'a1'], ['Focus', '15 songs', ''], ['Throwbacks', '30 songs', 'a3'], ['Rainy days', '9 songs', 'a4'], ['Party', '25 songs', 'a2'], ['Chill', '11 songs', 'a5'], ['Old school', '18 songs', 'a1']];
+  var UPLOADS = [['Violent Crimes', 'Kanye West', ''], ['Money Trees', 'Kendrick Lamar', 'a1'], ['Nights', 'Frank Ocean', 'a2'], ['Alright', 'Kendrick Lamar', 'a3']];
+  var ARTISTS = [['Kanye West', 42, ''], ['Kendrick Lamar', 31, 'a1'], ['Frank Ocean', 18, 'a2'], ['SZA', 12, 'a3'], ['Tame Impala', 9, 'a4'], ['Phoebe Bridgers', 6, 'a5'], ['Mitski', 4, 'a2']];
+  var PLAY = '<svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>';
+  var PLUS = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+
+  function card(c, playing) {
+    return '<li class="card' + (playing ? ' playing' : '') + '"><span class="card-wrap"><span class="art ' + c[2] + '"></span><span class="card-play">' + PLAY + '</span></span><div class="card-body"><p class="card-t">' + c[0] + '</p><p class="card-s">' + c[1] + '</p></div></li>';
+  }
+  function tile(t) {
+    return '<li class="tile"><span class="art ' + t[2] + '"></span><p class="tile-name">' + t[0] + '</p><p class="meta">' + t[1] + '</p></li>';
+  }
+  function artist(a, i) {
+    return '<li><span class="rank">' + (i + 1) + '</span><span class="art ' + a[2] + '"></span><p class="a-name">' + a[0] + '</p><span class="bar"><span style="width:' + Math.round(a[1] / ARTISTS[0][1] * 120) + 'px"></span><small>' + a[1] + ' plays</small></span></li>';
+  }
+  function block(title, sub, body, action) {
+    return '<section class="block"><div class="head"><div><h2>' + title + '</h2>' + (sub ? '<p class="meta">' + sub + '</p>' : '') + '</div>' + (action || '') + '</div>' + body + '</section>';
+  }
+  function dashboard() {
+    var nav = ['Music', 'Explore', 'Friends', 'Charts'].map(function (n) { return '<span class="' + (n === 'Music' ? 'on' : '') + '">' + n + '</span>'; }).join('');
+    var tabs = '<div class="lib-tabs" role="tablist"><button type="button" class="tab on">All</button><button type="button" class="tab">Mine</button><button type="button" class="tab">Saved</button></div>';
+    var lib = '<ul class="tiles"><li class="tile tile-new"><span class="art">' + PLUS + '</span><p class="tile-name">Create</p><p class="meta">New playlist</p></li>' + PLAYLISTS.map(tile).join('') + '</ul>' +
+      '<button type="button" class="btn more desktop-only">Show all (' + PLAYLISTS.length + ')</button>';
+    return '<header class="top"><div class="topin"><span class="logo">Aux</span><nav class="nav">' + nav + '</nav><div class="acts"><span class="av"></span><span class="logout">Log out</span></div></div></header>' +
+      '<main><div class="wrap"><section class="hero"><h1>Welcome back, test1</h1></section>' +
+      block('Recent listening', 'The last songs you played, newest first.', '<ul class="cards">' + RECENT.map(function (c, i) { return card(c, i === 0); }).join('') + '</ul>') +
+      block('Your library', PLAYLISTS.length + ' playlists', lib, tabs) +
+      '<div class="split">' +
+      block('My uploads', UPLOADS.length + ' songs, newest first.', '<ul class="cards">' + UPLOADS.map(function (c) { return card(c); }).join('') + '</ul>', '<button type="button" class="btn">Upload music</button>') +
+      block('Your top artists', "The artists you've played most, all time.", '<ol class="artists">' + ARTISTS.map(artist).join('') + '</ol>', '<a class="link mobile-only" href="#">See all</a>') +
+      '</div></div></main>';
+  }
+
+  document.querySelectorAll('[data-dash]').forEach(function (app) {
+    app.innerHTML = dashboard();
+    if (app.dataset.scroll) app.scrollTop = +app.dataset.scroll;
+  });
+  document.querySelectorAll('[data-mini]').forEach(function (m) {
+    m.outerHTML = '<div class="mini"><span class="art"></span><span class="mini-text"><p class="card-t">Violent Crimes</p><p class="card-s">Kanye West</p></span><button type="button" class="mini-play" aria-label="Play">' + PLAY + '</button></div><span class="home-ind"></span>';
+  });
+  document.querySelectorAll('.lib-tabs').forEach(function (t) {
+    t.addEventListener('click', function (e) { var b = e.target.closest('.tab'); if (!b) return; t.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('on', x === b); }); });
+  });
+
+  var root = document.documentElement, btn = document.getElementById('theme');
+  try { var s = localStorage.getItem('aux-theme'); if (s === 'dark' || s === 'light') root.setAttribute('data-theme', s); } catch (e) {}
+  function sync() { btn.textContent = root.getAttribute('data-theme') === 'dark' ? 'Light mode' : 'Dark mode'; }
+  sync();
+  btn.addEventListener('click', function () {
+    var n = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', n); sync();
+    try { localStorage.setItem('aux-theme', n); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
