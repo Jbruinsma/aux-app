@@ -85,7 +85,7 @@ async function handleLogin() {
     userStore.login(response.user, response.token)
     notification.success('You are logged in.')
 
-    await router.push(route.query.redirect || '/dashboard')
+    await router.push(route.query.redirect || '/music')
   } catch (err) {
     // API errors are displayed by the global notification system.
     console.error('Login failed:', err)

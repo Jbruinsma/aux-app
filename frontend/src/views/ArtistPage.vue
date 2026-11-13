@@ -8,7 +8,7 @@
       <section v-else-if="status === 'missing'" class="page-state">
         <h1>This artist isn't on Aux</h1>
         <p class="meta">The link may be wrong. Find artists from your home screen.</p>
-        <router-link to="/dashboard" class="btn secondary">Go home</router-link>
+        <router-link :to="{ name: 'Dashboard' }" class="btn secondary">Go home</router-link>
       </section>
 
       <section v-else-if="status === 'error'" class="page-state">

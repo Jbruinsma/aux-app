@@ -112,7 +112,7 @@ it('keeps login success in the global store when the login view unmounts', async
   await render(Login)
   await wrapper.get('form').trigger('submit')
   await flushPromises()
-  expect(push).toHaveBeenCalledWith('/dashboard')
+  expect(push).toHaveBeenCalledWith('/music')
   wrapper.unmount()
   wrapper = null
   expect(useNotificationStore().message).toBe('You are logged in.')
