@@ -1,7 +1,31 @@
 <template>
   <div>
+    <MobilePlayer
+      v-if="isMobile && shouldShowPlayer"
+      :piece="currentMusicPiece"
+      :uploader="uploader"
+      :playlist-link="playlistLink"
+      :is-playing="isPlaying"
+      :can-play="canPlay"
+      :can-skip="canSkip"
+      :can-shuffle="canShuffle"
+      :shuffle-on="shuffleOn"
+      :repeat-mode="repeatMode"
+      :repeat-label="REPEAT_LABELS[repeatMode]"
+      :progress="progress"
+      :duration="duration"
+      :progress-fill="progressFill"
+      :current-time-label="formattedCurrentTime"
+      :duration-label="formattedDuration"
+      @toggle-play="togglePlay"
+      @prev="prevTrack"
+      @next="nextTrack"
+      @shuffle="toggleShuffle"
+      @repeat="musicStore.cycleRepeat()"
+      @seek="v => progress = v"
+    />
     <button
-      v-if="showArrow"
+      v-if="showArrow && !isMobile"
       type="button"
       class="collapse-toggle"
       :class="{ collapsed }"
@@ -15,7 +39,7 @@
       </svg>
     </button>
 
-    <div class="bottom-player" :class="{ collapsed }" v-if="shouldShowPlayer">
+    <div class="bottom-player" :class="{ collapsed }" v-if="shouldShowPlayer && !isMobile">
       <div class="now-playing-info">
         <img v-if="currentMusicPiece?.cover" class="song-cover" :src="currentMusicPiece.cover" alt="" />
         <span v-else class="song-cover cover-empty" aria-hidden="true">
@@ -50,7 +74,7 @@
       </div>
 
       <div class="controls">
-        <button type="button" class="icon-btn" :disabled="!canPlay || !musicStore.playlist.length" aria-label="Previous" @click="prevTrack">
+        <button type="button" class="icon-btn" :disabled="!canSkip" aria-label="Previous" @click="prevTrack">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M6 5h2v14H6zM19 5.5v13a.5.5 0 0 1-.77.42L9 12.42a.5.5 0 0 1 0-.84l9.23-6.5a.5.5 0 0 1 .77.42z" />
           </svg>
@@ -59,7 +83,7 @@
           <svg v-if="!isPlaying" width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
           <svg v-else width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor" /></svg>
         </button>
-        <button type="button" class="icon-btn" :disabled="!canPlay || !musicStore.playlist.length" aria-label="Next" @click="nextTrack">
+        <button type="button" class="icon-btn" :disabled="!canSkip" aria-label="Next" @click="nextTrack">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" />
           </svg>
@@ -67,7 +91,7 @@
       </div>
 
       <div class="right-side">
-        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canPlay || !musicStore.currentPlaylistUUID || !musicStore.playlist.length" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
+        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" />
             <path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" />
@@ -108,7 +132,7 @@
 
     <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" style="width:0; height:0; opacity:0;"></audio>
 
-    <div class="progress-bar-container" :class="{ collapsed }" v-if="shouldShowPlayer">
+    <div class="progress-bar-container" :class="{ collapsed }" v-if="shouldShowPlayer && !isMobile">
       <span class="time">{{ formattedCurrentTime }}</span>
       <input
         class="slider"
@@ -132,19 +156,31 @@ import { computed, watch, watchEffect, nextTick, onBeforeUnmount, ref } from 'vu
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
+import MobilePlayer from '@/components/MobilePlayer.vue'
 
 const userStore = useUserStore()
 const musicStore = useMusicStore()
 
 const collapsed = ref(false)
 
+// At 720px and below the player is a mini player that opens a full-screen one (MobilePlayer.vue), with no collapse
+const MOBILE_QUERY = '(max-width: 720px)'
+const mobileQuery = window.matchMedia?.(MOBILE_QUERY) ?? null
+const isMobile = ref(mobileQuery?.matches ?? false)
+const onMobileChange = e => { isMobile.value = e.matches }
+mobileQuery?.addEventListener?.('change', onMobileChange)
+
 // Tells the page how much room to leave under its footer (aux_styles.css)
 watchEffect(() => {
   const root = document.documentElement.classList
-  root.toggle('player-open', !collapsed.value)
-  root.toggle('player-collapsed', collapsed.value)
+  const isCollapsed = collapsed.value && !isMobile.value
+  root.toggle('player-open', !isCollapsed)
+  root.toggle('player-collapsed', isCollapsed)
 })
-onBeforeUnmount(() => document.documentElement.classList.remove('player-open', 'player-collapsed'))
+onBeforeUnmount(() => {
+  mobileQuery?.removeEventListener?.('change', onMobileChange)
+  document.documentElement.classList.remove('player-open', 'player-collapsed')
+})
 const duration = ref(0)
 const audioRef = ref(null)
 const progress  = computed({
@@ -159,6 +195,15 @@ const currentMusicPiece = computed(() => musicStore.currentMusicPiece)
 const uploader = computed(() => currentMusicPiece.value?.uploader ?? null)
 // A restored song has no audio yet, but Play can fetch it
 const canPlay = computed(() => Boolean(currentMusicPiece.value?.mp3File || (currentMusicPiece.value?.uuid && musicStore.playlist.length)))
+const canSkip = computed(() => canPlay.value && musicStore.playlist.length > 0)
+const canShuffle = computed(() => canSkip.value && Boolean(musicStore.currentPlaylistUUID))
+// "Go to playlist" needs the owner's username for the route; the name is only shown when known
+const playlistLink = computed(() => {
+  const info = musicStore.playlistInfo
+  const playlistId = musicStore.currentPlaylistUUID
+  if (!playlistId || info?.playlistId !== playlistId || !info.ownerUsername) return null
+  return { to: { name: 'Playlist', params: { username: info.ownerUsername, id: playlistId } }, name: info.name }
+})
 const isPlaying = computed(() => musicStore.isPlaying)
 const shuffleOn = computed(() => musicStore.shuffleOn)
 const repeatMode = computed(() => musicStore.repeatMode)
@@ -394,11 +439,4 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .bottom-player :focus-visible,
 .progress-bar-container :focus-visible,
 .collapse-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-
-@media (max-width: 600px) {
-  .bottom-player { flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); }
-  .controls { position: static; transform: none; }
-  .right-side { justify-content: center; }
-  .collapse-toggle { bottom: 196px; }
-}
 </style>

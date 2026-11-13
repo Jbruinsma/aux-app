@@ -272,9 +272,9 @@ it('grays out an unavailable song: labeled, not playable, still removable by edi
   expect(playPlaylist).not.toHaveBeenCalled()
 
   await wrapper.get('.actions .primary').trigger('click')
-  expect(playPlaylist).toHaveBeenLastCalledWith('p1', { start: null })
+  expect(playPlaylist).toHaveBeenLastCalledWith('p1', { start: null, name: 'Mix', ownerUsername: 'owner' })
   await rows[1].get('.track-main').trigger('click')
-  expect(playPlaylist).toHaveBeenLastCalledWith('p1', { start: 'm2' })
+  expect(playPlaylist).toHaveBeenLastCalledWith('p1', { start: 'm2', name: 'Mix', ownerUsername: 'owner' })
 
   await wrapper.get('button[aria-label="More options for Song 1"]').trigger('click')
   expect(wrapper.get('#track-menu-m1').text()).toContain('Remove from playlist')

@@ -104,11 +104,14 @@ html.player-collapsed .aux-page.with-player > footer {
   padding-bottom: 40px;
 }
 
-@media (max-width: 600px) {
+/* The mobile mini player (MobilePlayer.vue) is 64px, 8px off the bottom; its full player locks the page behind it */
+@media (max-width: 720px) {
   html.player-open .aux-page.with-player > footer {
-    padding-bottom: 196px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+body.player-sheet-open { overflow: hidden; }
 
 .aux-page *,
 .aux-page *::before,

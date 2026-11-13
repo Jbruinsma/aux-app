@@ -41,6 +41,9 @@ export const useMusicStore = defineStore('music', () => {
   // { uuid, cover, title, artist, artistId, uploader ({ userId, pfpUrl, username }), mp3File (signed URL), playToken, minListenSeconds, expiresAt }
   const currentMusicPiece = ref(emptyPiece())
   const currentPlaylistUUID = ref('')
+  // { playlistId, name, ownerUsername } for the player's "Go to playlist" link. Only trusted while playlistId matches
+  // currentPlaylistUUID; name and ownerUsername can be null when the caller didn't know them
+  const playlistInfo = ref(null)
   // The fetched queue, in play order: MusicPieceOverview items
   const playlist = ref([])
   const queueCursor = ref(null)
@@ -156,8 +159,9 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   // Replaces the queue with a playlist's, starting at `start` (a musicPieceId) or the top. With `fallback` (a piece), a
-  // playlist that's gone or can't be opened anymore (404 or 403) plays that piece on its own instead
-  async function playPlaylist(playlistId, { start = null, shuffle = false, fallback = null } = {}) {
+  // playlist that's gone or can't be opened anymore (404 or 403) plays that piece on its own instead. `name` and
+  // `ownerUsername` let the player link back to the playlist
+  async function playPlaylist(playlistId, { start = null, shuffle = false, fallback = null, name = null, ownerUsername = null } = {}) {
     const request = ++playRequest
     forceShowPlayerActive.value = true
     try {
@@ -165,6 +169,7 @@ export const useMusicStore = defineStore('music', () => {
       if (request !== playRequest) return false
       prefetched.clear()
       currentPlaylistUUID.value = playlistId
+      playlistInfo.value = { playlistId, name, ownerUsername }
       playlist.value = page.musicPieces
       queueCursor.value = page.nextCursor
       setPreferences({ shuffle })
@@ -456,6 +461,10 @@ export const useMusicStore = defineStore('music', () => {
     const same = saved?.musicPieceId === piece.musicPieceId && (saved.playlistId ?? null) === playlistId
     currentMusicPiece.value = toCurrent(piece, null)
     currentPlaylistUUID.value = playlistId ?? ''
+    // playlistName and playlistOwnerUsername are requested from the backend (BACKEND_REQUESTS.md); null until then
+    playlistInfo.value = playlistId
+      ? { playlistId, name: playbackData.playlistName ?? null, ownerUsername: playbackData.playlistOwnerUsername ?? null }
+      : null
     playlist.value = [piece]
     currentPlaylistIndex = 0
     collapsed.value = false
@@ -537,6 +546,7 @@ export const useMusicStore = defineStore('music', () => {
     collapsed.value = true
     currentMusicPiece.value = emptyPiece()
     currentPlaylistUUID.value = ''
+    playlistInfo.value = null
     playlist.value = []
     queueCursor.value = null
     isPlaying.value = false
@@ -558,6 +568,7 @@ export const useMusicStore = defineStore('music', () => {
     collapsed,
     currentMusicPiece,
     currentPlaylistUUID,
+    playlistInfo,
     playlist,
     queueCursor,
     isPlaying,

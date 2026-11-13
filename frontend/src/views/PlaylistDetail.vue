@@ -491,11 +491,16 @@ function isPlayingTrack(track) {
 function playFrom(index) {
   const track = tracks.value[index]
   if (index > 0 && !isAvailable(track)) return false
-  return musicStore.playPlaylist(id.value, { start: track && isAvailable(track) ? track.musicPieceId : null })
+  return musicStore.playPlaylist(id.value, { start: track && isAvailable(track) ? track.musicPieceId : null, ...playlistLink() })
 }
 
 function shuffle() {
-  return musicStore.playPlaylist(id.value, { shuffle: true })
+  return musicStore.playPlaylist(id.value, { shuffle: true, ...playlistLink() })
+}
+
+// Lets the player link back here
+function playlistLink() {
+  return { name: playlist.value?.playlistName ?? null, ownerUsername: owner.value.username ?? null }
 }
 
 async function toggleSaved() {

@@ -11,6 +11,31 @@ Last checked against `main` on 2026-11-12.
 
 ______________________________________________________
 
+## 1. Playlist link for the restored player
+
+For the mobile full player's "Go to playlist" option (mock: `frontend/mockups/mobile-player.html`). The playlist route
+is `/playlist/{ownerUsername}/{playlistId}`, and the menu row shows the playlist's name. During a session the frontend
+knows both from the page that started playback. After a reload the player is restored from
+`GET /api/users/me/last-playback`, which only returns `playlistId`, so the link can't be built.
+
+### GET /api/users/me/last-playback: add two fields
+
+Add `playlistOwnerUsername` (as `LastPlayback` already has) and `playlistName` to `LastPlaybackResponse`. Both are
+null whenever `playlistId` is null.
+
+Response `200`:
+```json
+{
+  "musicPiece": { /* MusicPieceOverview */ },
+  "playlistId": "p_8sK2mQ",
+  "playlistOwnerUsername": "justin",
+  "playlistName": "Road trip",
+  "playPreferences": { "shuffle": false, "repeat": "OFF" }
+}
+```
+
+Until this ships, the frontend hides "Go to playlist" for a restored song and shows it again once a playlist is played.
+
 ## Open questions
 
 - Should a password change end the user's other sessions? Tokens are stateless JWTs, so they stay valid until they

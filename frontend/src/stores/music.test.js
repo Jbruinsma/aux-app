@@ -401,3 +401,19 @@ it('labels the repeat button with its mode and moves to the next mode on click',
   expect(labels).toEqual(['Repeat: off', 'Repeat: playlist', 'Repeat: this song', 'Repeat: off'])
   wrapper.unmount()
 })
+
+it('remembers the playing playlist for the player link, from playback and from a restore', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ musicPieces: [], nextCursor: null }) })))
+  const music = useMusicStore()
+  await music.updateBottomPlayerAfterLogin({
+    playlistId: 'p_1',
+    playlistName: 'Road trip',
+    playlistOwnerUsername: 'owner',
+    musicPiece: { musicPieceId: 'm_1', name: 'Song', coverUrl: null, artistSummary: null },
+  })
+  expect(music.playlistInfo).toEqual({ playlistId: 'p_1', name: 'Road trip', ownerUsername: 'owner' })
+  await music.updateBottomPlayerAfterLogin({ playlistId: 'p_2', musicPiece: { musicPieceId: 'm_2', name: 'Song', coverUrl: null, artistSummary: null } })
+  expect(music.playlistInfo).toEqual({ playlistId: 'p_2', name: null, ownerUsername: null })
+  music.reset()
+  expect(music.playlistInfo).toBeNull()
+})
