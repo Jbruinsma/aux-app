@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { ApiError, authHeaders, endSession } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// GET /api/users/me/events: one server-sent-event stream that keeps the header and the Dashboard current. On connect the
+// GET /api/users/me/events: one server-sent-event stream that keeps the header, the Dashboard and Explore current. On connect the
 // server sends every event once; after that it resends an event, whole, whenever its data changes. Read with fetch so
 // the token goes in the Authorization header: EventSource can't send headers, and the token must never be in the URL
 const FIELDS = {
@@ -13,6 +13,7 @@ const FIELDS = {
   library: 'library',
   uploads: 'uploads',
   notifications: 'notifications',
+  matches: 'matches',
 }
 const FIRST_RETRY_MS = 1000
 const MAX_RETRY_MS = 30_000
@@ -25,7 +26,8 @@ export const useEventsStore = defineStore('events', () => {
   const library = ref(null)
   const uploads = ref(null)
   const notifications = ref(null)
-  const fields = { invites, recents, topArtists, library, uploads, notifications }
+  const matches = ref(null)
+  const fields = { invites, recents, topArtists, library, uploads, notifications, matches }
 
   // idle (logged out) | connecting | open | error (couldn't connect; still retrying)
   const status = ref('idle')
@@ -149,5 +151,5 @@ export const useEventsStore = defineStore('events', () => {
     connect()
   }
 
-  return { invites, recents, topArtists, library, uploads, notifications, status, connect, disconnect, restart }
+  return { invites, recents, topArtists, library, uploads, notifications, matches, status, connect, disconnect, restart }
 })

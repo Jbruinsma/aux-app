@@ -72,7 +72,7 @@
 
             <div class="actions">
               <button type="submit" class="btn primary" :disabled="!name.trim()">Next</button>
-              <router-link to="/dashboard" class="btn text">Cancel</router-link>
+              <router-link :to="{ name: 'Dashboard' }" class="btn text">Cancel</router-link>
             </div>
           </form>
 

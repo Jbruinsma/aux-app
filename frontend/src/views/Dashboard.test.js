@@ -131,3 +131,23 @@ it('shows uploads as cover cards that play with the rest queued after, and next 
   await cards[1].trigger('click')
   expect(playPieces).toHaveBeenCalledWith([piece(5), piece(6)], 1)
 })
+
+it('orders the sections recent, library, uploads, top artists, with no search or matches', async () => {
+  await render()
+  const headings = wrapper.findAll('h2').map((h) => h.text())
+  expect(headings).toEqual(['Recent Listening', 'Your Library', 'My Uploads', 'Your Top Artists'])
+  expect(wrapper.find('input[type="search"]').exists()).toBe(false)
+})
+
+it('ranks top artists, five at first, with Show all for the rest', async () => {
+  useEventsStore().topArtists = {
+    artists: Array.from({ length: 8 }, (_, i) => ({ artistId: `a${i}`, artistName: `Artist ${i}`, artistPfpUrl: null })),
+  }
+  await render()
+  const rows = () => wrapper.findAll('.artists li')
+  expect(rows()).toHaveLength(5)
+  expect(rows()[0].text()).toContain('1')
+  expect(rows()[0].text()).toContain('Artist 0')
+  await wrapper.get('section[aria-labelledby="artists-heading"] button.more').trigger('click')
+  expect(rows()).toHaveLength(8)
+})

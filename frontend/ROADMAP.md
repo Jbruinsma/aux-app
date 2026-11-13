@@ -239,19 +239,20 @@ There won't be a `GET /api/users/matches`. The backend sends a `matches` event o
 Dashboard section stays current. The body has the same shape as the mock in `src/utils/matches.js`, plus `sharedTags`.
 How the score works: `../backend/docs/compatibility.html`.
 
-**Files:** `src/stores/events.js`, `src/views/Dashboard.vue`, `src/utils/matches.js`
+**Files:** `src/stores/events.js`, `src/views/ExplorePage.vue`, `src/utils/matches.js`
 **Needs:** task 2
 **API:** `GET /api/users/me/events`, event `matches` (body `MatchesResponse`)
 
-- [ ] Add a `matches` field to the event store and replace it whole on each `matches` event, like the others.
-- [ ] Read the Dashboard section from the store instead of `fetchMatches`. Remove `fetchMatches`, `MATCHES_MOCKED` and
-      `PREVIEW_MATCHES` from `src/utils/matches.js`; keep `compatibilityLevel` and `nameSeparator`.
-- [ ] Expect the list to change while the page is open: it's sent again after a play by anyone, and after the user
+- [x] Add a `matches` field to the event store and replace it whole on each `matches` event, like the others.
+- [x] Read the section from the store instead of `fetchMatches`. Remove `fetchMatches`, `MATCHES_MOCKED` and
+      `PREVIEW_MATCHES` from `src/utils/matches.js`; keep `compatibilityLevel` and `nameSeparator`. (The section moved
+      from the Dashboard to Explore, task 27.)
+- [x] Expect the list to change while the page is open: it's sent again after a play by anyone, and after the user
       follows, unfollows, favorites or unfavorites an artist.
-- [ ] `sharedArtists` is empty when two people match on tags alone (those scores stop at 39, Medium). Name the shared
+- [x] `sharedArtists` is empty when two people match on tags alone (those scores stop at 39, Medium). Name the shared
       tags instead, for example "You both listen to r&b and chill."
-- [ ] Users the caller follows never appear in the list, so a match disappears after they follow it.
-- [ ] An empty `matches` means the user has no plays or favorite artists yet. Keep the "No matches yet" empty state.
+- [x] Users the caller follows never appear in the list, so a match disappears after they follow it.
+- [x] An empty `matches` means the user has no plays or favorite artists yet. Keep the "No matches yet" empty state.
 
 **Done when:** the section shows real listeners with no mock flag, and a new play updates it without a reload.
 
@@ -351,6 +352,43 @@ section instead of a blank one.
 
 **Done when:** clicking an upload opens its page, and Play starts it.
 
+### 26. Redo the Dashboard
+
+Your own music first; search and People who hear it too move to Explore (task 27). Mock: `mockups/dashboard.html`.
+
+**Files:** `src/views/Dashboard.vue`, `src/utils/streamRow.js`
+
+- [x] Greeting only at the top: no search, no playlist count.
+- [x] Order on every size: Recent Listening, Your Library, then My Uploads beside Your Top Artists (3:2, stacked below
+      1000px).
+- [x] Your Top Artists as a ranked list, five at first with "Show all".
+- [x] Phones: every section scrolls sideways, the library included, with Create as its first tile.
+- [x] The empty Saved tab's "Find playlists" opens Explore on the Playlists tab.
+
+**Done when:** the Dashboard matches the mock on desktop and phone.
+
+### 27. Build Explore
+
+Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
+
+**Files:** `src/views/ExplorePage.vue`, `src/views/ExploreTag.vue`, `src/components/TrackRows.vue`,
+`src/components/SongCards.vue`, `src/utils/explore.js`
+**API:** `GET /api/core/search`, `GET /api/tags`, `GET /api/core/top`, `GET /api/music-pieces/{musicPieceId}/discover`,
+event `matches`
+
+- [x] Search, moved from the Dashboard. The field sticks under the header; on phones a Cancel button goes back to
+      browsing. `?category=` picks the tab.
+- [x] Genres and moods: the top 12 tags as tiles (6 and "See all" on phones), each opening `/explore/tag/:tag`.
+- [x] Top this week as ranked track rows, two columns of five (top 5 and "See all" on phones).
+- [x] More like the last song played, from Discover, with "See all" opening the Discover page.
+- [x] People who hear it too (task 18).
+- [ ] Top this week: play the rows and show the play count bar once `/api/core/top` returns `musicPieceId`,
+      `uploader` and `playCount` (blocked, see below). `TrackRows` already does both when the fields are there.
+- [ ] Tag page: turn off `TAG_PIECES_MOCKED` in `src/utils/explore.js` once the tag endpoint exists (blocked, see
+      below).
+
+**Done when:** a top song and a tag page's songs play, with no mock flag left in `src/utils/explore.js`.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -375,4 +413,7 @@ section instead of a blank one.
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-Nothing is blocked right now.
+- **Task 27, Top this week:** `musicPieceId`, `uploader` and `playCount` on `GET /api/core/top`.
+- **Task 27, tag page:** `GET /api/tags/{tag}/music-pieces`.
+
+Both are in `../backend/BACKEND_REQUESTS.md`.

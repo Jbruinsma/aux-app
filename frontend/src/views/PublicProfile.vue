@@ -8,7 +8,7 @@
       <section v-else-if="status === 'missing'" class="page-state">
         <h1>No one here goes by @{{ username }}</h1>
         <p class="meta">Check the spelling, or find people from your home screen.</p>
-        <router-link to="/dashboard" class="btn secondary">Go home</router-link>
+        <router-link :to="{ name: 'Dashboard' }" class="btn secondary">Go home</router-link>
       </section>
 
       <section v-else-if="status === 'error'" class="page-state">

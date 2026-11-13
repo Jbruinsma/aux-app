@@ -8,7 +8,7 @@
       <section v-else-if="status === 'missing'" class="page-state">
         <h1>This playlist isn't available</h1>
         <p class="meta">It may have been deleted, or it's private.</p>
-        <router-link to="/dashboard" class="btn secondary">Go home</router-link>
+        <router-link :to="{ name: 'Dashboard' }" class="btn secondary">Go home</router-link>
       </section>
 
       <section v-else-if="status === 'error'" class="page-state">

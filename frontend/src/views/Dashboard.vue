@@ -3,101 +3,13 @@
     <AppHeader />
     <main>
       <section class="welcome">
-        <div class="wrap welcome-in">
-          <div class="welcome-text">
-            <h1 class="greeting">Welcome back, {{ username }}</h1>
-            <p class="meta">{{ librarySummary }}</p>
-          </div>
-
-          <form class="search" role="search" @submit.prevent>
-            <label class="sr-only" for="dash-search">Search Aux</label>
-            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              id="dash-search"
-              ref="searchInput"
-              v-model="searchText"
-              class="search-input"
-              type="search"
-              autocomplete="off"
-              maxlength="200"
-              placeholder="Search people, music and playlists"
-            />
-          </form>
+        <div class="wrap">
+          <h1 class="greeting">Welcome back, {{ username }}</h1>
         </div>
       </section>
 
       <div class="wrap below">
-        <section v-if="searching" class="block" aria-labelledby="results-heading">
-          <div class="section-head">
-            <h2 id="results-heading">Results for “{{ trimmedQuery }}”</h2>
-            <div class="tabs" role="tablist" aria-label="Search categories">
-              <button
-                v-for="item in SEARCH_TABS"
-                :key="item.id"
-                type="button"
-                role="tab"
-                class="tab"
-                :class="{ active: category === item.id }"
-                :aria-selected="category === item.id ? 'true' : 'false'"
-                @click="category = item.id"
-              >{{ item.label }}</button>
-            </div>
-          </div>
-
-          <EmptyState v-if="search.error" tone="error" :title="search.error" />
-          <EmptyState v-else-if="search.loading && !search.results.length" tone="loading" :icon="activeTab.icon" title="Searching…" />
-          <EmptyState
-            v-else-if="!search.results.length"
-            :icon="activeTab.icon"
-            :title="`No ${activeTab.label.toLowerCase()} match “${trimmedQuery}”`"
-            text="Check the spelling or try a shorter search."
-          />
-          <template v-else>
-            <p class="meta count" aria-live="polite">{{ resultCount }}</p>
-
-            <ul v-if="category === 'USERS'" class="people">
-              <li v-for="user in search.results" :key="user.userId">
-                <router-link class="person" :to="{ name: 'Profile', params: { username: user.username } }">
-                  <img v-if="user.profilePictureUrl" class="person-av" :src="resolveCoverURL(user.profilePictureUrl)" alt="" />
-                  <span v-else class="person-av person-av-empty" aria-hidden="true">{{ user.username.charAt(0).toUpperCase() }}</span>
-                  <span class="person-name">{{ user.username }}</span>
-                </router-link>
-              </li>
-            </ul>
-
-            <!-- Songs have no page or playback yet, so rows aren't clickable -->
-            <ul v-else-if="category === 'MUSIC'" class="songs">
-              <li v-for="piece in search.results" :key="piece.musicPieceId" class="song">
-                <img v-if="piece.coverUrl" class="song-art" :src="resolveCoverURL(piece.coverUrl)" alt="" />
-                <span v-else class="song-art" aria-hidden="true"></span>
-                <span class="song-text">
-                  <span class="song-title">{{ piece.name }}</span>
-                  <router-link
-                    v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
-                    class="song-artist artist-link"
-                    :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
-                  >{{ piece.artistSummary.artistName }}</router-link>
-                  <span v-else-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
-                </span>
-              </li>
-            </ul>
-
-            <PlaylistGrid v-else class="big-grid" :playlists="search.results" :owner="username" />
-
-            <button
-              v-if="search.results.length < search.total"
-              type="button"
-              class="btn secondary more"
-              :disabled="search.loading"
-              @click="loadMore"
-            >{{ search.loading ? 'Loading…' : 'Show more' }}</button>
-          </template>
-        </section>
-
-        <div v-else class="rows">
+        <div class="rows">
           <section class="block" aria-labelledby="recent-heading">
             <div class="section-head">
               <div>
@@ -166,93 +78,6 @@
             </div>
           </section>
 
-          <section class="block" aria-labelledby="artists-heading">
-            <div class="section-head">
-              <div>
-                <h2 id="artists-heading">Your Top Artists</h2>
-                <p v-if="!topArtists.preview" class="meta">The artists you've played most, all time.</p>
-              </div>
-            </div>
-
-            <EmptyState v-if="topArtists.error" tone="error" :title="topArtists.error" :text="STREAM_RETRY" />
-            <EmptyState v-else-if="topArtists.loading" tone="loading" icon="mic" title="Loading your top artists…" />
-            <EmptyState
-              v-else-if="!topArtists.items.length"
-              icon="mic"
-              title="No top artists yet"
-              text="Your most-played artists appear here once you've listened to a few songs."
-            />
-            <ol
-              v-else
-              ref="topScroller"
-              class="cards scroller"
-              :class="{ dragging: topDragging }"
-              tabindex="0"
-              aria-label="Your Top Artists"
-            >
-              <li v-for="(artist, index) in topArtists.items" :key="artist.artistId" class="card">
-                <component
-                  :is="topArtists.preview ? 'span' : 'router-link'"
-                  class="card-main"
-                  :to="topArtists.preview ? null : { name: 'Artist', params: { artistId: artist.artistId } }"
-                >
-                  <span class="card-art-wrap">
-                    <img v-if="artist.artistPfpUrl" class="card-art" :src="resolveCoverURL(artist.artistPfpUrl)" alt="" loading="lazy" />
-                    <span v-else class="card-art card-art-empty card-initial" aria-hidden="true">{{ artist.artistName.charAt(0).toUpperCase() }}</span>
-                    <span class="rank">#{{ index + 1 }}</span>
-                  </span>
-                  <span class="card-body">
-                    <span class="card-title">{{ artist.artistName }}</span>
-                  </span>
-                </component>
-              </li>
-            </ol>
-          </section>
-
-          <section class="block" aria-labelledby="match-heading">
-            <div class="section-head">
-              <div>
-                <h2 id="match-heading">People Who Hear It Too</h2>
-                <p class="meta">
-                  {{ MATCHES_MOCKED
-                    ? "Preview: matching isn't live yet, so these are sample listeners."
-                    : 'Listeners who share your favorite artists, with your compatibility score.' }}
-                </p>
-              </div>
-            </div>
-
-            <EmptyState v-if="matches.error" tone="error" :title="matches.error" text="Check that the server is running, then refresh the page." />
-            <EmptyState v-else-if="matches.loading" tone="loading" icon="users" title="Finding people who hear it too…" />
-            <EmptyState
-              v-else-if="!matches.items.length"
-              icon="users"
-              title="No matches yet"
-              text="Keep listening. Aux matches you with people once it knows your favorite artists."
-            />
-            <ul v-else class="matches">
-              <li v-for="match in matches.items" :key="match.user.userId" class="match">
-                <div class="match-top">
-                  <img v-if="match.user.pfpUrl" class="match-av" :src="resolveCoverURL(match.user.pfpUrl)" alt="" />
-                  <span v-else class="match-av match-av-empty" aria-hidden="true">{{ match.user.username.charAt(0).toUpperCase() }}</span>
-                  <p class="match-line">
-                    Your musical compatibility with
-                    <span v-if="MATCHES_MOCKED" class="match-name">{{ match.user.username }}</span>
-                    <router-link v-else class="match-name" :to="{ name: 'Profile', params: { username: match.user.username } }">{{ match.user.username }}</router-link>
-                    is <span class="level">{{ compatibilityLevel(match.compatibility).label }}</span>
-                  </p>
-                </div>
-                <div class="meter" role="img" :aria-label="`${match.compatibility} percent compatible`">
-                  <span v-for="n in 5" :key="n" class="seg" :class="{ filled: n <= compatibilityLevel(match.compatibility).filled }"></span>
-                  <span class="pct">{{ match.compatibility }}%</span>
-                </div>
-                <p v-if="match.sharedArtists.length" class="shared">
-                  You both listen to
-                  <template v-for="(artist, index) in match.sharedArtists" :key="artist.artistId"><b>{{ artist.artistName }}</b>{{ nameSeparator(index, match.sharedArtists.length) }}</template>.
-                </p>
-              </li>
-            </ul>
-          </section>
-
           <section class="block" aria-labelledby="library-heading">
             <div class="section-head">
               <h2 id="library-heading">Your Library</h2>
@@ -279,7 +104,7 @@
             >
               <button type="button" class="btn secondary" @click="findPlaylists">Find playlists</button>
             </EmptyState>
-            <PlaylistGrid v-else class="big-grid" :playlists="shownLibrary" :owner="username">
+            <PlaylistGrid v-else ref="libraryGrid" class="big-grid" :class="{ dragging: libraryDragging }" :playlists="shownLibrary" :owner="username">
               <li v-if="libraryFilter !== 'saved'">
                 <button type="button" class="new-tile" @click="createDialog.open()">
                   <span class="new-cover">
@@ -293,7 +118,7 @@
               </li>
             </PlaylistGrid>
             <button
-              v-if="!libraryLoading && !libraryError && filteredLibrary.length > LIBRARY_PREVIEW_COUNT"
+              v-if="!isMobile && !libraryLoading && !libraryError && filteredLibrary.length > LIBRARY_PREVIEW_COUNT"
               type="button"
               class="btn secondary more"
               :aria-expanded="libraryExpanded ? 'true' : 'false'"
@@ -301,54 +126,97 @@
             >{{ libraryExpanded ? 'Show less' : `More (${filteredLibrary.length - LIBRARY_PREVIEW_COUNT})` }}</button>
           </section>
 
-          <section class="block" aria-labelledby="uploads-heading">
-            <div class="section-head">
-              <div>
-                <h2 id="uploads-heading">My Uploads</h2>
-                <p class="meta">{{ uploadsSummary }}</p>
+          <div class="split">
+            <section class="block" aria-labelledby="uploads-heading">
+              <div class="section-head">
+                <div>
+                  <h2 id="uploads-heading">My Uploads</h2>
+                  <p class="meta">{{ uploadsSummary }}</p>
+                </div>
+                <router-link v-if="uploads.items.length" :to="{ name: 'Upload' }" class="btn secondary">Upload music</router-link>
               </div>
-              <router-link v-if="uploads.items.length" :to="{ name: 'Upload' }" class="btn secondary">Upload music</router-link>
-            </div>
 
-            <EmptyState v-if="uploads.error" tone="error" :title="uploads.error" :text="STREAM_RETRY" />
-            <EmptyState v-else-if="uploads.loading" tone="loading" title="Loading your uploads…" />
-            <EmptyState
-              v-else-if="!uploads.items.length"
-              title="No uploads yet"
-              text="Upload an MP3 to start your library."
-            >
-              <router-link :to="{ name: 'Upload' }" class="btn primary">Upload music</router-link>
-            </EmptyState>
-            <ul
-              v-else
-              ref="uploadsScroller"
-              class="cards scroller"
-              :class="{ dragging: uploadsDragging }"
-              tabindex="0"
-              aria-label="My Uploads songs"
-            >
-              <li v-for="(piece, index) in uploads.items" :key="piece.musicPieceId" class="card" :class="{ playing: isPlayingUpload(piece) }">
-                <button type="button" class="card-main" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
-                  <span class="card-art-wrap">
-                    <img v-if="piece.coverUrl" class="card-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
-                    <span v-else class="card-art card-art-empty" aria-hidden="true">
-                      <svg class="card-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+              <EmptyState v-if="uploads.error" tone="error" :title="uploads.error" :text="STREAM_RETRY" />
+              <EmptyState v-else-if="uploads.loading" tone="loading" title="Loading your uploads…" />
+              <EmptyState
+                v-else-if="!uploads.items.length"
+                title="No uploads yet"
+                text="Upload an MP3 to start your library."
+              >
+                <router-link :to="{ name: 'Upload' }" class="btn primary">Upload music</router-link>
+              </EmptyState>
+              <ul
+                v-else
+                ref="uploadsScroller"
+                class="cards scroller"
+                :class="{ dragging: uploadsDragging }"
+                tabindex="0"
+                aria-label="My Uploads songs"
+              >
+                <li v-for="(piece, index) in uploads.items" :key="piece.musicPieceId" class="card" :class="{ playing: isPlayingUpload(piece) }">
+                  <button type="button" class="card-main" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
+                    <span class="card-art-wrap">
+                      <img v-if="piece.coverUrl" class="card-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
+                      <span v-else class="card-art card-art-empty" aria-hidden="true">
+                        <svg class="card-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+                      </span>
+                      <span class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg></span>
                     </span>
-                    <span class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg></span>
-                  </span>
-                  <span class="card-body">
-                    <span class="card-title">{{ piece.name }}</span>
-                    <span v-if="piece.artistSummary?.artistName" class="card-meta">{{ piece.artistSummary.artistName }}</span>
-                  </span>
-                </button>
-                <button type="button" class="card-edit" :aria-label="`Edit ${piece.name}`" title="Edit song" @click="editDialog.open(piece)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
-                  </svg>
-                </button>
-              </li>
-            </ul>
-          </section>
+                    <span class="card-body">
+                      <span class="card-title">{{ piece.name }}</span>
+                      <span v-if="piece.artistSummary?.artistName" class="card-meta">{{ piece.artistSummary.artistName }}</span>
+                    </span>
+                  </button>
+                  <button type="button" class="card-edit" :aria-label="`Edit ${piece.name}`" title="Edit song" @click="editDialog.open(piece)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
+                    </svg>
+                  </button>
+                </li>
+              </ul>
+            </section>
+
+            <section class="block" aria-labelledby="artists-heading">
+              <div class="section-head">
+                <div>
+                  <h2 id="artists-heading">Your Top Artists</h2>
+                  <p v-if="!topArtists.preview" class="meta">The artists you've played most, all time.</p>
+                </div>
+              </div>
+
+              <EmptyState v-if="topArtists.error" tone="error" :title="topArtists.error" :text="STREAM_RETRY" />
+              <EmptyState v-else-if="topArtists.loading" tone="loading" icon="mic" title="Loading your top artists…" />
+              <EmptyState
+                v-else-if="!topArtists.items.length"
+                icon="mic"
+                title="No top artists yet"
+                text="Your most-played artists appear here once you've listened to a few songs."
+              />
+              <template v-else>
+                <ol class="artists" aria-label="Your Top Artists">
+                  <li v-for="(artist, index) in shownArtists" :key="artist.artistId">
+                    <component
+                      :is="topArtists.preview ? 'span' : 'router-link'"
+                      class="artist-row"
+                      :to="topArtists.preview ? null : { name: 'Artist', params: { artistId: artist.artistId } }"
+                    >
+                      <span class="artist-rank">{{ index + 1 }}</span>
+                      <img v-if="artist.artistPfpUrl" class="artist-av" :src="resolveCoverURL(artist.artistPfpUrl)" alt="" loading="lazy" />
+                      <span v-else class="artist-av artist-av-empty" aria-hidden="true">{{ artist.artistName.charAt(0).toUpperCase() }}</span>
+                      <span class="artist-name">{{ artist.artistName }}</span>
+                    </component>
+                  </li>
+                </ol>
+                <button
+                  v-if="topArtists.items.length > ARTISTS_PREVIEW_COUNT"
+                  type="button"
+                  class="btn secondary more"
+                  :aria-expanded="artistsExpanded ? 'true' : 'false'"
+                  @click="artistsExpanded = !artistsExpanded"
+                >{{ artistsExpanded ? 'Show less' : `Show all (${topArtists.items.length})` }}</button>
+              </template>
+            </section>
+          </div>
         </div>
 
       </div>
@@ -360,7 +228,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -368,28 +236,20 @@ import CreateDialog from '@/components/CreateDialog.vue'
 import EditPieceDialog from '@/components/EditPieceDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import PlaylistGrid from '@/components/PlaylistGrid.vue'
-import { fetchAPI } from '@/utils/api.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
-import { API_BASE_URL } from '@/utils/variables.js'
-import { MATCHES_MOCKED, compatibilityLevel, fetchMatches, nameSeparator } from '@/utils/matches.js'
-import { DASHBOARD_PREVIEW, PREVIEW_RECENTS, PREVIEW_TOP_ARTISTS } from '@/utils/dashboardPreview.js'
+import { PREVIEW_RECENTS, PREVIEW_TOP_ARTISTS } from '@/utils/dashboardPreview.js'
 import { useDragScroll } from '@/utils/dragScroll.js'
+import { STREAM_RETRY, useStreamRow } from '@/utils/streamRow.js'
 import { useMusicStore } from '@/stores/music.js'
-import { useEventsStore } from '@/stores/events.js'
 
-const SEARCH_TABS = [
-  { id: 'USERS', label: 'People', icon: 'users' },
-  { id: 'MUSIC', label: 'Music', icon: 'disc' },
-  { id: 'PLAYLISTS', label: 'Playlists', icon: 'music' },
-]
 const LIBRARY_TABS = [
   { id: 'all', label: 'All' },
   { id: 'yours', label: 'Yours' },
   { id: 'saved', label: 'Saved' },
 ]
-const PAGE_SIZE = 20
-const DEBOUNCE_MS = 300
+// Top artists shown before "Show all"
+const ARTISTS_PREVIEW_COUNT = 5
 
 const router = useRouter()
 const createDialog = ref(null)
@@ -398,32 +258,15 @@ const userStore = useUserStore()
 
 const username = computed(() => userStore.userData?.username ?? '')
 
-const eventsStore = useEventsStore()
+// The rows come from the live event stream (stores/events.js); see utils/streamRow.js
+const streamRow = useStreamRow
 
-// The rows come from the live event stream (stores/events.js). A row is loading until its event arrives, and shows an
-// error only while the stream can't connect and nothing has arrived yet; data already shown stays if it drops later.
-// `placeholder` fills a row only while the account's own list is empty (DASHBOARD_PREVIEW)
-const STREAM_RETRY = "Check that the server is running; we'll keep trying."
-
-function streamRow(field, key, what, placeholder = []) {
-  return computed(() => {
-    const body = eventsStore[field]
-    if (body === null) {
-      const failed = eventsStore.status === 'error'
-      return {
-        items: [],
-        loading: !failed,
-        error: failed ? `We couldn't load ${what}.` : '',
-        preview: false,
-      }
-    }
-    const items = (key ? body[key] : body) ?? []
-    if (!items.length && DASHBOARD_PREVIEW && placeholder.length) {
-      return { items: placeholder, loading: false, error: '', preview: true }
-    }
-    return { items, loading: false, error: '', preview: false }
-  })
-}
+// Phones show every section as a sideways row, so the library lists all its playlists there instead of a preview
+const mobileQuery = window.matchMedia?.('(max-width: 720px)') ?? null
+const isMobile = ref(mobileQuery?.matches ?? false)
+const onMobileChange = (e) => { isMobile.value = e.matches }
+mobileQuery?.addEventListener?.('change', onMobileChange)
+onBeforeUnmount(() => mobileQuery?.removeEventListener?.('change', onMobileChange))
 
 // Library: the `library` event, an array of LibraryPlaylist. `isSaved` means saved from someone else
 const libraryRow = streamRow('library', null, 'your library')
@@ -463,10 +306,9 @@ function playRecent({ musicPiece, playlistId, playlistOwnerUsername, playlistNam
   return musicStore.playPlaylist(playlistId, { start: musicPiece.musicPieceId, shuffle: musicStore.shuffleOn, fallback: musicPiece, name: playlistName ?? null, ownerUsername: playlistOwnerUsername ?? null })
 }
 
-// Next step for an empty Saved tab: search playlists
+// Next step for an empty Saved tab: search playlists on Explore
 function findPlaylists() {
-  category.value = 'PLAYLISTS'
-  searchInput.value?.focus()
+  router.push({ name: 'Explore', query: { category: 'PLAYLISTS' } })
 }
 const libraryExpanded = ref(false)
 
@@ -477,41 +319,25 @@ const filteredLibrary = computed(() => {
 })
 
 const shownLibrary = computed(() =>
-  libraryExpanded.value ? filteredLibrary.value : filteredLibrary.value.slice(0, LIBRARY_PREVIEW_COUNT),
+  libraryExpanded.value || isMobile.value ? filteredLibrary.value : filteredLibrary.value.slice(0, LIBRARY_PREVIEW_COUNT),
 )
-
-const librarySummary = computed(() => {
-  if (libraryLoading.value || libraryError.value) return 'Your music, your people.'
-  const saved = library.value.filter((p) => p.isSaved).length
-  const own = library.value.length - saved
-  const ownText = own === 1 ? '1 playlist' : `${own} playlists`
-  return saved ? `${ownText} · ${saved} saved` : ownText
-})
-
 
 // Recent listening and top artists: the `recents` and `top-artists` events, up to 20 each, all in the scrolling rows
 const recent = streamRow('recents', 'recents', 'your recent listening', PREVIEW_RECENTS)
 const topArtists = streamRow('topArtists', 'artists', 'your top artists', PREVIEW_TOP_ARTISTS)
-const matches = reactive({ items: [], loading: true, error: '' })
-
-async function loadRow(state, load, key, what) {
-  try {
-    state.items = (await load())[key] ?? []
-  } catch (err) {
-    if (err.sessionEnded) return
-    state.error = `We couldn't load ${what}.`
-  } finally {
-    state.loading = false
-  }
-}
+const artistsExpanded = ref(false)
+const shownArtists = computed(() =>
+  artistsExpanded.value ? topArtists.value.items : topArtists.value.items.slice(0, ARTISTS_PREVIEW_COUNT),
+)
 
 /* The card rows scroll sideways by mouse drag too. Recent Listening shows a hint (a pointer dragging the row) every
    HINT_EVERY_MS until the user drags it themselves; it never shows when they prefer reduced motion */
 
 const HINT_EVERY_MS = 10_000
 const recentScroller = ref(null)
-const topScroller = ref(null)
 const uploadsScroller = ref(null)
+const libraryGrid = ref(null)
+const libraryScroller = computed(() => libraryGrid.value?.$el ?? null)
 const hinting = ref(false)
 const hintRun = ref(0)
 const hintDismissed = ref(false)
@@ -525,7 +351,7 @@ const { dragging: recentDragging } = useDragScroll(recentScroller, {
     clearInterval(hintTimer)
   },
 })
-const { dragging: topDragging } = useDragScroll(topScroller)
+const { dragging: libraryDragging } = useDragScroll(libraryScroller)
 const { dragging: uploadsDragging } = useDragScroll(uploadsScroller)
 
 function playHint() {
@@ -550,72 +376,10 @@ onBeforeUnmount(() => {
   clearTimeout(firstHint)
 })
 
-// Search: GET /api/core/search, one category at a time
-const searchText = ref('')
-const searchInput = ref(null)
-const category = ref('USERS')
-const search = reactive({ results: [], total: 0, loading: false, error: '' })
-const trimmedQuery = computed(() => searchText.value.trim())
-const searching = computed(() => trimmedQuery.value.length > 0)
-const activeTab = computed(() => SEARCH_TABS.find((t) => t.id === category.value))
-const resultCount = computed(() => (search.total === 1 ? '1 result' : `${search.total} results`))
-
-let requestId = 0
-let debounceTimer = null
-
-async function runSearch(offset) {
-  const id = ++requestId
-  search.loading = true
-  search.error = ''
-  const params = new URLSearchParams({
-    category: category.value,
-    query: trimmedQuery.value,
-    limit: PAGE_SIZE,
-    offset,
-  })
-  try {
-    const page = await fetchAPI(`${API_BASE_URL}/api/core/search?${params}`)
-    if (id !== requestId) return
-    search.results = offset === 0 ? page.results : [...search.results, ...page.results]
-    search.total = page.totalResults
-  } catch (err) {
-    if (id !== requestId) return
-    search.error = err.code === 'RATE_LIMITED'
-      ? 'Too many searches at once. Wait a few seconds, then try again.'
-      : "Search isn't working right now. Check that the server is running, then try again."
-  } finally {
-    if (id === requestId) search.loading = false
-  }
-}
-
-function loadMore() {
-  runSearch(search.results.length)
-}
-
-watch(trimmedQuery, (query) => {
-  clearTimeout(debounceTimer)
-  if (!query) {
-    requestId++
-    Object.assign(search, { results: [], total: 0, loading: false, error: '' })
-    return
-  }
-  search.loading = true
-  debounceTimer = setTimeout(() => runSearch(0), DEBOUNCE_MS)
-})
-
-watch(category, () => {
-  clearTimeout(debounceTimer)
-  search.results = []
-  if (searching.value) runSearch(0)
-})
-
 onMounted(async () => {
   if (!username.value) {
-    await router.push({ name: 'Login', query: { redirect: '/dashboard' } })
-    return
+    await router.push({ name: 'Login', query: { redirect: '/music' } })
   }
-
-  loadRow(matches, fetchMatches, 'matches', 'people who hear it too')
 })
 </script>
 
@@ -624,19 +388,14 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
 .sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
-.welcome { border-bottom: 1px solid var(--line); }
-.welcome-in { display: flex; flex-direction: column; gap: var(--space-4); padding-bottom: var(--space-8); padding-top: var(--space-8); }
-.welcome-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.welcome { padding-top: var(--space-8); }
 .greeting { font: 700 28px/34px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
-
-.search { max-width: 560px; position: relative; }
-.search-icon { color: var(--ink-muted); left: var(--space-3); pointer-events: none; position: absolute; top: 50%; transform: translateY(-50%); }
-.search-input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font: 400 16px/24px var(--font-sans); padding: 8px var(--space-3) 8px 40px; width: 100%; }
 
 .wrap { padding-left: var(--page-gutter); padding-right: var(--page-gutter); }
 .below { padding-bottom: var(--space-8); }
 .block { border-bottom: 1px solid var(--line); min-width: 0; padding: var(--space-8) 0; }
-.rows { column-gap: var(--space-8); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.split { column-gap: var(--space-8); display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.split .block { border-bottom: 0; }
 .section-head { align-items: flex-end; display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); justify-content: space-between; margin-bottom: var(--space-6); }
 
 .tabs { display: flex; gap: var(--space-6); }
@@ -700,23 +459,7 @@ button.card-main:hover .card-title, a.card-main:hover .card-title, .playing .car
 .uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.matches { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); list-style: none; margin: 0; padding: 0; }
-.match { background: var(--surface-alt); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
-.match-top { align-items: center; display: flex; gap: var(--space-3); }
-.match-av { border-radius: var(--radius-pill); flex: none; height: 44px; object-fit: cover; width: 44px; }
-.match-av-empty { background: var(--primary); color: var(--on-primary); display: grid; font: 700 17px/1 var(--font-sans); place-items: center; }
-.match-line { font: 400 15px/22px var(--font-sans); margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.match-name { color: var(--ink); font-weight: 700; text-decoration: none; }
-a.match-name:hover { color: var(--link); text-decoration: underline; }
-.level { color: var(--link); font-weight: 700; }
-.meter { align-items: center; display: flex; gap: var(--space-1); }
-.seg { background: var(--surface); border-radius: 2px; flex: 1; height: 8px; }
-.seg.filled { background: var(--primary); }
-.pct { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); margin-left: var(--space-2); }
-.shared { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }
-.shared b { color: var(--ink); font-weight: 600; }
 
-.count { margin: calc(var(--space-3) * -1) 0 var(--space-4); }
 .below .big-grid { gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .new-tile { background: none; border: 0; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 0; text-align: left; width: 100%; }
 .new-cover { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-sm); color: var(--ink-muted); display: grid; margin-bottom: var(--space-2); place-items: center; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
@@ -724,31 +467,32 @@ a.match-name:hover { color: var(--link); text-decoration: underline; }
 .new-tile:hover .new-name { color: var(--link); text-decoration: underline; }
 .new-name { font: 600 15px/22px var(--font-sans); }
 
-.people { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); list-style: none; margin: 0; padding: 0; }
-.person { align-items: center; color: var(--ink); display: flex; flex-direction: column; gap: var(--space-3); text-decoration: none; }
-.person:hover .person-name { color: var(--link); text-decoration: underline; }
-.person-av { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-pill); object-fit: cover; width: 100%; }
-.person-av-empty { background: var(--primary); color: var(--on-primary); display: grid; font: 800 48px/1 var(--font-sans); place-items: center; }
-.person-name { font: 600 16px/24px var(--font-sans); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.songs { column-gap: var(--space-8); display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); list-style: none; margin: 0; padding: 0; }
-.song { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: var(--space-3); padding: var(--space-3) 0; }
-.song-art { background: var(--surface-alt); border-radius: var(--radius-sm); flex: none; height: 56px; object-fit: cover; width: 56px; }
-.song-text { display: flex; flex-direction: column; min-width: 0; }
-.song-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.song-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.artist-link { text-decoration: none; }
-.artist-link:hover { color: var(--link); text-decoration: underline; }
 .more { margin-top: var(--space-6); }
 
-@media (max-width: 1100px) {
-  .rows { grid-template-columns: minmax(0, 1fr); }
+.artists { list-style: none; margin: 0; padding: 0; }
+.artist-row { align-items: center; border-bottom: 1px solid var(--line); color: var(--ink); display: grid; gap: var(--space-3); grid-template-columns: 20px 44px minmax(0, 1fr); padding: var(--space-2) var(--space-3); text-decoration: none; }
+.artists li:first-child .artist-row { border-top: 1px solid var(--line); }
+a.artist-row:hover { background: var(--surface-alt); }
+a.artist-row:hover .artist-name { color: var(--link); }
+a.artist-row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.artist-rank { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); text-align: right; }
+.artist-av { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-pill); display: block; height: 44px; object-fit: cover; width: 44px; }
+.artist-av-empty { background: var(--purple-soft); color: var(--link); display: grid; font: 700 17px/1 var(--font-sans); place-items: center; }
+.artist-name { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1000px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .split .block { border-bottom: 1px solid var(--line); }
+  .split .block:last-child { border-bottom: 0; }
 }
 @media (max-width: 720px) {
-  .welcome-in { padding-bottom: var(--space-6); padding-top: var(--space-6); }
+  .welcome { padding-top: var(--space-6); }
+  .greeting { font-size: 24px; line-height: 30px; }
+  .block { padding: var(--space-6) 0; }
+  .section-head { margin-bottom: var(--space-4); }
   .scroller { grid-auto-columns: 136px; }
-  .songs { grid-template-columns: 1fr; }
-  .below .big-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .people { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .below .big-grid { cursor: grab; grid-auto-columns: 136px; grid-auto-flow: column; grid-template-columns: none; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: var(--space-3); scrollbar-color: var(--line-strong) transparent; scrollbar-width: thin; }
+  .below .big-grid.dragging { cursor: grabbing; user-select: none; }
 }
 </style>
