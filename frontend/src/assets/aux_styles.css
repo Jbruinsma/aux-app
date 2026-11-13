@@ -17,6 +17,9 @@
   --focus-ring: #6a4778;
   --danger: #b42318;
   --success: #2e7d5b;
+  /* How strongly the cover color shows behind the full players: at the cover, and halfway out */
+  --glow-in: 60%;
+  --glow-mid: 24%;
 }
 
 [data-theme='dark'] {
@@ -36,6 +39,8 @@
   --focus-ring: #b593c4;
   --danger: #f97066;
   --success: #6ccb9a;
+  --glow-in: 70%;
+  --glow-mid: 30%;
 }
 
 :root {
@@ -112,6 +117,14 @@ html.player-collapsed .aux-page.with-player > footer {
 }
 
 body.player-sheet-open { overflow: hidden; }
+
+/* The playing cover's most prominent color (src/utils/coverColor.js). Registered as a color so it fades between songs
+   instead of jumping */
+@property --glow {
+  inherits: true;
+  initial-value: transparent;
+  syntax: '<color>';
+}
 
 .aux-page *,
 .aux-page *::before,
