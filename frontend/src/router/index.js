@@ -18,6 +18,7 @@ import Discover from '@/views/Discover.vue'
 import ExplorePage from '@/views/ExplorePage.vue'
 import ExploreTag from '@/views/ExploreTag.vue'
 import ArtistPage from '@/views/ArtistPage.vue'
+import ArtistsPage from '@/views/ArtistsPage.vue'
 import { useUserStore } from '@/stores/user.js'
 
 const routes = [
@@ -91,7 +92,13 @@ const routes = [
   { path: '/add/:username/:id', name: 'Add', component: AddMusic },
   { path: '/add-friends/:username/:id', name: 'AddFriends', component: AddFriends },
   { path: '/edit-playlist/:username/:id', name: 'Edit', component: EditPlaylist },
-  { path: '/artist/:artistId', name: 'Artist', component: ArtistPage },
+  { path: '/artist/:artistId', name: 'Artist', component: ArtistPage, meta: { nav: 'Artists' } },
+  {
+    path: '/artists',
+    name: 'Artists',
+    component: ArtistsPage,
+    beforeEnter: () => (useUserStore().loggedIn ? true : { name: 'Login' }),
+  },
 ]
 
 const router = createRouter({

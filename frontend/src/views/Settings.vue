@@ -204,6 +204,29 @@
               Turn this back on if you chose "Save my option" by mistake. This setting is saved on this browser.
             </p>
           </section>
+
+          <section aria-labelledby="follows-heading">
+            <h2 id="follows-heading">Who can see your followers</h2>
+            <fieldset class="choices" aria-describedby="follows-hint">
+              <legend class="visually-hidden">Who can see your followers and the people you follow</legend>
+              <label v-for="option in FOLLOWS_VISIBILITY" :key="option.id" class="check">
+                <input
+                  type="radio"
+                  name="follows-visibility"
+                  :value="option.id"
+                  :checked="followsVisibility === option.id"
+                  :disabled="savingVisibility"
+                  @change="changeFollowsVisibility(option.id)"
+                />
+                {{ option.label }}<span v-if="option.hint" class="choice-hint">{{ option.hint }}</span>
+              </label>
+            </fieldset>
+            <p id="follows-hint" class="hint">
+              Applies to both lists on your profile: your followers and the people you follow. Your counts still show.
+              <template v-if="FOLLOWS_MOCKED"> For now this is saved on this browser only.</template>
+            </p>
+            <p v-if="visibilityError" class="error" role="alert">{{ visibilityError }}</p>
+          </section>
         </div>
 
         <aside class="side" aria-labelledby="preview-heading">
@@ -569,6 +592,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { BANNER_ERRORS, PHOTO_ERRORS, bannerProblem, photoProblem } from '@/utils/photo.js'
 import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerCropRect, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
 import { COUNTRIES } from '@/utils/countries.js'
+import { FOLLOWS_MOCKED, FOLLOWS_VISIBILITY, readFollowsVisibility, saveFollowsVisibility } from '@/utils/follows.js'
 import { setSkipExternalWarning, skipExternalWarning } from '@/utils/externalLinks.js'
 import {
   ACCOUNT_MOCKED,
@@ -827,11 +851,34 @@ function showDetails(saved) {
   details.about = saved?.about ?? ''
 }
 
+// Who can see your followers and following: saves as soon as it's picked, and goes back if the save fails
+const followsVisibility = ref(readFollowsVisibility(null, userStore.userData?.userId))
+const savingVisibility = ref(false)
+const visibilityError = ref('')
+
+async function changeFollowsVisibility(next) {
+  const previous = followsVisibility.value
+  followsVisibility.value = next
+  visibilityError.value = ''
+  savingVisibility.value = true
+  try {
+    followsVisibility.value = await saveFollowsVisibility(next, userStore.userData?.userId)
+    notification.success(`${FOLLOWS_VISIBILITY.find((option) => option.id === followsVisibility.value)?.label ?? 'Your choice'} can now see your followers.`)
+  } catch (err) {
+    if (err.sessionEnded) return
+    followsVisibility.value = previous
+    visibilityError.value = "We couldn't save who can see your followers. Check that the server is running, then try again."
+  } finally {
+    savingVisibility.value = false
+  }
+}
+
 // The settings endpoint has the saved details, banner and email
 async function loadSettings() {
   try {
     const settings = await fetchSettings()
     showDetails(settings.profileDetails)
+    followsVisibility.value = readFollowsVisibility(settings, userStore.userData?.userId)
     currentEmail.value = settings.email
     userStore.updateUser({ bannerUrl: settings.bannerUrl })
   } catch (err) {
@@ -1312,6 +1359,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 
 .check { display: flex; align-items: center; gap: var(--space-2); font: 600 14px/20px var(--font-sans); cursor: pointer; margin-bottom: var(--space-1); }
 .check input { width: 16px; height: 16px; accent-color: var(--primary); }
+.choices { border: 0; display: flex; flex-direction: column; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; }
+.choice-hint { color: var(--ink-muted); font-weight: 500; margin-left: var(--space-1); }
 
 .select-wrap { position: relative; }
 .select { appearance: none; -webkit-appearance: none; padding-right: calc(var(--space-4) + 28px); cursor: pointer; }

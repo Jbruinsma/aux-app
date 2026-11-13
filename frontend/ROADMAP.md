@@ -5,7 +5,7 @@ in place, all boxes ticked, so the team can see what's done. Exact request and r
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-11-12.
+Last updated 2026-11-13.
 
 ______________________________________________________
 
@@ -220,14 +220,14 @@ and `uploadsCount`. The three counts are **strings**, not numbers: exact up to 9
 **Files:** `src/views/PublicProfile.vue`
 **API:** `PUT /api/users/{username}/follow`, `DELETE /api/users/{username}/follow`, `GET /api/users/profile/{username}`
 
-- [ ] Enable the Follow button and remove the "Following is coming soon." hint and its `aria-describedby`.
-- [ ] Follow sends `PUT`, and Following (unfollow) sends `DELETE`. Both return `204` with no body, and repeating either
+- [x] Enable the Follow button and remove the "Following is coming soon." hint and its `aria-describedby`.
+- [x] Follow sends `PUT`, and Following (unfollow) sends `DELETE`. Both return `204` with no body, and repeating either
       one does nothing, so a double click is safe.
-- [ ] Flip `isFollowing` straight away, then load the profile again to get the new counts. Don't add or subtract 1 from
+- [x] Flip `isFollowing` straight away, then load the profile again to get the new counts. Don't add or subtract 1 from
       `followersCount`: it's a string like `1.2K`. Put `isFollowing` back if the request fails.
-- [ ] Handle `404 USER_NOT_FOUND` from `PUT` (the user changed their username or was deleted). `DELETE` never returns
+- [x] Handle `404 USER_NOT_FOUND` from `PUT` (the user changed their username or was deleted). `DELETE` never returns
       404.
-- [ ] Show the counts as they come; don't format them again. Change the `?? 0` fallbacks in `stats` to `?? '0'` and
+- [x] Show the counts as they come; don't format them again. Change the `?? 0` fallbacks in `stats` to `?? '0'` and
       remove the comment saying the counts aren't in the response yet.
 
 **Done when:** following a user turns the button into Following and raises their follower count after the reload, and
@@ -310,8 +310,8 @@ section instead of a blank one.
 **Files:** `src/utils/artist.js`, `src/views/ArtistPage.vue`
 **API:** `GET /api/artists/{artistId}/music-pieces` (public, token optional)
 
-- [ ] Replace the search workaround in `fetchArtistPieces` with the new endpoint. It's ordered most played first.
-- [ ] Load more pages with `nextCursor`, the same way playlist track lists do.
+- [x] Replace the search workaround in `fetchArtistPieces` with the new endpoint. It's ordered most played first.
+- [x] Load more pages with `nextCursor`, the same way playlist track lists do.
 - [ ] Show the uploader on each row now that the pieces carry `uploader`.
 
 **Done when:** the artist page lists songs most played first, with no `/api/core/search` calls in the network tab.
@@ -389,6 +389,72 @@ event `matches`
 
 **Done when:** a top song and a tag page's songs play, with no mock flag left in `src/utils/explore.js`.
 
+### 28. Follower and following lists
+
+**Files:** new `src/components/FollowListDialog.vue`, `src/views/PublicProfile.vue`, `src/utils/follows.js`
+**API:** `GET /api/users/{username}/followers`, `.../following` (not in the docs yet: `../backend/BACKEND_REQUESTS.md` §3)
+
+- [x] Clicking the Followers or Following count opens a dialog with both lists as tabs.
+- [x] Each row links to the person's profile, shows "Friends" when you follow each other, and has a Follow button.
+- [x] Following someone from the dialog reloads the profile's counts when it closes.
+- [x] Show "@user keeps their followers private" on `403 FOLLOWS_HIDDEN`, and plain counts when `canViewFollows` is
+      false.
+- [x] Show "Friends" on the profile, instead of "Follows you", when you follow each other, and "Follow back" on the
+      button when only they follow you.
+- [ ] Turn off `FOLLOWS_MOCKED` in `src/utils/follows.js` once the list endpoints are in the docs.
+
+### 29. Who can see your follows
+
+**Files:** `src/views/Settings.vue`, `src/utils/follows.js`
+**API:** `PUT /api/users/me/follows-visibility`, `followsVisibility` on `GET /api/users/settings` (§4)
+
+- [x] Settings → Profile → "Who can see your followers": Everyone, Friends or No one, saved as soon as it's picked.
+- [ ] Turn off `FOLLOWS_MOCKED` (the choice is kept in this browser until then).
+
+### 30. Follow notifications
+
+**Files:** `src/components/NotificationBell.vue`
+**API:** `NEW_FOLLOWER` on `GET /api/notifications` and the `notifications` event (§5)
+
+- [x] Show "<user> started following you." with their picture, linked to their profile.
+- [x] Show Follow back, or "You're now friends." when `followingBack` is true or after following back.
+- [ ] Check it against real notifications once the backend sends `NEW_FOLLOWER`.
+
+### 31. Artists tab
+
+**Files:** new `src/views/ArtistsPage.vue`, new `src/components/ArtistGrid.vue`, `src/components/AppHeader.vue`,
+`src/router/index.js`, `src/views/UploadMusic.vue`, `src/views/ArtistPage.vue`
+**API:** `GET /api/artists?q=`, `GET /api/artists/favorites/{username}`; listing every artist needs §7
+
+- [x] Add Artists to the header nav, right after Music. The artist page highlights it too.
+- [x] Search artists by name, shown as round pictures with an Add music link under each.
+- [x] With nothing typed, show your favorite artists.
+- [x] Add music opens Upload with the artist already picked (`/upload?artist=<id>`); Cancel goes back to the artist. The
+      artist page has the same button.
+- [ ] List every artist when nothing is typed: turn off `ARTIST_DIRECTORY_MOCKED` in `src/utils/artist.js` once
+      `GET /api/artists/all` is in the docs.
+
+### 32. Uploads on profiles
+
+**Files:** `src/views/PublicProfile.vue`, `src/utils/music.js`
+**API:** `GET /api/music-pieces` (yours), `GET /api/users/{username}/music-pieces` (anyone's, §6)
+
+- [x] The Uploads count jumps to the Uploads section.
+- [x] Group uploads by artist, the most played artist first and the most played song first inside each; clicking a
+      song plays it with the rest queued after it.
+- [x] Your own profile lists your uploads.
+- [ ] Other people's profiles: turn off `USER_UPLOADS_MOCKED` in `src/utils/music.js` once the endpoint is in the docs.
+
+### 33. Stream counts on every song
+
+**Files:** `src/components/TrackRows.vue` (nothing to change)
+**API:** `playCount` on `MusicPieceOverview` in lists (§8)
+
+- [x] `TrackRows` already shows "N plays" with the play count bar whenever pieces carry `playCount`. The artist page and
+      profile uploads use it.
+- [ ] Check the counts show on the artist page, profile uploads, playlists and search once the backend adds
+      `playCount` to song lists.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -401,8 +467,7 @@ event `matches`
 - [x] Link artist names in track rows, search results and Top artists to the page.
 - [x] Show favourite artists on the profile.
 
-*The page lists an artist's songs by running a music search for their name. Moving it to the artist endpoint is task
-22.*
+*The songs come from the artist endpoint now (task 22).*
 
 ### 16. Autoplay (not decided)
 
@@ -415,5 +480,10 @@ Don't start these until the endpoint is in the OpenAPI docs.
 
 - **Task 27, Top this week:** `musicPieceId`, `uploader` and `playCount` on `GET /api/core/top`.
 - **Task 27, tag page:** `GET /api/tags/{tag}/music-pieces`.
+- **Tasks 28 and 29:** follower and following lists, `canViewFollows`, and `followsVisibility`.
+- **Task 30:** the `NEW_FOLLOWER` notification type.
+- **Task 31:** a paged list of every artist.
+- **Task 32:** `GET /api/users/{username}/music-pieces`.
+- **Task 33:** `playCount` on song lists.
 
-Both are in `../backend/BACKEND_REQUESTS.md`.
+All are in `../backend/BACKEND_REQUESTS.md`.

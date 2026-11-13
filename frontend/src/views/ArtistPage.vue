@@ -43,6 +43,7 @@
               {{ artist.isFavorite ? 'Favorited' : 'Favorite' }}
             </button>
             <p v-if="favoriteError" class="error" role="alert">{{ favoriteError }}</p>
+            <router-link v-if="loggedIn" :to="addMusicRoute" class="btn secondary action">Add music</router-link>
             <button v-if="artist.canEdit" type="button" class="btn secondary action" @click="imagesDialog.open(artist)">
               Edit picture and banner
             </button>
@@ -53,36 +54,28 @@
           <section aria-labelledby="songs-heading">
             <h2 id="songs-heading">Songs by {{ artist.artistName }}</h2>
             <EmptyState v-if="songs.error" tone="error" :title="songs.error" text="Check that the server is running, then try again.">
-              <button type="button" class="btn secondary" @click="loadSongs">Try again</button>
+              <button type="button" class="btn secondary" @click="loadSongs()">Try again</button>
             </EmptyState>
-            <EmptyState v-else-if="songs.loading" tone="loading" :title="`Loading songs by ${artist.artistName}…`" />
+            <EmptyState v-else-if="songs.loading && !songs.items.length" tone="loading" :title="`Loading songs by ${artist.artistName}…`" />
             <EmptyState
               v-else-if="!songs.items.length"
               title="No songs yet"
               :text="`Songs credited to ${artist.artistName} show up here as soon as someone uploads one.`"
             >
-              <router-link v-if="loggedIn" :to="{ name: 'Upload' }" class="btn secondary">Upload music</router-link>
+              <router-link v-if="loggedIn" :to="addMusicRoute" class="btn secondary">Add music</router-link>
             </EmptyState>
-            <ol v-else class="tracks">
-              <li v-for="(piece, index) in songs.items" :key="piece.musicPieceId" class="track" :class="{ playing: isPlaying(piece) }">
-                <button
-                  type="button"
-                  class="track-main"
-                  :aria-label="`Play ${piece.name}`"
-                  @click="musicStore.playPieces(songs.items, index)"
-                >
-                  <span class="rank" aria-hidden="true">
-                    <span class="rank-number">{{ index + 1 }}</span>
-                    <svg class="rank-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg>
-                  </span>
-                  <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
-                  <span v-else class="art art-empty" aria-hidden="true">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
-                  </span>
-                  <span class="track-name">{{ piece.name }}</span>
-                </button>
-              </li>
-            </ol>
+            <template v-else>
+              <TrackRows
+                :pieces="songs.items"
+                :label="`Songs by ${artist.artistName}, most played first`"
+                :link-artists="false"
+                ranked
+                @play="(index) => musicStore.playPieces(songs.items, index)"
+              />
+              <button v-if="songs.nextCursor" type="button" class="btn secondary more" :disabled="songs.loading" @click="loadSongs(songs.nextCursor)">
+                {{ songs.loading ? 'Loading…' : 'Show more' }}
+              </button>
+            </template>
           </section>
         </div>
       </div>
@@ -101,6 +94,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import ArtistImagesDialog from '@/components/ArtistImagesDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ProfileCard from '@/components/ProfileCard.vue'
+import TrackRows from '@/components/TrackRows.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import { fetchArtist, fetchArtistPieces, setArtistFavorite } from '@/utils/artist.js'
 import { useMusicStore } from '@/stores/music.js'
@@ -108,8 +102,8 @@ import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
 // GET /api/artists/{artistId}: laid out like a user's profile. Anyone can view it; favoriting needs an account, and
-// the artist's creator (canEdit) can change its picture and banner. Songs come from music search until there's an
-// artist endpoint (fetchArtistPieces); they play on their own, like My uploads
+// the artist's creator (canEdit) can change its picture and banner. Songs come from GET /api/artists/{id}/music-pieces,
+// most played first, and play on their own, like My uploads. Add music opens Upload with this artist already picked
 const route = useRoute()
 const userStore = useUserStore()
 const notification = useNotificationStore()
@@ -122,6 +116,7 @@ const status = ref('loading')
 const favoriting = ref(false)
 const favoriteError = ref('')
 const imagesDialog = ref(null)
+const addMusicRoute = computed(() => ({ name: 'Upload', query: { artist: artistId.value } }))
 
 async function loadArtist() {
   const requested = artistId.value
@@ -139,24 +134,24 @@ async function loadArtist() {
   }
 }
 
-const songs = reactive({ items: [], loading: true, error: '' })
+const songs = reactive({ items: [], nextCursor: null, loading: true, error: '' })
 
-async function loadSongs() {
+async function loadSongs(cursor = null) {
   const current = artist.value
-  Object.assign(songs, { items: [], loading: true, error: '' })
+  if (!cursor) Object.assign(songs, { items: [], nextCursor: null })
+  songs.loading = true
+  songs.error = ''
   try {
-    const items = await fetchArtistPieces(current)
-    if (artist.value === current) songs.items = items
+    const page = await fetchArtistPieces(current.artistId, cursor)
+    if (artist.value !== current) return
+    songs.items = cursor ? [...songs.items, ...page.musicPieces] : page.musicPieces
+    songs.nextCursor = page.nextCursor ?? null
   } catch (err) {
     if (err.sessionEnded || artist.value !== current) return
     songs.error = "We couldn't load this artist's songs."
   } finally {
     if (artist.value === current) songs.loading = false
   }
-}
-
-function isPlaying(piece) {
-  return !musicStore.currentPlaylistUUID && musicStore.currentMusicPiece.uuid === piece.musicPieceId
 }
 
 async function toggleFavorite() {
@@ -203,20 +198,7 @@ p.page-state { display: block; }
 .icon { display: block; fill: none; flex: none; height: 18px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 18px; }
 .icon.filled { fill: var(--link); stroke: var(--link); }
 
-.tracks { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
-.track { border-bottom: 1px solid var(--line); transition: background var(--dur-fast) var(--ease); }
-.track:hover { background: var(--surface-alt); }
-.track.playing { background: var(--purple-soft); }
-.track-main { align-items: center; background: none; border: 0; color: inherit; cursor: pointer; display: grid; font: inherit; gap: var(--space-3); grid-template-columns: 32px 40px minmax(0, 1fr); padding: var(--space-3) var(--space-2); text-align: left; width: 100%; }
-.rank { color: var(--ink-muted); display: grid; font: 500 14px/20px var(--font-sans); place-items: center; }
-.rank > * { grid-area: 1 / 1; }
-.rank-play { fill: var(--link); height: 20px; opacity: 0; width: 20px; }
-.track:hover .rank-number, .track-main:focus-visible .rank-number, .playing .rank-number { opacity: 0; }
-.track:hover .rank-play, .track-main:focus-visible .rank-play, .playing .rank-play { opacity: 1; }
-.art { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-sm); color: var(--ink-muted); display: grid; height: 40px; object-fit: cover; place-items: center; width: 40px; }
-.art .icon { height: 20px; width: 20px; }
-.track-name { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.playing .track-name { color: var(--link); }
+.more { margin-top: var(--space-6); }
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }

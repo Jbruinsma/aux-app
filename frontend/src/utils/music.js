@@ -109,3 +109,31 @@ export function additionMessage({ addedCount, failedCount }) {
   const skipped = failedCount === 1 ? "1 song couldn't be added" : `${failedCount} songs couldn't be added`
   return `${addedCount ? `${added} ` : ''}${skipped} (already in the playlist, private, or the playlist is full).`
 }
+
+// Another user's uploads aren't in the API yet (BACKEND_REQUESTS.md §6): while this is true only your own profile lists
+// uploads (from GET /api/music-pieces). Set it to false once GET /api/users/{username}/music-pieces exists
+export const USER_UPLOADS_MOCKED = true
+
+// { musicPieces: [MusicPieceOverview], nextCursor }: the uploads the caller can see, 50 per page
+export function fetchUserUploads(username, cursor = null) {
+  const query = cursor ? `?${new URLSearchParams({ cursor })}` : ''
+  return fetchAPI(`${API_BASE_URL}/api/users/${encodeURIComponent(username)}/music-pieces${query}`, { notifyOnError: false })
+}
+
+// [{ artist, pieces, plays }]: one group per artist, the artist with the most plays first, and inside each group the most
+// played piece first. Without `playCount` (not sent everywhere yet) the order the pieces came in is kept
+export function groupByArtist(pieces) {
+  const groups = new Map()
+  for (const piece of pieces) {
+    const artist = piece.artistSummary ?? { artistId: '', artistName: 'Unknown artist', artistPfpUrl: null }
+    const key = artist.artistId || artist.artistName
+    if (!groups.has(key)) groups.set(key, { artist, pieces: [], plays: 0 })
+    const group = groups.get(key)
+    group.pieces.push(piece)
+    group.plays += piece.playCount ?? 0
+  }
+  const byPlays = (a, b) => (b.playCount ?? 0) - (a.playCount ?? 0)
+  return [...groups.values()]
+    .map((group) => ({ ...group, pieces: [...group.pieces].sort(byPlays) }))
+    .sort((a, b) => b.plays - a.plays)
+}
