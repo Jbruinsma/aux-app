@@ -36,7 +36,7 @@ public class TagService {
         }
         Set<String> result = new LinkedHashSet<>();
         for (String tag : raw) {
-            String clean = tag == null ? "" : tag.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+            String clean = clean(tag);
             if (clean.isEmpty()) {
                 continue;
             }
@@ -75,9 +75,14 @@ public class TagService {
     }
 
     public List<String> suggest(@Nullable String query) {
-        String text = query == null ? "" : query.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        String text = clean(query);
         String prefix = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
         return tags.suggest(prefix, SUGGESTION_LIMIT);
+    }
+
+    // How tags are stored: lowercased, trimmed, inner whitespace collapsed. Null becomes ""
+    public static String clean(@Nullable String tag) {
+        return tag == null ? "" : tag.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private void createMissing(List<String> normalized) {

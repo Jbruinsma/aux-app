@@ -19,7 +19,7 @@
       <span class="text">
         <span class="ti">{{ piece.name }}</span>
         <router-link
-          v-if="linkArtists && piece.artistSummary?.artistName && piece.artistSummary.artistId"
+          v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
           class="ar artist-link"
           :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
         >{{ piece.artistSummary.artistName }}</router-link>
@@ -39,15 +39,13 @@ import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
 
 // The style guide's track row: optional rank, play button, 40px art, title and artist, and a play count bar when the
-// pieces carry `playCount`. A piece without a `musicPieceId` (or with `playable` off) gets no play button
+// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button
 const props = defineProps({
   pieces: { type: Array, required: true },
   label: { type: String, required: true },
   ranked: Boolean,
   // Rank of the first row, for a list split across columns
   start: { type: Number, default: 1 },
-  playable: { type: Boolean, default: true },
-  linkArtists: { type: Boolean, default: true },
 })
 const emit = defineEmits(['play'])
 
@@ -57,7 +55,7 @@ const hasCounts = computed(() => props.pieces.some((piece) => typeof piece.playC
 const maxCount = computed(() => Math.max(1, ...props.pieces.map((piece) => piece.playCount ?? 0)))
 
 function canPlay(piece) {
-  return props.playable && Boolean(piece.musicPieceId)
+  return Boolean(piece.musicPieceId)
 }
 
 function isCurrent(piece) {

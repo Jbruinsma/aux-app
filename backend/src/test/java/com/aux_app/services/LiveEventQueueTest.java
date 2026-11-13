@@ -26,7 +26,7 @@ class LiveEventQueueTest {
         when(users.findLibrary("u1")).thenReturn(List.of());
         List<Runnable> tasks = new ArrayList<>();
         LiveEventService live = new LiveEventService(mock(PlaylistMembersService.class), mock(PlaybackEventService.class),
-                users, mock(MusicPieceRepository.class), mock(NotificationService.class), mock(CompatibilityService.class),
+                users, mock(MusicPieceRepository.class), mock(NotificationService.class), mock(CompatibilityService.class), new NowPlayingService(),
                 tasks::add);
         live.connect("u1", Instant.now().plusSeconds(3600)); // snapshot reads the library once
 

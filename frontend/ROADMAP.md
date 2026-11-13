@@ -373,8 +373,8 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 
 **Files:** `src/views/ExplorePage.vue`, `src/views/ExploreTag.vue`, `src/components/TrackRows.vue`,
 `src/components/SongCards.vue`, `src/utils/explore.js`
-**API:** `GET /api/core/search`, `GET /api/tags`, `GET /api/core/top`, `GET /api/music-pieces/{musicPieceId}/discover`,
-event `matches`
+**API:** `GET /api/core/search`, `GET /api/tags`, `GET /api/tags/{tag}/music-pieces`, `GET /api/core/top`,
+`GET /api/music-pieces/{musicPieceId}/discover`, event `matches`
 
 - [x] Search, moved from the Dashboard. The field sticks under the header; on phones a Cancel button goes back to
       browsing. `?category=` picks the tab.
@@ -382,10 +382,8 @@ event `matches`
 - [x] Top this week as ranked track rows, two columns of five (top 5 and "See all" on phones).
 - [x] More like the last song played, from Discover, with "See all" opening the Discover page.
 - [x] People who hear it too (task 18).
-- [ ] Top this week: play the rows and show the play count bar once `/api/core/top` returns `musicPieceId`,
-      `uploader` and `playCount` (blocked, see below). `TrackRows` already does both when the fields are there.
-- [ ] Tag page: turn off `TAG_PIECES_MOCKED` in `src/utils/explore.js` once the tag endpoint exists (blocked, see
-      below).
+- [x] Top this week: the rows play and show the play count bar.
+- [x] Tag page: songs from `GET /api/tags/{tag}/music-pieces`, most played this month first, 50 at a time.
 
 **Done when:** a top song and a tag page's songs play, with no mock flag left in `src/utils/explore.js`.
 
@@ -455,6 +453,35 @@ event `matches`
 - [ ] Check the counts show on the artist page, profile uploads, playlists and search once the backend adds
       `playCount` to song lists.
 
+### 34. Build the Friends page
+
+Replaces the Coming soon page at `/friends`. Friends are people you follow who follow you back. No mock yet: check the
+style guide and ask before designing it.
+
+**Files:** new `src/views/FriendsPage.vue`, new `src/utils/friends.js`, `src/router/index.js`
+**API:** `GET /api/users/me/friends`
+
+- [ ] List friends with their picture and username, each linked to their profile.
+- [ ] Show what each friend is playing now, or else their last played song and when; clicking a song plays it.
+- [ ] Mark who's online. The backend already sorts online friends first, then by most recent listen.
+- [ ] Page with `limit` and `offset`, using `totalResults` to know when to stop.
+- [ ] Empty state for no friends yet, pointing to profiles to follow people back.
+
+**Done when:** a friend playing a public song shows it as playing now, and it clears when they pause.
+
+### 35. Report now playing from the player
+
+Nothing shows as playing now on the Friends page (task 34) until the player reports it. Don't report from `/stream`:
+the player fetches streams ahead of time.
+
+**Files:** `src/stores/music.js`, `src/utils/playback.js`
+**API:** `PUT /api/users/me/now-playing`
+
+- [ ] Report when a song starts playing, on pause and resume, and after a seek.
+- [ ] Fire and forget: a failed report must never interrupt playback.
+
+**Done when:** playing, pausing and seeking each send one report, and private songs never show to friends.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -478,8 +505,6 @@ event `matches`
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-- **Task 27, Top this week:** `musicPieceId`, `uploader` and `playCount` on `GET /api/core/top`.
-- **Task 27, tag page:** `GET /api/tags/{tag}/music-pieces`.
 - **Tasks 28 and 29:** follower and following lists, `canViewFollows`, and `followsVisibility`.
 - **Task 30:** the `NEW_FOLLOWER` notification type.
 - **Task 31:** a paged list of every artist.

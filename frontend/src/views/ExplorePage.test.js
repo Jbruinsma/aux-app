@@ -17,7 +17,7 @@ const piece = (n) => ({
   musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistId: `a${n}`, artistName: `Artist ${n}` },
   uploader: { userId: `u${n}`, pfpUrl: null, username: `user${n}` }, isAvailable: true,
 })
-const topPiece = (n) => ({ name: `Top ${n}`, coverUrl: null, artistSummary: { artistId: `a${n}`, artistName: `Artist ${n}` } })
+const topPiece = (n) => ({ ...piece(n), name: `Top ${n}`, playCount: 20 - n })
 
 // Answers each GET by its path
 function backend(answers) {
@@ -63,17 +63,17 @@ it('shows genre tiles that link to their tag page, and this week\'s top songs ra
 
   const ranks = section('top-heading').findAll('.rk').map((r) => r.text())
   expect(ranks).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
-  // /api/core/top has no song ids yet, so the rows can't play
-  expect(section('top-heading').find('button.play').exists()).toBe(false)
+  expect(section('top-heading').findAll('button.play')).toHaveLength(10)
+  expect(section('top-heading').find('.ct').text()).toBe('19 plays')
 })
 
-it('plays a top song once the backend sends ids, with the rest queued', async () => {
-  backend({ '/api/tags': [], '/api/core/top': [piece(1), piece(2)] })
+it('plays a top song with the rest queued', async () => {
+  backend({ '/api/tags': [], '/api/core/top': [topPiece(1), topPiece(2)] })
   await render()
   const music = useMusicStore()
   const playPieces = vi.spyOn(music, 'playPieces').mockResolvedValue(true)
   await section('top-heading').findAll('button.play')[1].trigger('click')
-  expect(playPieces).toHaveBeenCalledWith([piece(1), piece(2)], 1)
+  expect(playPieces).toHaveBeenCalledWith([topPiece(1), topPiece(2)], 1)
   // No tags: the genre section is left out
   expect(section('tags-heading').exists()).toBe(false)
 })
