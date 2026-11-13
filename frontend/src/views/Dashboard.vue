@@ -457,10 +457,10 @@ function playLabel(piece) {
 
 // A recent play starts its playlist from that song, with the current shuffle. Without a playlist, or when the playlist
 // can't be played anymore, the song plays on its own
-function playRecent({ musicPiece, playlistId }) {
+function playRecent({ musicPiece, playlistId, playlistOwnerUsername }) {
   if (recent.value.preview) return
   if (!playlistId) return musicStore.playPieces([musicPiece])
-  return musicStore.playPlaylist(playlistId, { start: musicPiece.musicPieceId, shuffle: musicStore.shuffleOn, fallback: musicPiece })
+  return musicStore.playPlaylist(playlistId, { start: musicPiece.musicPieceId, shuffle: musicStore.shuffleOn, fallback: musicPiece, ownerUsername: playlistOwnerUsername ?? null })
 }
 
 // Next step for an empty Saved tab: search playlists

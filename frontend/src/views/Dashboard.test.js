@@ -92,7 +92,7 @@ it('shows an error on rows that have nothing yet while the stream cannot connect
 
 it('plays a recent card from its playlist with the current shuffle, or on its own without one', async () => {
   const events = useEventsStore()
-  events.recents = { recents: [{ musicPiece: piece(2), playlistId: 'p1' }, { musicPiece: piece(1), playlistId: null }] }
+  events.recents = { recents: [{ musicPiece: piece(2), playlistId: 'p1', playlistOwnerUsername: 'owner' }, { musicPiece: piece(1), playlistId: null }] }
   await render()
   const music = useMusicStore()
   music.shuffleOn = true
@@ -101,7 +101,7 @@ it('plays a recent card from its playlist with the current shuffle, or on its ow
   const cards = wrapper.findAll('section[aria-labelledby="recent-heading"] button.card-main')
   expect(cards[0].attributes('aria-label')).toBe('Play Song 2 by Artist 2')
   await cards[0].trigger('click')
-  expect(playPlaylist).toHaveBeenCalledWith('p1', { start: 'm2', shuffle: true, fallback: piece(2) })
+  expect(playPlaylist).toHaveBeenCalledWith('p1', { start: 'm2', shuffle: true, fallback: piece(2), ownerUsername: 'owner' })
   await cards[1].trigger('click')
   expect(playPieces).toHaveBeenCalledWith([piece(1)])
 })
