@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mobile player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+:root,[data-theme="light"]{--focus-ring:#6a4778;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
+[data-theme="dark"]{--focus-ring:#b593c4;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
+:root{--dur-fast:150ms;--dur-med:300ms;--ease:cubic-bezier(.2,0,0,1);--font-sans:Montserrat, "Segoe UI", Helvetica, Arial, sans-serif;--radius-md:6px;--radius-pill:999px;--radius-sm:3px;--safe-bottom:34px;--safe-top:47px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px}
+*,*::before,*::after{box-sizing:border-box}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+body{background:var(--surface-alt);color:var(--ink);font:400 16px/24px var(--font-sans);margin:0}
+button{color:inherit;font:inherit}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+p{margin:0}
+
+/* Page chrome around the phones */
+.page{margin:0 auto;max-width:1120px;padding:var(--space-8) var(--space-6)}
+.page-head{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between;margin-bottom:var(--space-6)}
+.page-head h1{font:700 28px/34px var(--font-sans);margin:0}
+.page-head p{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.theme-btn{align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;display:flex;font:600 14px/20px var(--font-sans);gap:var(--space-2);padding:10px 18px}
+.stage{display:flex;flex-wrap:wrap;gap:var(--space-8);justify-content:center}
+.stage figure{margin:0}
+.stage figcaption{color:var(--ink-muted);font:600 12px/16px var(--font-sans);margin-top:var(--space-3);text-align:center}
+.notes{display:grid;gap:var(--space-6);grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:var(--space-8)}
+.notes section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-4)}
+.notes h2{font:700 20px/28px var(--font-sans);margin:0 0 var(--space-2)}
+.notes ul{font:500 14px/20px var(--font-sans);margin:0;padding-left:20px}
+.notes li+li{margin-top:var(--space-2)}
+
+/* Phone frame: 390 x 844 with iPhone safe areas */
+.phone{background:var(--surface);border:8px solid #111111;border-radius:44px;height:844px;overflow:hidden;position:relative;width:390px}
+.status{height:var(--safe-top)}
+.home-ind{background:var(--ink);border-radius:var(--radius-pill);bottom:8px;height:5px;left:50%;opacity:.8;position:absolute;transform:translateX(-50%);width:134px;z-index:30}
+
+/* Background page (simplified dashboard) */
+.scroll{height:calc(100% - var(--safe-top));overflow-y:auto;padding-bottom:calc(64px + var(--space-4) + var(--safe-bottom));scrollbar-width:none}
+.top{border-bottom:1px solid var(--line);padding:var(--space-3) var(--space-4) 0}
+.top-row{align-items:center;display:flex;justify-content:space-between}
+.logo{color:var(--primary);font:800 24px/1 var(--font-sans);letter-spacing:-.02em}
+[data-theme="dark"] .logo{color:var(--link)}
+.logout{color:var(--link);font:600 14px/20px var(--font-sans)}
+.tabs{display:flex;gap:var(--space-4);padding-top:var(--space-3)}
+.tabs span{border-bottom:3px solid transparent;color:var(--ink-muted);font:600 14px/20px var(--font-sans);padding:var(--space-2) 0}
+.tabs span.on{border-bottom-color:var(--primary);color:var(--ink)}
+.content{padding:var(--space-6) var(--space-4)}
+.content h2{font:700 28px/34px var(--font-sans);margin:0}
+.content h3{font:700 20px/28px var(--font-sans);margin:var(--space-6) 0 var(--space-1)}
+.muted{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.search{border:1px solid var(--line-strong);border-radius:var(--radius-sm);color:var(--ink-muted);margin-top:var(--space-4);padding:10px 12px}
+.cards{display:flex;gap:var(--space-4);margin-top:var(--space-4)}
+.card{border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;width:136px}
+.card .art{aspect-ratio:1;width:100%}
+.card div{padding:var(--space-3)}
+.card p{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card.playing{background:var(--purple-soft)}
+.card.playing p:first-child{color:var(--link)}
+.rows{margin-top:var(--space-3)}
+.row{align-items:center;border-bottom:1px solid var(--line);display:flex;gap:var(--space-3);padding:var(--space-3) 0}
+.row .art{border-radius:var(--radius-sm);height:40px;width:40px}
+
+/* Placeholder cover art */
+.art{background:linear-gradient(180deg,#9fb3c8 0%,#d6dde3 48%,#56685d 49%,#25302a 100%);display:block}
+.art.alt{background:linear-gradient(135deg,#cfcfcf 0%,#7a7a7a 55%,#2d2d2d 100%)}
+.art.alt2{background:linear-gradient(160deg,#6a4778 0%,#b593c4 60%,#f1ecf3 100%)}
+
+/* Shared player bits */
+.icon-btn{align-items:center;background:none;border:0;border-radius:var(--radius-pill);cursor:pointer;display:inline-flex;height:44px;justify-content:center;padding:0;width:44px}
+.play{align-items:center;background:var(--primary);border:0;border-radius:var(--radius-pill);color:var(--on-primary);cursor:pointer;display:inline-flex;justify-content:center;padding:0;transition:background var(--dur-fast) var(--ease)}
+.play:active{background:var(--purple-hover)}
+
+/* Mini player */
+.mini{align-items:center;background:var(--surface-alt);border:1px solid var(--line);border-radius:var(--radius-md);bottom:max(var(--space-2), calc(var(--safe-bottom) - var(--space-3)));display:flex;gap:var(--space-1);height:64px;left:var(--space-2);overflow:hidden;padding:0 var(--space-1) 0 var(--space-2);position:absolute;right:var(--space-2);z-index:10}
+.mini-open{align-items:center;background:none;border:0;border-radius:var(--radius-sm);cursor:pointer;display:flex;flex:1;gap:var(--space-3);min-width:0;padding:0;text-align:left}
+.mini-open .art{border-radius:var(--radius-sm);flex:none;height:44px;width:44px}
+.mini-text{min-width:0}
+.mini-title{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-artist{color:var(--ink-muted);font:500 14px/20px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini .play{flex:none;height:40px;margin:0 2px;width:40px}
+.mini-progress{background:var(--line);bottom:0;height:2px;left:0;position:absolute;right:0}
+.mini-progress span{background:var(--purple);display:block;height:100%;width:var(--fill,30%)}
+
+/* Full player sheet */
+.scrim{background:rgba(0,0,0,.4);inset:0;opacity:0;pointer-events:none;position:absolute;transition:opacity var(--dur-med) var(--ease);z-index:15}
+.sheet{background:var(--surface);display:flex;flex-direction:column;inset:0;padding:var(--safe-top) var(--space-6) calc(var(--safe-bottom) + var(--space-4));position:absolute;transform:translateY(100%);transition:transform var(--dur-med) var(--ease);z-index:20}
+.phone.open .sheet{transform:translateY(0)}
+.phone.open .scrim{opacity:1}
+.sheet.dragging{transition:none}
+.sheet-top{align-items:center;cursor:grab;display:grid;grid-template-columns:44px 1fr 44px;padding-top:var(--space-2);position:relative;touch-action:none}
+.grabber{background:var(--line-strong);border-radius:var(--radius-pill);height:5px;left:50%;position:absolute;top:0;transform:translateX(-50%);width:36px}
+.sheet-label{color:var(--ink-muted);font:600 12px/16px var(--font-sans);text-align:center}
+.sheet-art{aspect-ratio:1;border-radius:var(--radius-md);margin:var(--space-6) 0;width:100%}
+.meta{align-items:flex-end;display:flex;gap:var(--space-3);justify-content:space-between;position:relative}
+.meta-btn{background:none;border:0;border-radius:var(--radius-sm);cursor:pointer;display:block;flex:1;margin:calc(var(--space-1) * -1);min-width:0;padding:var(--space-1);text-align:left;transition:background var(--dur-fast) var(--ease)}
+.meta-btn:active,.meta-btn[aria-expanded="true"]{background:var(--surface-alt)}
+.sheet-title{display:block;font:700 20px/28px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-artist{color:var(--ink-muted);display:block;font:500 14px/20px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:0 8px 24px rgba(0,0,0,.16);left:0;min-width:240px;opacity:0;padding:var(--space-1) 0;pointer-events:none;position:absolute;top:calc(100% + var(--space-2));transform:translateY(-4px) scale(.98);transform-origin:top left;transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease);visibility:hidden;z-index:5}
+.menu.open{opacity:1;pointer-events:auto;transform:none;visibility:visible}
+.menu-item{align-items:center;background:none;border:0;cursor:pointer;display:flex;font:600 16px/24px var(--font-sans);gap:var(--space-3);min-height:44px;padding:var(--space-2) var(--space-4);text-align:left;width:100%}
+.menu-item:hover,.menu-item:focus-visible{background:var(--surface-alt)}
+.menu-item svg{color:var(--ink-muted);flex:none}
+.menu-item+.menu-item{border-top:1px solid var(--line)}
+.menu-sub{color:var(--ink-muted);display:block;font:500 14px/20px var(--font-sans)}
+.toast{background:var(--ink);border-radius:var(--radius-md);color:var(--surface);font:600 14px/20px var(--font-sans);left:50%;opacity:0;padding:var(--space-2) var(--space-4);pointer-events:none;position:absolute;top:calc(var(--safe-top) + var(--space-2));transform:translateX(-50%);transition:opacity var(--dur-med) var(--ease);white-space:nowrap;z-index:40}
+.toast.show{opacity:1}
+.uploader{align-items:center;color:var(--ink-muted);display:inline-flex;flex:none;font:600 12px/16px var(--font-sans);gap:var(--space-1);text-decoration:none}
+.uploader:hover{color:var(--ink)}
+.pfp{background:#1b1b1b;border-radius:var(--radius-pill);height:20px;width:20px}
+.scrub{margin-top:var(--space-6)}
+.slider{-webkit-appearance:none;appearance:none;background:linear-gradient(to right,var(--purple) var(--fill,30%),var(--line) var(--fill,30%));border-radius:var(--radius-pill);cursor:pointer;height:4px;margin:10px 0;width:100%}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;background:var(--purple);border:0;border-radius:var(--radius-pill);height:16px;width:16px}
+.slider::-moz-range-thumb{background:var(--purple);border:0;border-radius:var(--radius-pill);height:16px;width:16px}
+.times{color:var(--ink-muted);display:flex;font:600 12px/16px var(--font-sans);font-variant-numeric:tabular-nums;justify-content:space-between}
+.transport{align-items:center;display:flex;gap:var(--space-8);justify-content:center;margin-top:var(--space-4)}
+.transport .icon-btn{height:56px;width:56px}
+.transport .play{height:72px;width:72px}
+.modes{display:flex;justify-content:space-between;margin-top:auto;padding:0 var(--space-2)}
+.mode{color:var(--ink-muted);flex-direction:column;gap:2px;height:48px;position:relative}
+.mode.active{color:var(--link)}
+.mode::after{background:currentColor;border-radius:var(--radius-pill);content:"";height:4px;opacity:0;width:4px}
+.mode.active::after{opacity:1}
+
+/* On a real phone, show one full-screen phone */
+@media (max-width:440px){.page{padding:0}.page-head,.notes,.stage figcaption,.stage figure+figure{display:none}.phone{--safe-bottom:env(safe-area-inset-bottom,0px);--safe-top:env(safe-area-inset-top,0px);border:0;border-radius:0;height:100dvh;width:100vw}.status,.home-ind{display:none}.scroll{height:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Mobile player</h1>
+      <p>Below 720px. Tap the mini player to open the full player; close it with the chevron or drag it down.</p>
+    </div>
+    <button type="button" class="theme-btn" id="theme">Dark mode</button>
+  </header>
+
+  <div class="stage">
+    <figure><div class="phone" data-phone></div><figcaption>Mini player (interactive)</figcaption></figure>
+    <figure><div class="phone open" data-phone></div><figcaption>Full player open</figcaption></figure>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Mini player</h2>
+      <ul>
+        <li>64px bar on <code>surface-alt</code> with <code>radius-md</code>, 8px in from the sides and 12px into the bottom safe area, so it sits just above the home indicator. It never goes below 8px on phones without a safe area.</li>
+        <li>Art, title and artist form one button that opens the full player. Play/pause and next are separate 44px targets. There's no previous button, as in Apple Music.</li>
+        <li>A 2px purple progress line runs along the bottom edge. It's display only, so seeking happens in the full player.</li>
+        <li>The collapse arrow goes away on mobile.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Full player</h2>
+      <ul>
+        <li>Sheet covers the whole screen and slides up over <code>--dur-med</code>. Close with the chevron or drag down 120px or more.</li>
+        <li>Square cover art, title (heading-2), artist link and uploader, then a scrubber with times.</li>
+        <li>Previous, play (72px) and next. Shuffle and repeat sit at the bottom and show a dot when on, so the state doesn't rely on color alone.</li>
+        <li>Tapping the title and artist opens a menu with "Go to artist", "Go to playlist" and "Go to uploader". Picking one closes the player and navigates. Tapping the uploader chip goes straight to their profile.</li>
+        <li>No volume slider: iOS ignores <code>audio.volume</code>, so the hardware buttons handle it.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Defaults to confirm</h2>
+      <ul>
+        <li>Plain <code>surface</code> background, not tinted from the cover art.</li>
+        <li>No queue or "up next" yet.</li>
+        <li>The song menu is a new pattern the style guide doesn't cover (surface card, line border, soft shadow, 44px rows). "Go to playlist" only shows when playback came from a playlist.</li>
+        <li>Mini player shows next as well as play/pause.</li>
+        <li>Header label reads "Now playing". If the store knows the playlist name, it could say "Playing from Road trip" instead.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<template id="phone-tpl">
+  <div class="status"></div>
+  <div class="scroll">
+    <div class="top">
+      <div class="top-row"><span class="logo">Aux</span><span class="logout">Log out</span></div>
+      <div class="tabs"><span class="on">Music</span><span>Charts</span><span>Friends</span><span>Explore</span></div>
+    </div>
+    <div class="content">
+      <h2>Welcome back, test1</h2>
+      <p class="muted">1 playlist</p>
+      <div class="search">Search people, music and playlists</div>
+      <h3>Recent listening</h3>
+      <p class="muted">The last songs you played, newest first.</p>
+      <div class="cards">
+        <div class="card playing"><span class="art"></span><div><p>Violent Crimes</p><p class="muted">Kanye West</p></div></div>
+        <div class="card"><span class="art alt"></span><div><p>Kendrick Lamar</p><p class="muted">Kendrick Lamar</p></div></div>
+      </div>
+      <h3>Your top artists</h3>
+      <div class="rows">
+        <div class="row"><span class="art"></span><div><p>Kanye West</p><p class="muted">42 plays</p></div></div>
+        <div class="row"><span class="art alt"></span><div><p>Kendrick Lamar</p><p class="muted">31 plays</p></div></div>
+        <div class="row"><span class="art alt2"></span><div><p>Frank Ocean</p><p class="muted">18 plays</p></div></div>
+        <div class="row"><span class="art"></span><div><p>SZA</p><p class="muted">12 plays</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mini">
+    <button type="button" class="mini-open" aria-label="Open player: Violent Crimes by Kanye West" data-open>
+      <span class="art"></span>
+      <span class="mini-text"><p class="mini-title">Violent Crimes</p><p class="mini-artist">Kanye West</p></span>
+    </button>
+    <button type="button" class="play" aria-label="Play" data-play></button>
+    <button type="button" class="icon-btn" aria-label="Next">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z"/></svg>
+    </button>
+    <div class="mini-progress" aria-hidden="true"><span data-mini-fill></span></div>
+  </div>
+
+  <div class="scrim" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Now playing">
+    <div class="sheet-top" data-drag>
+      <span class="grabber" aria-hidden="true"></span>
+      <button type="button" class="icon-btn" aria-label="Close player" data-close>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <p class="sheet-label">Now playing</p>
+      <span></span>
+    </div>
+    <div class="art sheet-art" role="img" aria-label="Cover art for Violent Crimes"></div>
+    <div class="meta">
+      <button type="button" class="meta-btn" aria-haspopup="menu" aria-expanded="false" data-menu-btn>
+        <span class="sheet-title">Violent Crimes</span>
+        <span class="sheet-artist">Kanye West</span>
+      </button>
+      <a class="uploader" href="#" aria-label="Uploaded by test1" data-go="Opens test1's profile"><span class="pfp"></span>test1</a>
+      <div class="menu" role="menu" aria-label="Song options" data-menu>
+        <button type="button" class="menu-item" role="menuitem" data-go="Opens Kanye West's artist page">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12"/><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5"/><circle cx="16" cy="7" r="5"/></svg>
+          <span>Go to artist<span class="menu-sub">Kanye West</span></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" data-go="Opens the Road trip playlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M12 12H3"/><path d="M16 6H3"/><path d="M12 18H3"/></svg>
+          <span>Go to playlist<span class="menu-sub">Road trip</span></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" data-go="Opens test1's profile">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Go to uploader<span class="menu-sub">test1</span></span>
+        </button>
+      </div>
+    </div>
+    <div class="scrub">
+      <input class="slider" type="range" min="0" max="215" step="1" value="64" aria-label="Seek" data-seek>
+      <div class="times"><span data-cur>1:04</span><span>3:35</span></div>
+    </div>
+    <div class="transport">
+      <button type="button" class="icon-btn" aria-label="Previous">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM19 5.5v13a.5.5 0 0 1-.77.42L9 12.42a.5.5 0 0 1 0-.84l9.23-6.5a.5.5 0 0 1 .77.42z"/></svg>
+      </button>
+      <button type="button" class="play" aria-label="Play" data-play></button>
+      <button type="button" class="icon-btn" aria-label="Next">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z"/></svg>
+      </button>
+    </div>
+    <div class="modes">
+      <button type="button" class="icon-btn mode" aria-label="Shuffle" aria-pressed="false" data-toggle>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73"/></svg>
+      </button>
+      <button type="button" class="icon-btn mode active" aria-label="Repeat playlist" aria-pressed="true" data-toggle>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="toast" role="status" data-toast></div>
+  <span class="home-ind" aria-hidden="true"></span>
+</template>
+
+<script>
+(function () {
+  var PLAY = '<svg width="SZ" height="SZ" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>';
+  var PAUSE = '<svg width="SZ" height="SZ" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor"/></svg>';
+  var tpl = document.getElementById('phone-tpl');
+
+  function fmt(s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+  document.querySelectorAll('[data-phone]').forEach(function (phone) {
+    phone.appendChild(tpl.content.cloneNode(true));
+    var sheet = phone.querySelector('.sheet');
+    var seek = phone.querySelector('[data-seek]');
+    var playing = false;
+    var timer = null;
+
+    function renderPlay() {
+      phone.querySelectorAll('[data-play]').forEach(function (b) {
+        var big = b.closest('.transport');
+        b.innerHTML = (playing ? PAUSE : PLAY).replace(/SZ/g, big ? 28 : 16);
+        b.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+      });
+    }
+    function renderPos() {
+      var pct = (seek.value / seek.max * 100) + '%';
+      seek.style.setProperty('--fill', pct);
+      phone.querySelector('[data-mini-fill]').style.setProperty('--fill', pct);
+      phone.querySelector('[data-cur]').textContent = fmt(seek.value);
+    }
+    function setOpen(open) {
+      phone.classList.toggle('open', open);
+      if (!open && menu.classList.contains('open')) setMenu(false);
+      sheet.style.transform = '';
+      (open ? phone.querySelector('.sheet [data-close]') : phone.querySelector('[data-open]')).focus({ preventScroll: true });
+    }
+
+    phone.querySelectorAll('[data-play]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        playing = !playing;
+        clearInterval(timer);
+        if (playing) timer = setInterval(function () { seek.value = (+seek.value + 1) % (+seek.max + 1); renderPos(); }, 1000);
+        renderPlay();
+      });
+    });
+    phone.querySelector('[data-open]').addEventListener('click', function () { setOpen(true); });
+    phone.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', function () { setOpen(false); }); });
+    phone.querySelectorAll('[data-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () { var on = b.classList.toggle('active'); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    });
+    seek.addEventListener('input', renderPos);
+    // Song options menu
+    var menuBtn = phone.querySelector('[data-menu-btn]');
+    var menu = phone.querySelector('[data-menu]');
+    var toast = phone.querySelector('[data-toast]');
+    var toastTimer = null;
+    function setMenu(open, refocus) {
+      menu.classList.toggle('open', open);
+      menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) menu.querySelector('[role="menuitem"]').focus();
+      else if (refocus) menuBtn.focus();
+    }
+    menuBtn.addEventListener('click', function () { setMenu(!menu.classList.contains('open'), true); });
+    sheet.addEventListener('click', function (e) {
+      if (menu.classList.contains('open') && !e.target.closest('[data-menu]') && !e.target.closest('[data-menu-btn]')) setMenu(false);
+    });
+    menu.addEventListener('keydown', function (e) {
+      var items = [].slice.call(menu.querySelectorAll('[role="menuitem"]'));
+      var i = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    });
+    sheet.querySelectorAll('[data-go]').forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.preventDefault();
+        setMenu(false);
+        setOpen(false);
+        toast.textContent = item.getAttribute('data-go');
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+      });
+    });
+    sheet.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (menu.classList.contains('open')) setMenu(false, true); else setOpen(false);
+    });
+
+    // Drag the header down to close
+    var drag = phone.querySelector('[data-drag]');
+    var startY = null;
+    drag.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('button')) return;
+      startY = e.clientY; sheet.classList.add('dragging'); drag.setPointerCapture(e.pointerId);
+    });
+    drag.addEventListener('pointermove', function (e) {
+      if (startY === null) return;
+      sheet.style.transform = 'translateY(' + Math.max(0, e.clientY - startY) + 'px)';
+    });
+    function endDrag(e) {
+      if (startY === null) return;
+      var dy = e.clientY - startY;
+      startY = null; sheet.classList.remove('dragging');
+      setOpen(dy < 120);
+    }
+    drag.addEventListener('pointerup', endDrag);
+    drag.addEventListener('pointercancel', endDrag);
+
+    renderPlay(); renderPos();
+  });
+
+  // Theme toggle
+  var root = document.documentElement, btn = document.getElementById('theme');
+  try { var saved = localStorage.getItem('aux-theme'); if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved); } catch (e) {}
+  function sync() { btn.textContent = root.getAttribute('data-theme') === 'dark' ? 'Light mode' : 'Dark mode'; }
+  sync();
+  btn.addEventListener('click', function () {
+    var n = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', n); sync();
+    try { localStorage.setItem('aux-theme', n); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

@@ -417,3 +417,31 @@ it('remembers the playing playlist for the player link, from playback and from a
   music.reset()
   expect(music.playlistInfo).toBeNull()
 })
+
+it('links the mobile player back to a restored playlist, with its name', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ musicPieces: [], nextCursor: null }) })))
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener() {}, removeEventListener() {} })))
+  const { createRouter, createMemoryHistory } = await import('vue-router')
+  const Stub = { template: '<div />' }
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: Stub },
+      { path: '/:username', name: 'Profile', component: Stub },
+      { path: '/playlist/:username/:id', name: 'Playlist', component: Stub },
+    ],
+  })
+  const music = useMusicStore()
+  await music.updateBottomPlayerAfterLogin({
+    playlistId: 'p_1',
+    playlistOwnerUsername: 'owner',
+    playlistName: 'Road trip',
+    musicPiece: { musicPieceId: 'm_1', name: 'Song', coverUrl: null, artistSummary: null },
+  })
+  const wrapper = mount(BottomPlayer, { global: { plugins: [router] } })
+  expect(wrapper.find('.mini').exists()).toBe(true)
+  expect(wrapper.find('.bottom-player').exists()).toBe(false)
+  const items = wrapper.findAll('[role="menuitem"]').map(i => i.text())
+  expect(items).toEqual(['Go to playlistRoad trip'])
+  wrapper.unmount()
+})

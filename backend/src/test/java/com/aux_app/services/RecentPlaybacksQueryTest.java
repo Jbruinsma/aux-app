@@ -59,11 +59,48 @@ class RecentPlaybacksQueryTest {
                     int owner = rows.findColumn("playlistOwnerUsername");
                     assertEquals(Types.VARCHAR, rows.getMetaData().getColumnType(owner));
                     assertEquals("", rows.getString(owner));
+                    int name = rows.findColumn("playlistName");
+                    assertEquals(Types.VARCHAR, rows.getMetaData().getColumnType(name));
+                    assertEquals("", rows.getString(name));
 
                     assertTrue(rows.next());
                     assertEquals("p_pl", rows.getString(playlistId));
                     assertEquals("caller", rows.getString(owner));
+                    assertEquals("Mix", rows.getString(name));
                     assertEquals("chill", rows.getString(tags));
+                }
+            }
+        }
+    }
+
+    // GET /me/last-playback links the player back to the playlist, so it needs the owner and name as well as the id
+    @Test
+    void lastPlaybackHasPlaylistOwnerAndName(@TempDir Path dir) throws Exception {
+        String url = "jdbc:sqlite:" + dir.resolve("test.db");
+        Flyway.configure().dataSource(url, null, null).load().migrate();
+
+        try (Connection db = DriverManager.getConnection(url)) {
+            exec(db, "INSERT INTO users (user_id, username, email, password_hash, onboarding_step, public_id) "
+                    + "VALUES ('caller', 'caller', 'c@x', 'x', 'DONE', 'u_c'), ('owner', 'owner', 'o@x', 'x', 'DONE', 'u_o')");
+            exec(db, "INSERT INTO artists (artist_id, artist_name, public_id) VALUES ('A', 'A', 'a_A')");
+            exec(db, "INSERT INTO playlists (playlist_id, owner_id, is_public, playlist_name, public_id) "
+                    + "VALUES ('pl', 'owner', 1, 'Road trip', 'p_pl')");
+            exec(db, "INSERT INTO music_pieces (music_piece_id, uploader_user_id, artist_id, mp3_file_url, is_public, public_id, name) "
+                    + "VALUES ('song', 'owner', 'A', 'x', 1, 'm_song', 'song')");
+            exec(db, "INSERT INTO play_events (play_event_id, user_id, music_piece_id, played_at, listen_duration_seconds, context_playlist_id) "
+                    + "VALUES ('p1', 'caller', 'song', 1000, 60, 'pl')");
+
+            String sql = PlayEventRepository.class.getMethod("findLastPlayback", String.class)
+                    .getAnnotation(Query.class).value();
+            try (PreparedStatement statement = db.prepareStatement(sql.replace(":userId", "?"))) {
+                for (int i = 1; i <= statement.getParameterMetaData().getParameterCount(); i++) {
+                    statement.setString(i, "caller");
+                }
+                try (ResultSet rows = statement.executeQuery()) {
+                    assertTrue(rows.next());
+                    assertEquals("p_pl", rows.getString("playlistId"));
+                    assertEquals("owner", rows.getString("playlistOwnerUsername"));
+                    assertEquals("Road trip", rows.getString("playlistName"));
                 }
             }
         }

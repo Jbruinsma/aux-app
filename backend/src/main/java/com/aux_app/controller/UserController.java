@@ -348,7 +348,9 @@ public class UserController {
                     Everything the player needs on load. `musicPiece` is the most recent play recorded with
                     `POST /api/music-pieces/{musicPieceId}/plays`; plays of pieces made private since are skipped, and
                     it is null when the caller has never played anything they can still play. `playlistId` is null
-                    when the piece wasn't played from a playlist, or the caller can no longer see that playlist.
+                    when the piece wasn't played from a playlist, or the caller can no longer see that playlist;
+                    `playlistOwnerUsername` and `playlistName` (for the link `/playlist/{ownerUsername}/{playlistId}`)
+                    are null whenever `playlistId` is.
                     `playPreferences` is shuffle and repeat, kept across devices; the defaults (shuffle off, repeat
                     `OFF`) until `PUT /me/play-preferences` is called. Volume is not stored; it stays on the device.
                     """)
@@ -362,6 +364,8 @@ public class UserController {
         return new LastPlaybackResponse(
                 lastPlayback == null ? null : lastPlayback.musicPiece(),
                 lastPlayback == null ? null : lastPlayback.playlistId(),
+                lastPlayback == null ? null : lastPlayback.playlistOwnerUsername(),
+                lastPlayback == null ? null : lastPlayback.playlistName(),
                 new PlayPreferences(preferences.isShuffleEnabled(), preferences.getRepeatPreference())
         );
     }
@@ -441,10 +445,10 @@ public class UserController {
                     - `recents`: up to 20 distinct pieces from plays recorded with
                       `POST /api/music-pieces/{musicPieceId}/plays`, most recently played first. A piece played several
                       times appears once, with the `playlistId` of its latest play and that playlist's
-                      `playlistOwnerUsername`, for the link `/playlist/{ownerUsername}/{playlistId}`. Same rules as
-                      `GET /me/last-playback`: plays of pieces made private since are skipped, and `playlistId` and
-                      `playlistOwnerUsername` are null when the piece wasn't played from a playlist or the caller can no
-                      longer see it. Empty when the caller has played nothing they can still play.
+                      `playlistOwnerUsername` and `playlistName`, for the link `/playlist/{ownerUsername}/{playlistId}`.
+                      Same rules as `GET /me/last-playback`: plays of pieces made private since are skipped, and
+                      `playlistId`, `playlistOwnerUsername` and `playlistName` are null when the piece wasn't played
+                      from a playlist or the caller can no longer see it. Empty when the caller has played nothing they can still play.
                     - `top-artists`: up to 20 artists ranked by how many plays the caller has recorded of their pieces,
                       all time. Ties go to the artist played most recently. Empty when the caller has played nothing.
                     - `library`: playlists the caller owns (public and private), playlists they're an accepted listener

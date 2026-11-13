@@ -27,6 +27,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN po.username END, '') AS playlistOwnerUsername,
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN p.playlist_name END, '') AS playlistName,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM play_events pe
@@ -65,6 +67,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN po.username END, '') AS playlistOwnerUsername,
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                        THEN p.playlist_name END, '') AS playlistName,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM latest l
@@ -100,6 +104,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         Integer getIsFavorite(); // 1 or 0
         String getPlaylistId(); // '' when none
         String getPlaylistOwnerUsername(); // '' when getPlaylistId() is ''
+        String getPlaylistName(); // '' when getPlaylistId() is ''
         String getTags(); // TagRepository.PIECE_TAGS; read with TagRepository.split
     }
 

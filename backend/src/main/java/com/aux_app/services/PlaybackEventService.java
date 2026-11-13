@@ -105,7 +105,8 @@ public class PlaybackEventService {
                         true // findLastPlayback and findRecentPlaybacks only return pieces the user can play
                 ),
                 row.getPlaylistId().isEmpty() ? null : row.getPlaylistId(),
-                row.getPlaylistOwnerUsername().isEmpty() ? null : row.getPlaylistOwnerUsername()
+                row.getPlaylistOwnerUsername().isEmpty() ? null : row.getPlaylistOwnerUsername(),
+                row.getPlaylistName().isEmpty() ? null : row.getPlaylistName()
         );
     }
 

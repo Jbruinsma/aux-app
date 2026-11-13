@@ -443,8 +443,9 @@ export const useMusicStore = defineStore('music', () => {
   watch(accountId, applySettings, { immediate: true })
   if (typeof window !== 'undefined') window.addEventListener('pagehide', () => saveLastPlayback())
 
-  // GET /api/users/me/last-playback ({ musicPiece, playlistId, playPreferences }): shows that song, paused, with its
-  // queue rebuilt so Play picks up where the user left off. Saved position and queue are only used for the same song.
+  // GET /api/users/me/last-playback ({ musicPiece, playlistId, playlistOwnerUsername, playlistName, playPreferences }):
+  // shows that song, paused, with its queue rebuilt so Play picks up where the user left off, and a link back to the
+  // playlist. Saved position and queue are only used for the same song.
   // musicPiece is null for someone who has never played anything, but their preferences still apply
   async function restoreLastPlayback(playbackData) {
     const piece = playbackData?.musicPiece
@@ -461,7 +462,6 @@ export const useMusicStore = defineStore('music', () => {
     const same = saved?.musicPieceId === piece.musicPieceId && (saved.playlistId ?? null) === playlistId
     currentMusicPiece.value = toCurrent(piece, null)
     currentPlaylistUUID.value = playlistId ?? ''
-    // playlistName and playlistOwnerUsername are requested from the backend (BACKEND_REQUESTS.md); null until then
     playlistInfo.value = playlistId
       ? { playlistId, name: playbackData.playlistName ?? null, ownerUsername: playbackData.playlistOwnerUsername ?? null }
       : null
