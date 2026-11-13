@@ -5,7 +5,6 @@ import com.aux_app.auth.OptionalCurrentUser;
 import com.aux_app.dto.artist.ArtistCreationDetails;
 import com.aux_app.dto.artist.ArtistDetails;
 import com.aux_app.dto.artist.ArtistSummary;
-import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.music_piece.MusicPiecePage;
 import com.aux_app.dto.users.BannerUpdate;
 import com.aux_app.dto.users.ProfilePictureUpdate;
@@ -161,17 +160,10 @@ public class ArtistController {
             @OptionalCurrentUser UserEntity user
     ) {
         ArtistEntity artist = findArtist(artistId);
-        int offset = parseOffsetCursor(cursor);
-
-        // ponytail: offset cursor over a live play-count order can skip or repeat a piece mid-read; fine at our size
-        List<MusicPieceOverview> page = this.musicPieces.findArtistPieces(
-                artist.getArtistId(), user == null ? null : user.getUserId(), PIECE_PAGE_SIZE + 1, offset);
-        boolean more = page.size() > PIECE_PAGE_SIZE;
-
-        return new MusicPiecePage(
-                more ? page.subList(0, PIECE_PAGE_SIZE) : page,
-                more ? Integer.toString(offset + PIECE_PAGE_SIZE) : null
-        );
+        int offset = OffsetCursor.parse(cursor);
+        return OffsetCursor.page(this.musicPieces.findArtistPieces(
+                artist.getArtistId(), user == null ? null : user.getUserId(), PIECE_PAGE_SIZE + 1, offset),
+                offset, PIECE_PAGE_SIZE);
     }
 
     @PutMapping(value = "/{artistId}/pfp", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -302,18 +294,6 @@ public class ArtistController {
         }
 
         return artist;
-    }
-
-    // The client treats the cursor as opaque; today it's the offset of the next page
-    private static int parseOffsetCursor(String cursor) {
-        if (cursor == null) return 0;
-        try {
-            int offset = Integer.parseInt(cursor);
-            if (offset >= 0) return offset;
-        } catch (NumberFormatException ignored) {
-            // falls through to the 400
-        }
-        throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "Invalid cursor", "cursor");
     }
 
     private static ArtistSummary toSummary(ArtistEntity artist) {

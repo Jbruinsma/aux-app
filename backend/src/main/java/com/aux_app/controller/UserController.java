@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.aux_app.repository.UserRepository;
+import com.aux_app.services.FriendsService;
 import com.aux_app.services.OnboardingService;
 import com.aux_app.services.UploadService;
 import com.aux_app.services.UsernameService;
@@ -46,6 +47,8 @@ import com.aux_app.services.UsernameService;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    private static final int MAX_FRIENDS_LIMIT = 50;
 
     private final UserRepository users;
     private final ProfileDetailsRepository profileDetails;
@@ -60,6 +63,7 @@ public class UserController {
     private final CompatibilityService compatibility;
     private final AccountService accounts;
     private final ApplicationEventPublisher events;
+    private final FriendsService friends;
 
     public UserController(
             UserRepository users,
@@ -74,7 +78,8 @@ public class UserController {
             FollowRepository follows,
             CompatibilityService compatibility,
             AccountService accounts,
-            ApplicationEventPublisher events
+            ApplicationEventPublisher events,
+            FriendsService friends
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
@@ -89,6 +94,7 @@ public class UserController {
         this.compatibility = compatibility;
         this.accounts = accounts;
         this.events = events;
+        this.friends = friends;
     }
 
     @GetMapping("/check-username/{username}")
@@ -236,6 +242,52 @@ public class UserController {
                 user.getBannerUrl(),
                 details
         );
+    }
+
+    @GetMapping("/me/friends")
+    @Operation(
+            summary = "List the caller's friends and what they're listening to",
+            description = """
+                    Friends are users the caller follows who follow them back. Query params: `limit` (1 to 50,
+                    default 20) and `offset` (default 0); `totalResults` counts every friend, not just this page.
+                    Online friends come first, then the rest by their most recent listen (`nowPlaying`, else
+                    `lastPlayed`), friends who've played nothing last, then by username. Only public pieces are ever
+                    shown, so a friend playing a private piece looks paused. The order follows live state, so a friend
+                    can move between pages while they're being read.
+                    `nowPlaying` comes from what friends' players report with `PUT /api/users/me/now-playing`.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK; `friends` is empty if the caller has none")
+    @ApiResponse(responseCode = "400", description = "limit outside 1 to 50 (code INVALID_LIMIT) or negative offset (code INVALID_OFFSET)")
+    public FriendsResponse retrieveFriends(
+            @CurrentUser UserEntity user,
+            @Parameter(description = "Friends per page, 1 to 50", example = "20") @RequestParam(defaultValue = "20") int limit,
+            @Parameter(description = "Friends to skip", example = "0") @RequestParam(defaultValue = "0") int offset
+    ) {
+        if (limit < 1 || limit > MAX_FRIENDS_LIMIT) {
+            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_LIMIT",
+                    "limit must be between 1 and " + MAX_FRIENDS_LIMIT, "limit");
+        }
+        if (offset < 0) {
+            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_OFFSET", "offset must not be negative", "offset");
+        }
+        return friends.list(user, limit, offset);
+    }
+
+    @PutMapping("/me/now-playing")
+    @Operation(
+            summary = "Report what the caller's player is doing",
+            description = """
+                    Shown to the caller's friends as `nowPlaying` in `GET /api/users/me/friends`. Send it when a piece
+                    starts playing, on pause and resume, and after a seek. Not on `/stream`: the player fetches
+                    streams ahead of time. It lasts until the piece would end at that position (plus 30 seconds), the
+                    next report, or the caller going offline (no open `GET /me/events` stream).
+                    `isPlaying: false` clears it, and so does a private or unknown piece, without an error.
+                    """)
+    @ApiResponse(responseCode = "204", description = "Saved")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field (code INVALID_FIELD)")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateNowPlaying(@CurrentUser UserEntity user, @Valid @RequestBody NowPlayingUpdate update) {
+        friends.updateNowPlaying(user, update.musicPieceId(), update.positionSeconds(), update.isPlaying());
     }
 
     @PutMapping(value = "/me/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

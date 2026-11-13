@@ -582,6 +582,91 @@
         } ]
       }
     },
+    "/api/users/me/now-playing" : {
+      "put" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "Report what the caller's player is doing",
+        "description" : "Shown to the caller's friends as `nowPlaying` in `GET /api/users/me/friends`. Send it when a piece\nstarts playing, on pause and resume, and after a seek. Not on `/stream`: the player fetches\nstreams ahead of time. It lasts until the piece would end at that position (plus 30 seconds), the\nnext report, or the caller going offline (no open `GET /me/events` stream).\n`isPlaying: false` clears it, and so does a private or unknown piece, without an error.\n",
+        "operationId" : "updateNowPlaying",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NowPlayingUpdate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Saved"
+          },
+          "400" : {
+            "description" : "Missing or bad field (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/me/banner" : {
       "put" : {
         "tags" : [ "user-controller" ],
@@ -4163,6 +4248,111 @@
         } ]
       }
     },
+    "/api/users/me/friends" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "List the caller's friends and what they're listening to",
+        "description" : "Friends are users the caller follows who follow them back. Query params: `limit` (1 to 50,\ndefault 20) and `offset` (default 0); `totalResults` counts every friend, not just this page.\nOnline friends come first, then the rest by their most recent listen (`nowPlaying`, else\n`lastPlayed`), friends who've played nothing last, then by username. Only public pieces are ever\nshown, so a friend playing a private piece looks paused. The order follows live state, so a friend\ncan move between pages while they're being read.\n`nowPlaying` comes from what friends' players report with `PUT /api/users/me/now-playing`.\n",
+        "operationId" : "retrieveFriends",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Friends per page, 1 to 50",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20
+          },
+          "example" : 20
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Friends to skip",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          },
+          "example" : 0
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK; `friends` is empty if the caller has none",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FriendsResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "limit outside 1 to 50 (code INVALID_LIMIT) or negative offset (code INVALID_OFFSET)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/users/me/events" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -4393,6 +4583,86 @@
         "security" : [ {
           "bearerAuth" : [ ]
         } ]
+      }
+    },
+    "/api/tags/{tag}/music-pieces" : {
+      "get" : {
+        "tags" : [ "tag-controller" ],
+        "summary" : "List the music pieces with a tag",
+        "description" : "Public; a token is optional. Public pieces carrying the tag, matched case-insensitively. The\ncaller's own private pieces are left out too, since the list is for discovery. Most played in the\nlast 30 days first (uploaders' plays of their own pieces don't count), newest as the tie-break.\nPages of 50: send `nextCursor` back as `cursor` for the next page. The order follows live play\ncounts, so a piece can move between pages while they're being read. Play them with `/stream` and\nno `playlistId`.\n",
+        "operationId" : "getTagMusicPieces",
+        "parameters" : [ {
+          "name" : "tag",
+          "in" : "path",
+          "description" : "Tag name, URL-encoded",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "lo-fi"
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` from the previous page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK; `musicPieces` is empty for an unknown tag or one with no public pieces",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPiecePage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad cursor (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
       }
     },
     "/api/playlists/{username}/{playlistId}" : {
@@ -5105,7 +5375,7 @@
       "get" : {
         "tags" : [ "core-controller" ],
         "summary" : "Get the top music pieces",
-        "description" : "Public. The 10 public music pieces played most in the last 7 days, most played first. Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played. Worked out at most every 5 minutes, so a new play can take that long to show.",
+        "description" : "Public. The 10 public music pieces played most in the last 7 days, most played first, each with its `playCount`. Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played. Worked out at most every 5 minutes, so a new play can take that long to show.",
         "operationId" : "getTopMusicPieces",
         "responses" : {
           "200" : {
@@ -6000,6 +6270,31 @@
         },
         "required" : [ "repeatPreference", "shuffleEnabled" ]
       },
+      "NowPlayingUpdate" : {
+        "type" : "object",
+        "description" : "What the caller's player is doing",
+        "properties" : {
+          "musicPieceId" : {
+            "type" : "string",
+            "description" : "Public id of the piece loaded in the player",
+            "example" : "m_92kd0Z",
+            "minLength" : 1
+          },
+          "positionSeconds" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How far into the piece the player is, in seconds",
+            "example" : 42,
+            "minimum" : 0
+          },
+          "isPlaying" : {
+            "type" : "boolean",
+            "description" : "False when paused or stopped",
+            "example" : true
+          }
+        },
+        "required" : [ "isPlaying", "musicPieceId", "positionSeconds" ]
+      },
       "BannerUpdate" : {
         "type" : "object",
         "description" : "The new banner",
@@ -6828,6 +7123,77 @@
           }
         }
       },
+      "Friend" : {
+        "type" : "object",
+        "description" : "A friend of the caller (they follow each other) and what they're listening to",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "description" : "Public id of the user",
+            "example" : "u_41x9Rb"
+          },
+          "username" : {
+            "type" : "string",
+            "description" : "Username",
+            "example" : "justin"
+          },
+          "pfpUrl" : {
+            "type" : "string",
+            "description" : "Profile picture URL",
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "isOnline" : {
+            "type" : "boolean",
+            "description" : "Whether they have Aux open right now",
+            "example" : true
+          },
+          "nowPlaying" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/FriendListen",
+            "description" : "The public piece their player says is playing now; null when they're offline, paused, or playing a private piece"
+          },
+          "lastPlayed" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/FriendListen",
+            "description" : "Their latest counted play of a public piece; null if they have none"
+          }
+        }
+      },
+      "FriendListen" : {
+        "type" : "object",
+        "description" : "A piece a friend is playing or played",
+        "properties" : {
+          "musicPiece" : {
+            "$ref" : "#/components/schemas/MusicPieceOverview",
+            "description" : "The music piece, always public. `isFavorite` is whether the caller favorited it"
+          },
+          "at" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "For `nowPlaying`, when the piece started (moved by seeks, so now minus this is the position); for `lastPlayed`, when the counted play was recorded",
+            "example" : "2026-11-13T14:05:12Z"
+          }
+        }
+      },
+      "FriendsResponse" : {
+        "type" : "object",
+        "description" : "One page of the caller's friends",
+        "properties" : {
+          "totalResults" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many friends the caller has in all, not just on this page",
+            "example" : 12
+          },
+          "friends" : {
+            "type" : "array",
+            "description" : "This page of friends, in order",
+            "items" : {
+              "$ref" : "#/components/schemas/Friend"
+            }
+          }
+        }
+      },
       "UserExistance" : {
         "type" : "object",
         "description" : "Whether a username is taken",
@@ -6836,6 +7202,23 @@
             "type" : "boolean",
             "description" : "True when the username is taken or reserved",
             "example" : true
+          }
+        }
+      },
+      "MusicPiecePage" : {
+        "type" : "object",
+        "description" : "One page of music pieces",
+        "properties" : {
+          "musicPieces" : {
+            "type" : "array",
+            "description" : "This page's pieces, in order",
+            "items" : {
+              "$ref" : "#/components/schemas/MusicPieceOverview"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send back as `cursor` to get the next page; null on the last page"
           }
         }
       },
@@ -7103,6 +7486,11 @@
         "type" : "object",
         "description" : "A music piece in the top list",
         "properties" : {
+          "musicPieceId" : {
+            "type" : "string",
+            "description" : "Public id of the music piece; play it with `/stream` and no `playlistId`",
+            "example" : "m_92kd0Z"
+          },
           "name" : {
             "type" : "string",
             "description" : "Title",
@@ -7116,6 +7504,16 @@
           "artistSummary" : {
             "$ref" : "#/components/schemas/ArtistSummary",
             "description" : "The artist"
+          },
+          "uploader" : {
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The user who uploaded the piece"
+          },
+          "playCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Plays counted for the list: the last 7 days, not counting the uploader's own",
+            "example" : 42
           }
         }
       },
@@ -7300,23 +7698,6 @@
             "type" : "boolean",
             "description" : "Whether the caller created the artist and may change its pfp and banner; false with no token",
             "example" : false
-          }
-        }
-      },
-      "MusicPiecePage" : {
-        "type" : "object",
-        "description" : "One page of music pieces",
-        "properties" : {
-          "musicPieces" : {
-            "type" : "array",
-            "description" : "This page's pieces, in order",
-            "items" : {
-              "$ref" : "#/components/schemas/MusicPieceOverview"
-            }
-          },
-          "nextCursor" : {
-            "type" : [ "string", "null" ],
-            "description" : "Send back as `cursor` to get the next page; null on the last page"
           }
         }
       },

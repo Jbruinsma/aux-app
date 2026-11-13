@@ -116,6 +116,30 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
     List<MusicPieceOverviewRow> findArtistPieceRows(@Param("artistId") String artistId, @Param("userId") String userId,
                                                     @Param("limit") int limit, @Param("offset") int offset);
 
+    // Public pieces carrying `tag` (already normalized, so an exact match), for anyone: the caller's own private pieces
+    // are left out too. Most played since `since` (epoch millis) first, newest as the tie-break. An uploader's plays of
+    // their own piece don't count. `userId` (may be null) is only for isFavorite.
+    default List<MusicPieceOverview> findTagPieces(String tag, long since, String userId, int limit, int offset) {
+        return findTagPieceRows(tag, since, userId, limit, offset).stream().map(MusicPieceRepository::toOverview).toList();
+    }
+
+    @Query(value = OVERVIEW_COLUMNS + """
+            WHERE mp.is_public = 1
+              AND mp.music_piece_id IN (SELECT mpt.music_piece_id FROM music_piece_tags mpt
+                                        JOIN tags t ON t.tag_id = mpt.tag_id WHERE t.tag = :tag)
+            -- Counted per piece through idx_play_events_music_piece_played_at, like findArtistPieceRows.
+            -- played_at is millis when the app writes it, text in seeded rows, so both are read
+            ORDER BY (SELECT COUNT(*) FROM play_events pe
+                      WHERE pe.music_piece_id = mp.music_piece_id AND pe.user_id <> mp.uploader_user_id
+                        AND (CASE typeof(pe.played_at) WHEN 'integer' THEN pe.played_at
+                             ELSE unixepoch(pe.played_at) * 1000 END) >= :since) DESC,
+                     mp.created_at DESC, mp.music_piece_id
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<MusicPieceOverviewRow> findTagPieceRows(@Param("tag") String tag, @Param("since") long since,
+                                                 @Param("userId") String userId,
+                                                 @Param("limit") int limit, @Param("offset") int offset);
+
     // Public ids of pieces like the seed, best first; see RecommendationService.discover for the rules.
     // Score: 3 per shared seed tag, 1 per other shared tag from the seed artist's top 5, plus 1 per listener
     // (up to 4) among the seed's recent listeners who also played the piece. Equal scores come back in random order.

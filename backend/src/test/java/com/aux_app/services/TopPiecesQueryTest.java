@@ -46,11 +46,14 @@ class TopPiecesQueryTest {
             try (PreparedStatement statement = db.prepareStatement(sql.replace(":since", "?").replace(":limit", "?"))) {
                 statement.setLong(1, 1000);
                 statement.setInt(2, 10);
-                List<String> names = new ArrayList<>();
-                try (ResultSet rows = statement.executeQuery()) {
-                    while (rows.next()) names.add(rows.getString("name"));
+                List<String> rows = new ArrayList<>();
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        rows.add(result.getString("musicPieceId") + " " + result.getInt("playCount") + " "
+                                + result.getString("uploaderUsername"));
+                    }
                 }
-                assertEquals(List.of("two", "one"), names);
+                assertEquals(List.of("m_two 2 up", "m_one 1 up"), rows);
             }
         }
     }
