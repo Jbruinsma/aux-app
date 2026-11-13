@@ -1,4 +1,6 @@
-backend/aux.db
+# Local SQLite databases, their -wal/-shm files and backups. They hold users and password hashes
+backend/aux.db*
+backend/*.sqlite
 
 # IDE / AI tooling
 .idea/
