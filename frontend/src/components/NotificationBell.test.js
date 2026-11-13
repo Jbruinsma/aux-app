@@ -135,3 +135,24 @@ it('drops deleted invitations from the bell, including cached older pages, on a 
   expect(wrapper.findAll('.item')).toHaveLength(0)
   expect(wrapper.find('.badge').exists()).toBe(false)
 })
+
+it('shows a new follower with Follow back, and says when you are already friends', async () => {
+  useEventsStore().notifications = firstPage([
+    note('n1', 'NEW_FOLLOWER', { playlist: null, playlistOwnerUsername: null, followingBack: false }),
+    note('n2', 'NEW_FOLLOWER', { playlist: null, playlistOwnerUsername: null, actor: { userId: 'u3', username: 'sam', pfpUrl: null }, followingBack: true }),
+  ], 0)
+  request.mockResolvedValue(null)
+  await render()
+  await wrapper.get('button.bell').trigger('click')
+  const items = wrapper.findAll('.item')
+  expect(items[0].text()).toContain('pal started following you.')
+  expect(items[0].get('a').attributes('data-to')).toContain('"username":"pal"')
+  expect(items[1].text()).toContain("sam started following you. You're now friends.")
+  expect(items[1].find('button').exists()).toBe(false)
+
+  await items[0].get('button').trigger('click')
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('PUT', expect.stringContaining('/api/users/pal/follow'), undefined, { notifyOnError: false })
+  expect(wrapper.findAll('.item')[0].text()).toContain("You're now friends.")
+  expect(useNotificationStore().message).toBe('You and pal are now friends.')
+})

@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -105,6 +105,7 @@ import {
   uploadMusicPiece,
 } from '@/utils/music.js'
 import { useNotificationStore } from '@/stores/notification.js'
+import { fetchArtist } from '@/utils/artist.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,9 +115,11 @@ const notification = useNotificationStore()
 const targetPlaylist = computed(() => (route.query.playlist && route.query.owner
   ? { id: String(route.query.playlist), owner: String(route.query.owner) }
   : null))
-const backRoute = computed(() => (targetPlaylist.value
-  ? { name: 'Add', params: { username: targetPlaylist.value.owner, id: targetPlaylist.value.id } }
-  : { name: 'Dashboard' }))
+const backRoute = computed(() => {
+  if (targetPlaylist.value) return { name: 'Add', params: { username: targetPlaylist.value.owner, id: targetPlaylist.value.id } }
+  if (route.query.artist) return { name: 'Artist', params: { artistId: String(route.query.artist) } }
+  return { name: 'Dashboard' }
+})
 
 const mp3Input = ref(null)
 const mp3File = ref(null)
@@ -137,6 +140,19 @@ const hasArtist = computed(() => Boolean(artist.value || artistPicker.value?.pen
 const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(mp3File.value && coverFile.value && title.value.trim() && hasArtist.value))
 
 onBeforeUnmount(() => URL.revokeObjectURL(coverPreview.value))
+
+// From an artist's Add music: /upload?artist=<artistId> starts with that artist picked. If it can't be loaded the
+// picker just starts empty
+onMounted(async () => {
+  const artistId = route.query.artist
+  if (!artistId) return
+  try {
+    const { artistId: id, artistName, artistPfpUrl } = await fetchArtist(String(artistId))
+    if (!artist.value) artist.value = { artistId: id, artistName, artistPfpUrl }
+  } catch {
+    // Keep the empty picker
+  }
+})
 
 async function onPickMp3(file) {
   if (!file) return

@@ -65,8 +65,8 @@ import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { rerouteToPublicProfile, rerouteToSettings } from '@/utils/reroutes.js'
 
-const GUEST_NAV = ['Music', 'Explore', 'Friends', 'Charts']
-const MEMBER_NAV = ['Music', 'Explore', 'Friends', 'Charts']
+const GUEST_NAV = ['Music', 'Artists', 'Explore', 'Friends', 'Charts']
+const MEMBER_NAV = ['Music', 'Artists', 'Explore', 'Friends', 'Charts']
 
 const route = useRoute()
 const router = useRouter()

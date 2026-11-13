@@ -23,27 +23,45 @@
       <p class="panel-title">Notifications</p>
       <p v-if="!page && eventsStore.status === 'error'" class="panel-state error">We couldn't load your notifications. We'll keep trying.</p>
       <p v-else-if="!page" class="panel-state">Loading…</p>
-      <p v-else-if="!items.length" class="panel-state">No notifications yet. Invitations and playlist activity show up here.</p>
+      <p v-else-if="!items.length" class="panel-state">No notifications yet. New followers, invitations and playlist activity show up here.</p>
       <template v-else>
         <ul class="list">
           <li v-for="item in items" :key="item.notificationId" class="item" :class="{ unread: !item.isRead }">
-            <img v-if="item.playlist.playlistCoverUrl" class="cover" :src="resolveCoverURL(item.playlist.playlistCoverUrl)" alt="" />
-            <span v-else class="cover" aria-hidden="true"></span>
-            <div class="item-body">
-              <p class="item-text">
-                <strong>{{ item.actor.username }}</strong> {{ describe(item) }}
-                <router-link :to="notificationPlaylistRoute(item)" class="playlist-link" @click="open = false">{{ item.playlist.playlistName }}</router-link>
-              </p>
-              <p class="item-time">{{ timeAgo(item.createdAt) }}</p>
-              <div v-if="item.type === 'PLAYLIST_INVITE'" class="item-actions">
-                <button type="button" class="btn primary small" :disabled="!!busy[item.notificationId]" @click="respond(item, true)">
-                  {{ busy[item.notificationId] === 'accept' ? 'Accepting…' : 'Accept' }}
-                </button>
-                <button type="button" class="btn text small" :disabled="!!busy[item.notificationId]" @click="respond(item, false)">
-                  {{ busy[item.notificationId] === 'decline' ? 'Declining…' : 'Decline' }}
-                </button>
+            <template v-if="item.type === 'NEW_FOLLOWER'">
+              <img v-if="item.actor.pfpUrl" class="cover avatar" :src="resolveCoverURL(item.actor.pfpUrl)" alt="" />
+              <span v-else class="cover avatar avatar-empty" aria-hidden="true">{{ item.actor.username.charAt(0).toUpperCase() }}</span>
+              <div class="item-body">
+                <p class="item-text">
+                  <router-link :to="{ name: 'Profile', params: { username: item.actor.username } }" class="actor-link" @click="open = false">{{ item.actor.username }}</router-link>
+                  started following you.<template v-if="followsBack(item)"> You're now friends.</template>
+                </p>
+                <p class="item-time">{{ timeAgo(item.createdAt) }}</p>
+                <div v-if="!followsBack(item)" class="item-actions">
+                  <button type="button" class="btn primary small" :disabled="!!busy[item.notificationId]" @click="followBack(item)">
+                    {{ busy[item.notificationId] ? 'Following…' : 'Follow back' }}
+                  </button>
+                </div>
               </div>
-            </div>
+            </template>
+            <template v-else-if="item.playlist">
+              <img v-if="item.playlist.playlistCoverUrl" class="cover" :src="resolveCoverURL(item.playlist.playlistCoverUrl)" alt="" />
+              <span v-else class="cover" aria-hidden="true"></span>
+              <div class="item-body">
+                <p class="item-text">
+                  <strong>{{ item.actor.username }}</strong> {{ describe(item) }}
+                  <router-link :to="notificationPlaylistRoute(item)" class="playlist-link" @click="open = false">{{ item.playlist.playlistName }}</router-link>
+                </p>
+                <p class="item-time">{{ timeAgo(item.createdAt) }}</p>
+                <div v-if="item.type === 'PLAYLIST_INVITE'" class="item-actions">
+                  <button type="button" class="btn primary small" :disabled="!!busy[item.notificationId]" @click="respond(item, true)">
+                    {{ busy[item.notificationId] === 'accept' ? 'Accepting…' : 'Accept' }}
+                  </button>
+                  <button type="button" class="btn text small" :disabled="!!busy[item.notificationId]" @click="respond(item, false)">
+                    {{ busy[item.notificationId] === 'decline' ? 'Declining…' : 'Decline' }}
+                  </button>
+                </div>
+              </div>
+            </template>
           </li>
         </ul>
         <p v-if="olderError" class="panel-state error">{{ olderError }}</p>
@@ -60,6 +78,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { resolveCoverURL } from '@/utils/display.js'
 import { acceptInvite, declineInvite } from '@/utils/playlist.js'
+import { setFollowing } from '@/utils/follows.js'
 import { fetchNotifications, markAllNotificationsRead, notificationPlaylistRoute, timeAgo } from '@/utils/notifications.js'
 import { useEventsStore } from '@/stores/events.js'
 import { useNotificationStore } from '@/stores/notification.js'
@@ -106,6 +125,27 @@ function describe(item) {
   if (item.type === 'INVITE_ACCEPTED') return 'accepted your invite to'
   const count = item.trackCount ?? 0
   return `added ${count === 1 ? '1 song' : `${count} songs`} to`
+}
+
+// NEW_FOLLOWER carries `followingBack`: whether the caller already follows the actor, which makes them friends
+const followedBack = ref(new Set())
+
+function followsBack(item) {
+  return Boolean(item.followingBack) || followedBack.value.has(item.actor.username)
+}
+
+async function followBack(item) {
+  const id = item.notificationId
+  busy[id] = 'follow'
+  try {
+    await setFollowing(item.actor.username, true)
+    followedBack.value = new Set([...followedBack.value, item.actor.username])
+    notification.success(`You and ${item.actor.username} are now friends.`)
+  } catch (err) {
+    if (!err.sessionEnded) notification.error(`We couldn't follow ${item.actor.username}. Check that the server is running, then try again.`)
+  } finally {
+    delete busy[id]
+  }
 }
 
 function toggle() {
@@ -198,6 +238,10 @@ onBeforeUnmount(() => {
 .item-text { color: var(--ink); font: 400 14px/20px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
 .item-text strong { font-weight: 600; }
 .item-time { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; }
+.avatar { border-radius: var(--radius-pill); }
+.avatar-empty { background: var(--primary); color: var(--on-primary); display: grid; font: 700 16px/1 var(--font-sans); place-items: center; }
+.actor-link { color: var(--ink); font-weight: 600; text-decoration: none; }
+.actor-link:hover { color: var(--link); text-decoration: underline; }
 .playlist-link { color: var(--link); font-weight: 600; text-decoration: none; }
 .playlist-link:hover { text-decoration: underline; }
 .item-actions { align-items: center; display: flex; gap: var(--space-2); margin-top: var(--space-1); }

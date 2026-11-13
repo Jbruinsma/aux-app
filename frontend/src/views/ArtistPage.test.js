@@ -35,11 +35,12 @@ async function render() {
   await flushPromises()
 }
 
-// GET /api/artists/{id}, then the music search used to find the artist's songs
-function backend(artist, searchResults = []) {
-  fetchAPI.mockImplementation(async (url) => (url.includes('/api/core/search')
-    ? { results: searchResults, totalResults: searchResults.length }
-    : artist))
+// GET /api/artists/{id}, then its songs from GET /api/artists/{id}/music-pieces. `pages` maps a cursor (or 'first')
+function backend(artist, pages = { first: { musicPieces: [], nextCursor: null } }) {
+  fetchAPI.mockImplementation(async (url) => {
+    if (!url.includes('/music-pieces')) return artist
+    return pages[new URL(url, 'http://x').searchParams.get('cursor') ?? 'first']
+  })
 }
 
 const song = (n, artistId = 'a1') => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistId, artistName: 'Frank Ocean' } })
@@ -86,16 +87,23 @@ it('says when the artist does not exist', async () => {
   expect(wrapper.text()).toContain("This artist isn't on Aux")
 })
 
-it("lists the artist's songs from search, leaving out other artists with a similar name, and plays them", async () => {
-  backend(details(), [song(1), song(2, 'a2'), song(3)])
+it("lists the artist's songs most played first, with play counts, pages through them and plays them", async () => {
+  useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
+  backend(details(), {
+    first: { musicPieces: [{ ...song(1), playCount: 40 }, { ...song(2), playCount: 7 }], nextCursor: 'c1' },
+    c1: { musicPieces: [{ ...song(3), playCount: 2 }], nextCursor: null },
+  })
   await render()
-  const search = fetchAPI.mock.calls.map(([url]) => url).find((url) => url.includes('/api/core/search'))
-  expect(search).toContain('category=MUSIC')
-  expect(search).toContain('query=Frank+Ocean')
-  const rows = wrapper.findAll('.track')
-  expect(rows.map((row) => row.get('.track-name').text())).toEqual(['Song 1', 'Song 3'])
+  expect(fetchAPI.mock.calls.map(([url]) => url)).toContainEqual(expect.stringMatching(/\/api\/artists\/a1\/music-pieces$/))
+  expect(wrapper.text()).toContain('40 plays')
+  await wrapper.findAll('button').find((b) => b.text() === 'Show more').trigger('click')
+  await flushPromises()
+  expect(fetchAPI.mock.calls.at(-1)[0]).toContain('/api/artists/a1/music-pieces?cursor=c1')
   const music = useMusicStore()
   const playPieces = vi.spyOn(music, 'playPieces').mockReturnValue(true)
-  await rows[1].get('.track-main').trigger('click')
-  expect(playPieces).toHaveBeenCalledWith([song(1), song(3)], 1)
+  const plays = wrapper.findAll('button.play')
+  expect(plays).toHaveLength(3)
+  await plays[2].trigger('click')
+  expect(playPieces).toHaveBeenCalledWith([{ ...song(1), playCount: 40 }, { ...song(2), playCount: 7 }, { ...song(3), playCount: 2 }], 2)
+  expect(wrapper.text()).toContain('Add music')
 })

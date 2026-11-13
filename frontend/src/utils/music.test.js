@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { additionMessage, mp3Problem } from './music.js'
+import { additionMessage, groupByArtist, mp3Problem } from './music.js'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -36,4 +36,13 @@ it('sums up what was added and skipped', () => {
   expect(additionMessage({ addedCount: 1, failedCount: 0 })).toBe('Added 1 song.')
   expect(additionMessage({ addedCount: 3, failedCount: 1 })).toBe("Added 3 songs. 1 song couldn't be added (already in the playlist, private, or the playlist is full).")
   expect(additionMessage({ addedCount: 0, failedCount: 2 })).toBe("2 songs couldn't be added (already in the playlist, private, or the playlist is full).")
+})
+
+it('groups uploads by artist, the most played artist first and the most played piece first inside each', () => {
+  const piece = (id, artistId, playCount) => ({ musicPieceId: id, artistSummary: { artistId, artistName: artistId.toUpperCase() }, playCount })
+  const groups = groupByArtist([piece('m1', 'a', 5), piece('m2', 'b', 30), piece('m3', 'a', 40), piece('m4', 'b', 1)])
+  expect(groups.map((group) => [group.artist.artistId, group.plays, group.pieces.map((p) => p.musicPieceId)]))
+    .toEqual([['a', 45, ['m3', 'm1']], ['b', 31, ['m2', 'm4']]])
+  expect(groupByArtist([piece('m1', 'a'), piece('m2', 'b'), piece('m3', 'a')]).map((group) => group.pieces.map((p) => p.musicPieceId)))
+    .toEqual([['m1', 'm3'], ['m2']])
 })
