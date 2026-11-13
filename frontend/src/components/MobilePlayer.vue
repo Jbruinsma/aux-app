@@ -24,8 +24,8 @@
     <div
       ref="sheetRef"
       class="sheet"
-      :class="{ open, dragging: dragStart !== null }"
-      :style="dragOffset ? { transform: `translateY(${dragOffset}px)` } : null"
+      :class="{ open, dragging: dragStart !== null, glow: Boolean(glowColor) }"
+      :style="{ '--glow': glowColor || 'transparent', ...(dragOffset ? { transform: `translateY(${dragOffset}px)` } : {}) }"
       role="dialog"
       aria-modal="true"
       aria-label="Now playing"
@@ -133,6 +133,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { resolveCoverURL } from '@/utils/display.js'
+import { useCoverColor } from '@/utils/coverColor.js'
 
 const props = defineProps({
   piece: { type: Object, default: null },
@@ -164,6 +165,9 @@ const closeRef = ref(null)
 const sheetRef = ref(null)
 const menuRef = ref(null)
 const menuBtnRef = ref(null)
+
+// The background takes the cover's most prominent color, the same as the desktop queue
+const glowColor = useCoverColor(() => props.piece?.cover || '')
 
 const title = computed(() => props.piece?.title || 'No song playing')
 const subtitle = computed(() => props.piece?.artist || props.uploader?.username || '')
@@ -283,8 +287,13 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .mini-progress { background: var(--line); bottom: 0; height: 2px; left: 0; position: absolute; right: 0; }
 .mini-progress span { background: var(--purple); display: block; height: 100%; }
 
-.sheet { background: var(--surface); display: flex; flex-direction: column; inset: 0; overflow-y: auto; overscroll-behavior: contain; padding: calc(env(safe-area-inset-top, 0px) + var(--space-2)) var(--space-6) calc(env(safe-area-inset-bottom, 0px) + var(--space-4)); position: fixed; transform: translateY(100%); transition: transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 200; }
-.sheet.open { transform: translateY(0); transition: transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
+.sheet { background: var(--surface); display: flex; flex-direction: column; inset: 0; overflow-y: auto; overscroll-behavior: contain; padding: calc(env(safe-area-inset-top, 0px) + var(--space-2)) var(--space-6) calc(env(safe-area-inset-bottom, 0px) + var(--space-4)); position: fixed; transform: translateY(100%); transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 200; }
+.sheet.open { transform: translateY(0); transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
+/* The cover's color radiates from behind the art and fades into surface. The style guide's one gradient */
+.sheet.glow { background: radial-gradient(ellipse 95% 48% at 50% 32%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 50%, var(--surface) 100%); }
+/* Muted gray and purple can't be kept readable on an unknown tint, so text and icons over it use ink. Shuffle and
+   repeat still show their state with a dot */
+.glow .mode, .glow .mode.active, .glow .sheet-artist, .glow .sheet-label, .glow .times, .glow .uploader { color: var(--ink); }
 .sheet.dragging { transition: none; }
 .sheet-top { align-items: center; cursor: grab; display: grid; flex: none; grid-template-columns: 44px 1fr 44px; padding-top: var(--space-2); position: relative; touch-action: none; }
 .grabber { background: var(--line-strong); border-radius: var(--radius-pill); height: 5px; left: 50%; position: absolute; top: 0; transform: translateX(-50%); width: 36px; }

@@ -7,9 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
 <style>
-:root,[data-theme="light"]{--focus-ring:#6a4778;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
-[data-theme="dark"]{--focus-ring:#b593c4;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
+:root,[data-theme="light"]{--focus-ring:#6a4778;--glow-in:60%;--glow-mid:24%;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
+[data-theme="dark"]{--focus-ring:#b593c4;--glow-in:70%;--glow-mid:30%;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
 :root{--dur-fast:150ms;--dur-med:300ms;--ease:cubic-bezier(.2,0,0,1);--font-sans:Montserrat, "Segoe UI", Helvetica, Arial, sans-serif;--radius-md:6px;--radius-pill:999px;--radius-sm:3px;--safe-bottom:34px;--safe-top:47px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px}
+@property --glow{inherits:true;initial-value:transparent;syntax:"<color>"}
 *,*::before,*::after{box-sizing:border-box}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 body{background:var(--surface-alt);color:var(--ink);font:400 16px/24px var(--font-sans);margin:0}
@@ -22,6 +23,10 @@ p{margin:0}
 .page-head{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between;margin-bottom:var(--space-6)}
 .page-head h1{font:700 28px/34px var(--font-sans);margin:0}
 .page-head p{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.head-tools{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.cover-pick{align-items:center;color:var(--ink-muted);display:flex;font:600 12px/16px var(--font-sans);gap:var(--space-2)}
+.cover-pick button{background-size:cover;border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;height:32px;padding:0;width:32px}
+.cover-pick button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
 .theme-btn{align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;display:flex;font:600 14px/20px var(--font-sans);gap:var(--space-2);padding:10px 18px}
 .stage{display:flex;flex-wrap:wrap;gap:var(--space-8);justify-content:center}
 .stage figure{margin:0}
@@ -86,7 +91,11 @@ p{margin:0}
 
 /* Full player sheet */
 .scrim{background:rgba(0,0,0,.4);inset:0;opacity:0;pointer-events:none;position:absolute;transition:opacity var(--dur-med) var(--ease);z-index:15}
-.sheet{background:var(--surface);display:flex;flex-direction:column;inset:0;padding:var(--safe-top) var(--space-6) calc(var(--safe-bottom) + var(--space-4));position:absolute;transform:translateY(100%);transition:transform var(--dur-med) var(--ease);z-index:20}
+.sheet{--glow:transparent;background:var(--surface);display:flex;flex-direction:column;inset:0;padding:var(--safe-top) var(--space-6) calc(var(--safe-bottom) + var(--space-4));position:absolute;transform:translateY(100%);transition:--glow 700ms var(--ease),transform var(--dur-med) var(--ease);z-index:20}
+/* The cover's most prominent color radiates from behind the art and fades into surface (same as the desktop queue) */
+.sheet.glow{background:radial-gradient(ellipse 95% 48% at 50% 34%,color-mix(in srgb,var(--glow) var(--glow-in),var(--surface)) 0%,color-mix(in srgb,var(--glow) var(--glow-mid),var(--surface)) 50%,var(--surface) 100%)}
+/* Muted gray and purple lose contrast on an unknown tint, so text and icons over it use ink; shuffle/repeat state still shows as a dot */
+.glow .sheet-label,.glow .sheet-artist,.glow .uploader,.glow .times,.glow .mode,.glow .mode.active{color:var(--ink)}
 .phone.open .sheet{transform:translateY(0)}
 .phone.open .scrim{opacity:1}
 .sheet.dragging{transition:none}
@@ -136,7 +145,16 @@ p{margin:0}
       <h1>Mobile player</h1>
       <p>Below 720px. Tap the mini player to open the full player; close it with the chevron or drag it down.</p>
     </div>
-    <button type="button" class="theme-btn" id="theme">Dark mode</button>
+    <div class="head-tools">
+      <div class="cover-pick" role="group" aria-label="Try a cover">Try a cover
+        <button type="button" aria-pressed="true" aria-label="Violent Crimes" data-cover="a0"></button>
+        <button type="button" aria-pressed="false" aria-label="Washing Machine Heart" data-cover="a4"></button>
+        <button type="button" aria-pressed="false" aria-label="Good Days" data-cover="a3"></button>
+        <button type="button" aria-pressed="false" aria-label="DNA." data-cover="a1"></button>
+      </div>
+      <button type="button" class="theme-btn" aria-pressed="true" data-glow-toggle>Glow on</button>
+      <button type="button" class="theme-btn" id="theme">Dark mode</button>
+    </div>
   </header>
 
   <div class="stage">
@@ -167,7 +185,7 @@ p{margin:0}
     <section>
       <h2>Defaults to confirm</h2>
       <ul>
-        <li>Plain <code>surface</code> background, not tinted from the cover art.</li>
+        <li>The background takes the cover's most prominent color, radiating from behind the art and fading into <code>surface</code> (white, or #121212 in dark mode). Same algorithm as the desktop queue (<code>prominentColor()</code>). Over the tint, muted text and icons switch to <code>ink</code>.</li>
         <li>No queue or "up next" yet.</li>
         <li>The song menu is a new pattern the style guide doesn't cover (surface card, line border, soft shadow, 44px rows). "Go to playlist" only shows when playback came from a playlist.</li>
         <li>Mini player shows next as well as play/pause.</li>
@@ -206,7 +224,7 @@ p{margin:0}
 
   <div class="mini">
     <button type="button" class="mini-open" aria-label="Open player: Violent Crimes by Kanye West" data-open>
-      <span class="art"></span>
+      <span class="art" data-cover-art></span>
       <span class="mini-text"><p class="mini-title">Violent Crimes</p><p class="mini-artist">Kanye West</p></span>
     </button>
     <button type="button" class="play" aria-label="Play" data-play></button>
@@ -217,7 +235,7 @@ p{margin:0}
   </div>
 
   <div class="scrim" data-close></div>
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="Now playing">
+  <div class="sheet glow" role="dialog" aria-modal="true" aria-label="Now playing">
     <div class="sheet-top" data-drag>
       <span class="grabber" aria-hidden="true"></span>
       <button type="button" class="icon-btn" aria-label="Close player" data-close>
@@ -226,7 +244,7 @@ p{margin:0}
       <p class="sheet-label">Now playing</p>
       <span></span>
     </div>
-    <div class="art sheet-art" role="img" aria-label="Cover art for Violent Crimes"></div>
+    <div class="art sheet-art" data-cover-art role="img" aria-label="Cover art for Violent Crimes"></div>
     <div class="meta">
       <button type="button" class="meta-btn" aria-haspopup="menu" aria-expanded="false" data-menu-btn>
         <span class="sheet-title">Violent Crimes</span>
@@ -382,6 +400,87 @@ p{margin:0}
 
     renderPlay(); renderPos();
   });
+
+  /* Cover glow: real pixels from a drawn cover, so the color is read the same way the app will */
+  var COVERS = {
+    a0: { t: 'Violent Crimes', a: 'Kanye West', draw: function (c) { lin(c, 0, 0, 0, 300, [[0, '#9fb3c8'], [.48, '#d6dde3'], [.49, '#56685d'], [1, '#25302a']]); } },
+    a1: { t: 'DNA.', a: 'Kendrick Lamar', draw: function (c) { lin(c, 0, 0, 300, 300, [[0, '#cfcfcf'], [.55, '#7a7a7a'], [1, '#2d2d2d']]); c.fillStyle = '#c8402e'; c.fillRect(0, 170, 300, 46); } },
+    a3: { t: 'Good Days', a: 'SZA', draw: function (c) { lin(c, 240, 0, 60, 300, [[0, '#e8c39e'], [.5, '#b0705a'], [1, '#3b2620']]); } },
+    a4: { t: 'Washing Machine Heart', a: 'Mitski', draw: function (c) { lin(c, 0, 0, 300, 160, [[0, '#1f2a44'], [.6, '#3f5b8a'], [1, '#a9c0e0']]); c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(200, 110, 52, 0, 7); c.fill(); } }
+  };
+  function lin(c, x0, y0, x1, y1, stops) {
+    var g = c.createLinearGradient(x0, y0, x1, y1);
+    stops.forEach(function (st) { g.addColorStop(st[0], st[1]); });
+    c.fillStyle = g; c.fillRect(0, 0, 300, 300);
+  }
+  Object.keys(COVERS).forEach(function (k) {
+    var cv = document.createElement('canvas'); cv.width = cv.height = 300;
+    COVERS[k].draw(cv.getContext('2d'));
+    COVERS[k].url = 'url(' + cv.toDataURL('image/jpeg', .85) + ') center/cover';
+    COVERS[k].color = prominentColor(cv);
+  });
+  /*
+   * The algorithm to port: shrink the cover to 32x32, put each pixel in a 4-bit-per-channel bucket, and score each bucket
+   * by how many pixels it has, favoring saturated ones so a strong accent beats a big gray area. Near-white, near-black
+   * and gray pixels only count when the cover has almost no color. The winner's average is clamped to a mid lightness so
+   * it never washes out on white or disappears on black.
+   */
+  function prominentColor(img) {
+    var N = 32, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    var ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, N, N);
+    var px = ctx.getImageData(0, 0, N, N).data;
+    var buckets = {}, colorful = 0, all = [0, 0, 0, 0];
+    for (var i = 0; i < px.length; i += 4) {
+      var r = px[i], g = px[i + 1], b = px[i + 2];
+      if (px[i + 3] < 128) continue;
+      all[0] += r; all[1] += g; all[2] += b; all[3]++;
+      var max = Math.max(r, g, b), min = Math.min(r, g, b), sat = max ? (max - min) / max : 0;
+      if (max < 30 || min > 230 || max - min < 28) continue;
+      colorful++;
+      var key = (r >> 4) + ',' + (g >> 4) + ',' + (b >> 4);
+      var bk = buckets[key] || (buckets[key] = { n: 0, r: 0, g: 0, b: 0, score: 0 });
+      bk.n++; bk.r += r; bk.g += g; bk.b += b; bk.score += .35 + sat;
+    }
+    var best = null;
+    Object.keys(buckets).forEach(function (k) { if (!best || buckets[k].score > best.score) best = buckets[k]; });
+    var rgb = (best && colorful > all[3] * .05) ? [best.r / best.n, best.g / best.n, best.b / best.n] : [all[0] / all[3], all[1] / all[3], all[2] / all[3]];
+    return clampLightness(rgb, .3, .65);
+  }
+  function clampLightness(rgb, lo, hi) {
+    var r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min, h = 0, s = 0;
+    if (d) {
+      s = d / (1 - Math.abs(2 * l - 1));
+      h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    l = Math.min(hi, Math.max(lo, l));
+    var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    var o = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return '#' + o.map(function (v) { return Math.round((v + m) * 255).toString(16).padStart(2, '0'); }).join('');
+  }
+
+  function setCover(k) {
+    var c = COVERS[k];
+    document.querySelectorAll('[data-cover-art]').forEach(function (el) { el.style.background = c.url; });
+    document.querySelectorAll('.sheet').forEach(function (el) { el.style.setProperty('--glow', c.color); });
+    document.querySelectorAll('.mini-title, .sheet-title').forEach(function (el) { el.textContent = c.t; });
+    document.querySelectorAll('.mini-artist, .sheet-artist').forEach(function (el) { el.textContent = c.a; });
+    document.querySelectorAll('.sheet-art').forEach(function (el) { el.setAttribute('aria-label', 'Cover art for ' + c.t); });
+    document.querySelectorAll('[data-cover]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.cover === k); });
+  }
+  document.querySelectorAll('[data-cover]').forEach(function (b) {
+    b.style.background = COVERS[b.dataset.cover].url;
+    b.addEventListener('click', function () { setCover(b.dataset.cover); });
+  });
+  document.querySelector('[data-glow-toggle]').addEventListener('click', function (e) {
+    var on = !document.querySelector('.sheet').classList.contains('glow');
+    document.querySelectorAll('.sheet').forEach(function (el) { el.classList.toggle('glow', on); });
+    e.currentTarget.setAttribute('aria-pressed', on);
+    e.currentTarget.textContent = on ? 'Glow on' : 'Glow off';
+  });
+  setCover('a0');
 
   // Theme toggle
   var root = document.documentElement, btn = document.getElementById('theme');

@@ -58,8 +58,9 @@ export const useMusicStore = defineStore('music', () => {
   const forceShowPlayerActive = ref(false)
   // Length of the current piece in seconds, once its audio has loaded
   const duration = ref(0)
+  // Where the current song sits in `playlist`: songs before it have been played, songs after it are up next
+  const queueIndex = ref(null)
 
-  let currentPlaylistIndex = null
   let playRequest = 0
   let loadingMore = null
   let prefetching = null
@@ -116,7 +117,7 @@ export const useMusicStore = defineStore('music', () => {
     finishListening()
     listened = 0
     duration.value = 0
-    currentPlaylistIndex = index
+    queueIndex.value = index
     currentMusicPiece.value = toCurrent(piece, null)
     position.value = 0
     seekOnLoad.value = null
@@ -189,7 +190,7 @@ export const useMusicStore = defineStore('music', () => {
 
   // Fetches the next queue page once only a few songs are left. Returns the pending load, if any
   function refill() {
-    const left = playlist.value.length - (currentPlaylistIndex ?? 0) - 1
+    const left = playlist.value.length - (queueIndex.value ?? 0) - 1
     if (!queueCursor.value || loadingMore || left > REFILL_WHEN_LEFT) return loadingMore
     const playlistId = currentPlaylistUUID.value
     const cursor = queueCursor.value
@@ -211,7 +212,7 @@ export const useMusicStore = defineStore('music', () => {
 
   async function moveForward() {
     if (!playlist.value.length) return
-    const next = (currentPlaylistIndex ?? -1) + 1
+    const next = (queueIndex.value ?? -1) + 1
     if (next >= playlist.value.length && queueCursor.value) await refill()
     if (!playlist.value.length) return
     if (next < playlist.value.length) return playAt(next)
@@ -232,25 +233,25 @@ export const useMusicStore = defineStore('music', () => {
   // Back to the start of the song, or to the previous one if it only just started
   function moveBackward() {
     if (!playlist.value.length) return
-    if (position.value > 3 || !currentPlaylistIndex) {
+    if (position.value > 3 || !queueIndex.value) {
       position.value = 0
       return
     }
-    return playAt(currentPlaylistIndex - 1)
+    return playAt(queueIndex.value - 1)
   }
 
   // The server shuffles: ask for a new queue that starts with the current song, which keeps playing
   async function toggleShuffle() {
     const playlistId = currentPlaylistUUID.value
-    const current = playlist.value[currentPlaylistIndex]
+    const current = playlist.value[queueIndex.value]
     if (!playlistId || !current) return
     const shuffle = !shuffleOn.value
     try {
       const page = await fetchQueue(playlistId, { start: current.musicPieceId, shuffle })
-      if (currentPlaylistUUID.value !== playlistId || playlist.value[currentPlaylistIndex] !== current) return
+      if (currentPlaylistUUID.value !== playlistId || playlist.value[queueIndex.value] !== current) return
       playlist.value = page.musicPieces
       queueCursor.value = page.nextCursor
-      currentPlaylistIndex = 0
+      queueIndex.value = 0
       setPreferences({ shuffle })
       prefetched.clear()
     } catch (err) {
@@ -261,7 +262,7 @@ export const useMusicStore = defineStore('music', () => {
 
   // Near the end of a song: get the next one's URL and start loading its audio
   async function prefetchNext() {
-    const next = playlist.value[(currentPlaylistIndex ?? -1) + 1]
+    const next = playlist.value[(queueIndex.value ?? -1) + 1]
     if (!next || prefetched.has(next.musicPieceId) || prefetching) return
     const request = playRequest
     prefetching = requestStream(next)
@@ -422,7 +423,7 @@ export const useMusicStore = defineStore('music', () => {
     const key = storageKey()
     const { uuid } = currentMusicPiece.value
     if (!key || !uuid) return false
-    const index = currentPlaylistIndex ?? 0
+    const index = queueIndex.value ?? 0
     try {
       localStorage.setItem(key, JSON.stringify({
         musicPieceId: uuid,
@@ -466,7 +467,7 @@ export const useMusicStore = defineStore('music', () => {
       ? { playlistId, name: playbackData.playlistName ?? null, ownerUsername: playbackData.playlistOwnerUsername ?? null }
       : null
     playlist.value = [piece]
-    currentPlaylistIndex = 0
+    queueIndex.value = 0
     collapsed.value = false
     forceShowPlayerActive.value = true
     if (same) position.value = Math.max(0, saved.position ?? 0)
@@ -500,7 +501,7 @@ export const useMusicStore = defineStore('music', () => {
   // Play after a restore: the song has no audio yet, so get it and continue from the saved position
   async function resume() {
     const at = position.value
-    const started = await playAt(currentPlaylistIndex ?? 0)
+    const started = await playAt(queueIndex.value ?? 0)
     if (started && at > 0) {
       position.value = at
       seekOnLoad.value = at
@@ -528,13 +529,13 @@ export const useMusicStore = defineStore('music', () => {
     return restoreLastPlayback(playbackData)
   }
 
-  function getCurrentPlaylistIndex() { return currentPlaylistIndex }
+  function getCurrentPlaylistIndex() { return queueIndex.value }
 
   function getCurrentPlaylistUUID() { return currentPlaylistUUID.value }
 
   function getCurrentMusicPieceUUID() { return currentMusicPiece.value.uuid }
 
-  function setCurrentPlaylistIndex(index) { currentPlaylistIndex = index }
+  function setCurrentPlaylistIndex(index) { queueIndex.value = index }
 
   function isEmpty() {
     return !currentMusicPiece.value.uuid && !currentPlaylistUUID.value && !playlist.value.length && !isPlaying.value
@@ -556,7 +557,7 @@ export const useMusicStore = defineStore('music', () => {
     seekOnLoad.value = null
     forceShowPlayerActive.value = false
     duration.value = 0
-    currentPlaylistIndex = null
+    queueIndex.value = null
     recoveredUrl = null
     listened = 0
     reportedToken = null
@@ -570,6 +571,7 @@ export const useMusicStore = defineStore('music', () => {
     currentPlaylistUUID,
     playlistInfo,
     playlist,
+    queueIndex,
     queueCursor,
     isPlaying,
     shuffleOn,
