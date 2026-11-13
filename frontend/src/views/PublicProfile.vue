@@ -68,6 +68,22 @@
         </aside>
 
         <div class="main-col">
+          <section v-if="compatibility" class="compatibility" aria-label="Musical compatibility">
+            <div class="compatibility-top">
+              <img v-if="pictureUrl" class="compatibility-avatar" :src="pictureUrl" alt="" />
+              <span v-else class="compatibility-avatar compatibility-initial" aria-hidden="true">{{ profile.username.charAt(0).toUpperCase() }}</span>
+              <p class="compatibility-line">Your musical compatibility with <b>{{ profile.username }}</b> is <span class="compatibility-level">{{ compatibility.label }}</span></p>
+            </div>
+            <div class="compatibility-meter" role="img" :aria-label="`${profile.compatibility} percent compatible`">
+              <span v-for="n in 5" :key="n" class="compatibility-segment" :class="{ filled: n <= compatibility.filled }"></span>
+              <span class="compatibility-percent">{{ profile.compatibility }}%</span>
+            </div>
+            <p v-if="sharedNames.length" class="compatibility-shared">
+              You both listen to
+              <template v-for="(name, index) in sharedNames" :key="name"><b>{{ name }}</b>{{ nameSeparator(index, sharedNames.length) }}</template>.
+            </p>
+          </section>
+
           <section aria-labelledby="recent-heading">
             <h2 id="recent-heading">Recent tracks</h2>
             <EmptyState
@@ -198,6 +214,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { COUNTRIES } from '@/utils/countries.js'
+import { compatibilityLevel, nameSeparator } from '@/utils/matches.js'
 import { fetchFavoriteArtists } from '@/utils/artist.js'
 import { isFriend, setFollowing } from '@/utils/follows.js'
 import { USER_UPLOADS_MOCKED, fetchUploads, fetchUserUploads, groupByArtist } from '@/utils/music.js'
@@ -212,6 +229,14 @@ const loggedIn = computed(() => userStore.loggedIn)
 
 const profile = ref(null)
 const status = ref('loading')
+
+// A snapshot from the profile response, not the live matches event. Zero is a real score.
+const compatibility = computed(() => profile.value?.compatibility == null ? null : compatibilityLevel(profile.value.compatibility))
+const sharedNames = computed(() => {
+  if (!profile.value?.compatibility) return []
+  const artists = profile.value.sharedArtists ?? []
+  return (artists.length ? artists.map((artist) => artist.artistName) : profile.value.sharedTags ?? []).slice(0, 3)
+})
 
 // Counts come formatted by the server ("1.2K"). Followers and Following open their lists, unless the user's
 // followsVisibility leaves the caller out (`canViewFollows`, not sent yet, so treated as true until it is)
@@ -376,6 +401,20 @@ p.page-state { display: block; }
 .side :deep(.body) { padding-left: var(--page-gutter); }
 .side { position: sticky; top: calc(var(--header-height) + env(safe-area-inset-top, 0px)); align-self: start; height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
 .main-col { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8) 0 var(--space-8) var(--space-8); border-left: 1px solid var(--line); }
+
+.compatibility { background: var(--surface-alt); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-3); max-width: 420px; padding: var(--space-4); }
+.compatibility-top { align-items: center; display: flex; gap: var(--space-3); }
+.compatibility-avatar { border-radius: var(--radius-pill); flex: none; height: 44px; object-fit: cover; width: 44px; }
+.compatibility-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 17px/1 var(--font-sans); place-items: center; }
+.compatibility-line { font: 400 15px/22px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
+.compatibility-line b { font-weight: 600; }
+.compatibility-level { color: var(--link); font-weight: 700; }
+.compatibility-meter { align-items: center; display: flex; gap: var(--space-1); }
+.compatibility-segment { background: var(--surface); border-radius: 2px; flex: 1; height: 8px; }
+.compatibility-segment.filled { background: var(--purple); }
+.compatibility-percent { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); margin-left: var(--space-2); }
+.compatibility-shared { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
+.compatibility-shared b { color: var(--ink); font-weight: 600; }
 
 .badge { align-self: flex-start; margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--purple-soft); font: 600 12px/16px var(--font-sans); }
 .stats { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }

@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { useNotificationStore } from '@/stores/notification.js'
 import { useUserStore } from '@/stores/user.js'
 import { useMusicStore } from '@/stores/music.js'
+import { useEventsStore } from '@/stores/events.js'
 import { fetchAPI, request } from '@/utils/api.js'
 import PublicProfile from './PublicProfile.vue'
 
@@ -107,4 +108,62 @@ it('puts the Follow button back and explains when the user is gone', async () =>
   await flushPromises()
   expect(wrapper.get('button[aria-pressed]').text()).toBe('Follow')
   expect(wrapper.get('[role="alert"]').text()).toContain("@pal isn't on Aux anymore")
+})
+
+it.each([
+  [0, 'Low', 1], [19, 'Low', 1], [20, 'Medium', 2], [39, 'Medium', 2],
+  [40, 'High', 3], [59, 'High', 3], [60, 'Very high', 4], [79, 'Very high', 4],
+  [80, 'Super', 5], [100, 'Super', 5],
+])('shows score %s with level %s and %s filled segments', async (score, label, filled) => {
+  backend(profile({ compatibility: score, sharedArtists: [], sharedTags: [] }))
+  await render()
+  expect(wrapper.get('.compatibility-level').text()).toBe(label)
+  expect(wrapper.get('.compatibility-meter').attributes('aria-label')).toBe(`${score} percent compatible`)
+  expect(wrapper.get('.compatibility-percent').text()).toBe(`${score}%`)
+  expect(wrapper.findAll('.compatibility-segment')).toHaveLength(5)
+  expect(wrapper.findAll('.compatibility-segment.filled')).toHaveLength(filled)
+  expect(wrapper.find('.compatibility-shared').exists()).toBe(false)
+})
+
+it('prefers shared artists to tags and formats up to three names', async () => {
+  backend(profile({ compatibility: 87, sharedArtists: [
+    { artistId: 'a1', artistName: 'Frank Ocean' }, { artistId: 'a2', artistName: 'SZA' },
+    { artistId: 'a3', artistName: 'Mitski' },
+  ], sharedTags: ['r&b'] }))
+  await render()
+  expect(wrapper.get('.compatibility-shared').text()).toBe('You both listen to Frank Ocean, SZA and Mitski.')
+})
+
+it.each([['chill'], ['chill', 'r&b'], ['chill', 'r&b', 'soul']])('uses shared tags when no artists are shared: %j', async (...tags) => {
+  backend(profile({ compatibility: 35, sharedArtists: [], sharedTags: tags }))
+  await render()
+  expect(wrapper.findAll('.compatibility-shared b').map((name) => name.text())).toEqual(tags)
+})
+
+it.each(['signed out', 'own profile', 'no listening data', 'older response'])('hides compatibility for %s', async (reason) => {
+  if (reason === 'signed out') useUserStore().logout()
+  const data = profile({ isMe: reason === 'own profile', compatibility: null, sharedArtists: null, sharedTags: null })
+  if (reason === 'older response') delete data.compatibility
+  backend(data)
+  await render()
+  expect(wrapper.find('.compatibility').exists()).toBe(false)
+})
+
+it('shows zero without shared names even if stale names are present', async () => {
+  backend(profile({ compatibility: 0, sharedArtists: [{ artistName: 'Stale artist' }], sharedTags: ['chill'] }))
+  await render()
+  expect(wrapper.get('.compatibility-level').text()).toBe('Low')
+  expect(wrapper.find('.compatibility-shared').exists()).toBe(false)
+})
+
+it('keeps the profile score until the profile loads again, ignoring live matches', async () => {
+  backend(profile({ compatibility: 87 }))
+  await render()
+  useEventsStore().matches = { matches: [{ user: { username: 'pal' }, compatibility: 20 }] }
+  await flushPromises()
+  expect(wrapper.get('.compatibility-percent').text()).toBe('87%')
+  backend(profile({ compatibility: 20 }))
+  await wrapper.vm.loadProfile()
+  await flushPromises()
+  expect(wrapper.get('.compatibility-percent').text()).toBe('20%')
 })
