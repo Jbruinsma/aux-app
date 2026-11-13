@@ -7,11 +7,7 @@
         Explore
       </router-link>
       <h1>{{ tagLabel(tag) }}</h1>
-      <p class="meta">
-        {{ TAG_PIECES_MOCKED
-          ? "Preview: browsing by genre isn't live yet, so these are sample songs."
-          : `Public songs tagged ${tag}, most played first.` }}
-      </p>
+      <p class="meta">Public songs tagged {{ tag }}, most played this month first.</p>
 
       <section class="block" aria-label="Songs">
         <EmptyState v-if="state.error" tone="error" :title="state.error" />
@@ -25,8 +21,6 @@
           <TrackRows
             :pieces="state.items"
             :label="`Songs tagged ${tag}`"
-            :playable="!TAG_PIECES_MOCKED"
-            :link-artists="!TAG_PIECES_MOCKED"
             ranked
             @play="(index) => musicStore.playPieces(state.items, index)"
           />
@@ -48,7 +42,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import TrackRows from '@/components/TrackRows.vue'
 import { useMusicStore } from '@/stores/music.js'
-import { TAG_PIECES_MOCKED, fetchTagPieces, tagLabel } from '@/utils/explore.js'
+import { fetchTagPieces, tagLabel } from '@/utils/explore.js'
 
 const route = useRoute()
 const musicStore = useMusicStore()

@@ -8,6 +8,7 @@ import com.aux_app.dto.search.PlaylistSearchResult;
 import com.aux_app.dto.search.SearchEntity;
 import com.aux_app.dto.search.SearchQuery;
 import com.aux_app.dto.search.UserSearchResult;
+import com.aux_app.dto.users.PlaylistOwner;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.MusicPieceRepository;
@@ -73,7 +74,7 @@ public class CoreController {
     @GetMapping("/top")
     @Operation(
             summary = "Get the top music pieces",
-            description = "Public. The 10 public music pieces played most in the last 7 days, most played first. "
+            description = "Public. The 10 public music pieces played most in the last 7 days, most played first, each with its `playCount`. "
                     + "Uploaders' plays of their own pieces don't count. Fewer than 10, or none, when little was played. "
                     + "Worked out at most every 5 minutes, so a new play can take that long to show."
     )
@@ -86,8 +87,10 @@ public class CoreController {
     private List<TopMusicPiece> loadTopPieces() {
         long since = Instant.now().minus(7, ChronoUnit.DAYS).toEpochMilli();
         return playEvents.findTopPieces(since, DEFAULT_LIMIT).stream()
-                .map(r -> new TopMusicPiece(r.getName(), r.getCoverUrl(),
-                        new ArtistSummary(r.getArtistId(), r.getArtistName(), r.getArtistPfpUrl())))
+                .map(r -> new TopMusicPiece(r.getMusicPieceId(), r.getName(), r.getCoverUrl(),
+                        new ArtistSummary(r.getArtistId(), r.getArtistName(), r.getArtistPfpUrl()),
+                        new PlaylistOwner(r.getUploaderId(), r.getUploaderPfpUrl(), r.getUploaderUsername()),
+                        r.getPlayCount()))
                 .toList();
     }
 

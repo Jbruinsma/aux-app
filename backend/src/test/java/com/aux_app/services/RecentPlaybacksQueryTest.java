@@ -17,6 +17,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
 // Runs PlayEventRepository.findRecentPlaybacks on a real SQLite DB built by the Flyway migrations
 class RecentPlaybacksQueryTest {
@@ -104,6 +106,47 @@ class RecentPlaybacksQueryTest {
                 }
             }
         }
+    }
+
+    // Seeded plays held played_at as text and the app writes epoch millis. SQLite sorts every text value above every
+    // number, so ORDER BY played_at kept old seeded plays ahead of anything played since, until V8 converted them
+    @Test
+    void newPlaysPassOldSeededOnes(@TempDir Path dir) throws Exception {
+        String url = "jdbc:sqlite:" + dir.resolve("test.db");
+        Flyway.configure().dataSource(url, null, null).target("7").load().migrate();
+
+        try (Connection db = DriverManager.getConnection(url)) {
+            exec(db, "INSERT INTO users (user_id, username, email, password_hash, onboarding_step, public_id) "
+                    + "VALUES ('caller', 'caller', 'c@x', 'x', 'DONE', 'u_c')");
+            exec(db, "INSERT INTO artists (artist_id, artist_name, public_id) VALUES ('A', 'A', 'a_A')");
+            exec(db, "INSERT INTO music_pieces (music_piece_id, uploader_user_id, artist_id, mp3_file_url, is_public, public_id, name) "
+                    + "VALUES ('one', 'caller', 'A', 'x', 1, 'm_one', 'one'), ('two', 'caller', 'A', 'x', 1, 'm_two', 'two')");
+            // Seeded in September: 'one', then 'two'. Played from the app in November: 'one' again
+            exec(db, "INSERT INTO play_events (play_event_id, user_id, music_piece_id, played_at, listen_duration_seconds) VALUES "
+                    + "('s1', 'caller', 'one', '2026-09-22 17:54:48.007605+00:00', 60), "
+                    + "('s2', 'caller', 'two', '2026-09-22 18:54:48.007605+00:00', 60), "
+                    + "('a1', 'caller', 'one', 1794579829790, 60)");
+            Flyway.configure().dataSource(url, null, null).load().migrate();
+
+            try (Statement statement = db.createStatement();
+                 ResultSet row = statement.executeQuery("SELECT played_at, typeof(played_at) FROM play_events WHERE play_event_id = 's1'")) {
+                assertTrue(row.next());
+                assertEquals(1790099688008L, row.getLong(1)); // fractional seconds kept
+                assertEquals("integer", row.getString(2));
+            }
+            assertEquals(List.of("m_one", "m_two"), pieceIds(db, "findRecentPlaybacks"));
+            assertEquals(List.of("m_one"), pieceIds(db, "findLastPlayback"));
+        }
+    }
+
+    private static List<String> pieceIds(Connection db, String method) throws Exception {
+        String sql = PlayEventRepository.class.getMethod(method, String.class).getAnnotation(Query.class).value();
+        List<String> ids = new ArrayList<>();
+        try (PreparedStatement statement = db.prepareStatement(sql.replace(":userId", "'caller'"));
+             ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) ids.add(rows.getString("musicPieceId"));
+        }
+        return ids;
     }
 
     private static void exec(Connection db, String sql) throws SQLException {

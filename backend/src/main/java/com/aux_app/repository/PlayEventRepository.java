@@ -112,26 +112,34 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
     // tie-break. An uploader's plays of their own piece don't count, so nobody can play themselves onto the landing
     // page. played_at is millis when the app writes it, text in seeded rows, so both are read.
     @Query(value = """
-            SELECT mp.name AS name, mp.cover_url AS coverUrl,
-                   a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
+            SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
+                   a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
+                   u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
+                   COUNT(*) AS playCount
             FROM play_events pe
             JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
             JOIN artists a ON a.artist_id = mp.artist_id
+            JOIN users u ON u.user_id = mp.uploader_user_id
             WHERE mp.is_public = 1 AND mp.uploader_user_id <> pe.user_id
               AND (CASE typeof(pe.played_at) WHEN 'integer' THEN pe.played_at
                    ELSE unixepoch(pe.played_at) * 1000 END) >= :since
             GROUP BY mp.music_piece_id
-            ORDER BY COUNT(*) DESC, mp.created_at DESC
+            ORDER BY playCount DESC, mp.created_at DESC
             LIMIT :limit
             """, nativeQuery = true)
     List<TopPieceRow> findTopPieces(@Param("since") long since, @Param("limit") int limit);
 
     interface TopPieceRow {
+        String getMusicPieceId();
         String getName();
         String getCoverUrl();
         String getArtistId();
         String getArtistName();
         String getArtistPfpUrl();
+        String getUploaderId();
+        String getUploaderUsername();
+        String getUploaderPfpUrl();
+        Integer getPlayCount();
     }
 
     // Counted plays that shape taste (CompatibilityService): public pieces only, so a private upload never shows up as

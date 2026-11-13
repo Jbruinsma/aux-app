@@ -116,6 +116,7 @@ public class LiveEventService {
     private final MusicPieceRepository musicPieces;
     private final NotificationService notifications;
     private final CompatibilityService compatibility;
+    private final NowPlayingService nowPlaying;
 
     public LiveEventService(
             PlaylistMembersService playlistMembers,
@@ -124,6 +125,7 @@ public class LiveEventService {
             MusicPieceRepository musicPieces,
             NotificationService notifications,
             CompatibilityService compatibility,
+            NowPlayingService nowPlaying,
             @Qualifier("applicationTaskExecutor") TaskExecutor executor
     ) {
         this.playlistMembers = playlistMembers;
@@ -132,6 +134,7 @@ public class LiveEventService {
         this.musicPieces = musicPieces;
         this.notifications = notifications;
         this.compatibility = compatibility;
+        this.nowPlaying = nowPlaying;
         this.executor = executor;
     }
 
@@ -163,9 +166,15 @@ public class LiveEventService {
         return emitter;
     }
 
+    // Whether the user has the app open: at least one live event stream
+    public boolean isOnline(String userId) {
+        return emitters.containsKey(userId);
+    }
+
     // Ends every open stream of a user, e.g. after their account is deleted
     public void disconnect(String userId) {
         Set<SseEmitter> open = emitters.remove(userId);
+        nowPlaying.clear(userId);
         if (open == null) return;
         for (SseEmitter emitter : open) {
             synchronized (emitter) {

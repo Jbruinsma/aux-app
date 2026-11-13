@@ -373,8 +373,8 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 
 **Files:** `src/views/ExplorePage.vue`, `src/views/ExploreTag.vue`, `src/components/TrackRows.vue`,
 `src/components/SongCards.vue`, `src/utils/explore.js`
-**API:** `GET /api/core/search`, `GET /api/tags`, `GET /api/core/top`, `GET /api/music-pieces/{musicPieceId}/discover`,
-event `matches`
+**API:** `GET /api/core/search`, `GET /api/tags`, `GET /api/tags/{tag}/music-pieces`, `GET /api/core/top`,
+`GET /api/music-pieces/{musicPieceId}/discover`, event `matches`
 
 - [x] Search, moved from the Dashboard. The field sticks under the header; on phones a Cancel button goes back to
       browsing. `?category=` picks the tab.
@@ -382,10 +382,8 @@ event `matches`
 - [x] Top this week as ranked track rows, two columns of five (top 5 and "See all" on phones).
 - [x] More like the last song played, from Discover, with "See all" opening the Discover page.
 - [x] People who hear it too (task 18).
-- [ ] Top this week: play the rows and show the play count bar once `/api/core/top` returns `musicPieceId`,
-      `uploader` and `playCount` (blocked, see below). `TrackRows` already does both when the fields are there.
-- [ ] Tag page: turn off `TAG_PIECES_MOCKED` in `src/utils/explore.js` once the tag endpoint exists (blocked, see
-      below).
+- [x] Top this week: the rows play and show the play count bar.
+- [x] Tag page: songs from `GET /api/tags/{tag}/music-pieces`, most played this month first, 50 at a time.
 
 **Done when:** a top song and a tag page's songs play, with no mock flag left in `src/utils/explore.js`.
 
@@ -413,7 +411,4 @@ event `matches`
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-- **Task 27, Top this week:** `musicPieceId`, `uploader` and `playCount` on `GET /api/core/top`.
-- **Task 27, tag page:** `GET /api/tags/{tag}/music-pieces`.
-
-Both are in `../backend/BACKEND_REQUESTS.md`.
+Nothing right now.
