@@ -99,6 +99,7 @@
             <p class="lead">Optional. Listeners can play the playlist; editors can also add songs and change its name and cover. Invites go out once the playlist is created.</p>
 
             <PeoplePicker :exclude="excludedPeople" @pick="addPerson" />
+            <TagPicker v-model="tags" :error="tagsError" :disabled="creating" @update:model-value="tagsError = ''" />
 
             <ul v-if="people.length" class="chosen" aria-label="People to invite">
               <li v-for="person in people" :key="person.userId" class="chosen-row">
@@ -142,6 +143,8 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import StepBanner from '@/components/StepBanner.vue'
 import PeoplePicker from '@/components/PeoplePicker.vue'
+import TagPicker from '@/components/TagPicker.vue'
+import { appendTags, isTagsError, tagsErrorMessage } from '@/utils/tags.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { inviteMember } from '@/utils/playlist.js'
 import { postToAPI } from '@/utils/api.js'
@@ -172,6 +175,8 @@ const coverPreview = ref('')
 const dragOver = ref(false)
 const creating = ref(false)
 const error = ref('')
+const tags = ref([])
+const tagsError = ref('')
 const people = ref([])
 const excludedPeople = computed(() => [userStore.userData?.userId, ...people.value.map((person) => person.userId)])
 
@@ -258,6 +263,7 @@ async function createPlaylist() {
     form.append('playlistName', name.value.trim())
     form.append('isPublic', isPublic.value)
     form.append('playlistCover', coverFile.value)
+    appendTags(form, tags.value)
     const playlist = await postToAPI(`${API_BASE_URL}/api/playlists`, form)
     const failed = await sendInvites(playlist.playlistId)
     if (failed.length) notification.error(`Playlist created, but the invite to ${failed.join(', ')} didn't send. Try again from Manage access.`)
@@ -269,7 +275,8 @@ async function createPlaylist() {
     await router.push({ name: 'Playlist', params: { username: playlist.playlistOwner.username, id: playlist.playlistId } })
   } catch (err) {
     if (err.sessionEnded) return
-    if (PHOTO_ERRORS[err.code]) {
+    if (isTagsError(err)) tagsError.value = tagsErrorMessage(err)
+    else if (PHOTO_ERRORS[err.code]) {
       await toCoverStep()
       error.value = PHOTO_ERRORS[err.code]
     }

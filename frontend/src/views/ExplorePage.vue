@@ -84,6 +84,7 @@
                     :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
                   >{{ piece.artistSummary.artistName }}</router-link>
                   <span v-else-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
+                  <span v-if="piece.tags?.length" class="piece-tags" aria-label="Song tags"><span v-for="tag in piece.tags" :key="tag" class="piece-tag">{{ tag }}</span></span>
                 </span>
               </li>
             </ul>
@@ -393,6 +394,8 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
 </script>
 
 <style scoped>
+.piece-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.piece-tag { background: var(--purple-soft); border-radius: var(--radius-pill); font: 600 12px/16px var(--font-sans); padding: var(--space-1) var(--space-2); }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }

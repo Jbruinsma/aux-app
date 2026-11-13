@@ -4,10 +4,12 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { useNotificationStore } from '@/stores/notification.js'
 import { request } from '@/utils/api.js'
 import EditPieceDialog from './EditPieceDialog.vue'
+import TagPicker from './TagPicker.vue'
 
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
 
 const piece = (overrides) => ({
+  tags: [],
   musicPieceId: 'm1', name: 'Song', coverUrl: null, artistSummary: { artistId: 'a1', artistName: 'Artist', artistPfpUrl: null },
   uploader: { userId: 'u1', pfpUrl: null, username: 'me' }, isAvailable: true, ...overrides,
 })
@@ -31,6 +33,24 @@ async function open(target) {
 }
 
 const sent = () => Object.fromEntries(request.mock.calls[0][2].entries())
+
+it('sends repeated tags, supports clearing, and surfaces server tag errors inline', async () => {
+  await open(piece({ tags: ['chill'] }))
+  const picker = wrapper.getComponent(TagPicker)
+  picker.vm.$emit('update:modelValue', ['r&b', 'late night'])
+  await flushPromises()
+  request.mockRejectedValueOnce({ status: 400, code: 'INVALID_FIELD', parameter: 'tags', message: 'Choose another tag' })
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(request.mock.calls[0][2].getAll('tags')).toEqual(['r&b', 'late night'])
+  expect(picker.props('error')).toBe('Choose another tag')
+  picker.vm.$emit('update:modelValue', [])
+  await flushPromises()
+  request.mockResolvedValueOnce(piece({ tags: [] }))
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(request.mock.calls[1][2].getAll('tags')).toEqual([''])
+})
 
 it('sends only the fields that changed', async () => {
   request.mockResolvedValue(piece({ name: 'New name' }))

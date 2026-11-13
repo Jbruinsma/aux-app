@@ -53,6 +53,8 @@
           <div class="head-text">
             <p class="eyebrow">Playlist</p>
             <h1>{{ playlist.playlistName }}</h1>
+            <p v-if="playlist.tags?.length" class="playlist-tags" aria-label="Playlist tags"><span v-for="tag in playlist.tags" :key="tag" class="tag">{{ tag }}</span></p>
+            <router-link v-else-if="isOwner" class="add-tags" :to="{ name: 'Edit', params: { username: owner.username, id }, query: { tags: '1' } }">Add tags</router-link>
             <p class="meta">
               <router-link :to="{ name: 'Profile', params: { username: owner.username } }" class="owner">
                 <img v-if="owner.pfpUrl" class="owner-pfp" :src="resolveCoverURL(owner.pfpUrl)" alt="" />
@@ -657,6 +659,9 @@ watch(() => [route.params.username, route.params.id], loadPlaylist, { immediate:
 </script>
 
 <style scoped>
+.playlist-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.tag { background: var(--purple-soft); border-radius: var(--radius-pill); font: 600 12px/16px var(--font-sans); padding: var(--space-1) var(--space-3); }
+.add-tags { color: var(--link); display: inline-block; font: 500 14px/20px var(--font-sans); margin-bottom: var(--space-3); }
 .wrap { display: flex; flex-direction: column; padding: 0 var(--page-gutter) var(--space-8); width: 100%; }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-2); overflow-wrap: anywhere; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-3); }

@@ -9,7 +9,7 @@ vi.mock('vue-router', () => ({ useRoute: () => ({ params: { tag: 'Lo-Fi' }, quer
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
 
-const piece = (n) => ({
+const piece = (n) => ({ tags: [],
   musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistId: `a${n}`, artistName: `Artist ${n}` },
   uploader: { userId: `u${n}`, pfpUrl: null, username: `user${n}` }, isAvailable: true,
 })

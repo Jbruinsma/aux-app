@@ -39,7 +39,7 @@ it('sums up what was added and skipped', () => {
 })
 
 it('groups uploads by artist, the most played artist first and the most played piece first inside each', () => {
-  const piece = (id, artistId, playCount) => ({ musicPieceId: id, artistSummary: { artistId, artistName: artistId.toUpperCase() }, playCount })
+  const piece = (id, artistId, playCount) => ({ tags: [], musicPieceId: id, artistSummary: { artistId, artistName: artistId.toUpperCase() }, playCount })
   const groups = groupByArtist([piece('m1', 'a', 5), piece('m2', 'b', 30), piece('m3', 'a', 40), piece('m4', 'b', 1)])
   expect(groups.map((group) => [group.artist.artistId, group.plays, group.pieces.map((p) => p.musicPieceId)]))
     .toEqual([['a', 45, ['m3', 'm1']], ['b', 31, ['m2', 'm4']]])

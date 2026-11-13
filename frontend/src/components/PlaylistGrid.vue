@@ -23,6 +23,7 @@
         </span>
         <span class="tile-name">{{ playlist.playlistName }}</span>
         <span class="tile-meta">{{ meta(playlist) }}</span>
+        <span v-if="playlist.tags?.length" class="playlist-tags" aria-label="Playlist tags"><span v-for="tag in playlist.tags" :key="tag">{{ tag }}</span></span>
       </router-link>
     </li>
   </ul>
@@ -48,6 +49,8 @@ function meta(playlist) {
 </script>
 
 <style scoped>
+.playlist-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.playlist-tags span { background: var(--purple-soft); border-radius: var(--radius-pill); font: 600 12px/16px var(--font-sans); padding: var(--space-1) var(--space-2); }
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-4); }
 .tile { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); border-radius: var(--radius-sm); }
 .tile:hover .tile-name { color: var(--link); text-decoration: underline; }

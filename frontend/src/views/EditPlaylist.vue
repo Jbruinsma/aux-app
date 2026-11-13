@@ -60,6 +60,7 @@
           <p id="name-hint" class="hint">{{ name.length }} / {{ NAME_MAX }} characters</p>
 
           <template v-if="isOwner">
+            <TagPicker ref="tagPicker" v-model="tags" :error="tagsError" :disabled="saving" @update:model-value="tagsError = ''" />
             <label class="check">
               <input v-model="isPublic" type="checkbox" aria-describedby="public-hint" />
               Make this playlist public
@@ -93,6 +94,8 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import StepBanner from '@/components/StepBanner.vue'
+import TagPicker from '@/components/TagPicker.vue'
+import { appendTags, isTagsError, tagsChanged, tagsErrorMessage } from '@/utils/tags.js'
 import { request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { resolveCoverURL } from '@/utils/display.js'
@@ -124,13 +127,17 @@ const coverPreview = ref('')
 const dragOver = ref(false)
 const saving = ref(false)
 const error = ref('')
+const tags = ref([])
+const tagsError = ref('')
+const tagPicker = ref(null)
 
 const coverSrc = computed(() => coverPreview.value
   || (original.value?.playlistCoverUrl ? resolveCoverURL(original.value.playlistCoverUrl) : ''))
 const nameChanged = computed(() => name.value.trim() !== original.value?.playlistName)
 const isOwner = computed(() => original.value?.access === 'OWNER')
 const publicChanged = computed(() => isOwner.value && isPublic.value !== original.value?.isPublic)
-const dirty = computed(() => Boolean(original.value) && (nameChanged.value || publicChanged.value || Boolean(coverFile.value)))
+const changedTags = computed(() => isOwner.value && tagsChanged(tags.value, original.value?.tags ?? []))
+const dirty = computed(() => Boolean(original.value) && (nameChanged.value || publicChanged.value || changedTags.value || Boolean(coverFile.value)))
 
 onMounted(async () => {
   if (!userStore.loggedIn) {
@@ -147,6 +154,8 @@ onMounted(async () => {
     original.value = playlist
     name.value = playlist.playlistName
     isPublic.value = playlist.isPublic
+    tags.value = [...(playlist.tags ?? [])]
+    if (route.query?.tags !== undefined) await nextTick(() => tagPicker.value?.focus())
   } catch (err) {
     if (err.sessionEnded) return
     if (err.code === 'PLAYLIST_INVITE_PENDING') {
@@ -196,7 +205,11 @@ async function save() {
     if (nameChanged.value) form.append('playlistName', name.value.trim())
     if (publicChanged.value) form.append('isPublic', isPublic.value)
     if (coverFile.value) form.append('playlistCover', coverFile.value)
+    const sentTags = [...tags.value]
+    if (changedTags.value) appendTags(form, sentTags, true)
     await request('PUT', `${API_BASE_URL}/api/playlists/${encodeURIComponent(id)}`, form)
+    // The CorePlaylist response omits tags; keep the successful values we sent.
+    original.value = { ...original.value, tags: sentTags }
     notification.success('Your playlist changes are saved.')
     finishing.value = true
     await nextTick()
@@ -204,7 +217,8 @@ async function save() {
     await router.push(playlistRoute)
   } catch (err) {
     if (err.sessionEnded) return
-    if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
+    if (isTagsError(err)) tagsError.value = tagsErrorMessage(err)
+    else if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     else if (err.code === 'INVALID_FIELD') error.value = `Give your playlist a name of 1 to ${NAME_MAX} characters.`
     else if (err.code === 'PLAYLIST_NOT_FOUND') error.value = "This playlist no longer exists, or you can no longer edit it."
     else if (err.code === 'PLAYLIST_ACTION_FORBIDDEN') error.value = 'Only the owner can make this playlist public or private.'

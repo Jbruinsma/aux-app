@@ -47,6 +47,7 @@
           </div>
 
           <ArtistPicker ref="artistPicker" v-model="artist" />
+          <TagPicker ref="tagPicker" v-model="tags" :error="tagsError" :disabled="saving" @update:model-value="tagsError = ''" />
 
           <fieldset class="field visibility">
             <legend class="label">Who can play it</legend>
@@ -81,8 +82,10 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import ArtistPicker from '@/components/ArtistPicker.vue'
+import TagPicker from '@/components/TagPicker.vue'
+import { isTagsError, tagsChanged, tagsErrorMessage } from '@/utils/tags.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
 import { TITLE_MAX, UPLOAD_ERRORS, updateMusicPiece } from '@/utils/music.js'
@@ -106,6 +109,9 @@ const coverPreview = ref('')
 const dragOver = ref(false)
 const saving = ref(false)
 const error = ref('')
+const tags = ref([])
+const tagsError = ref('')
+const tagPicker = ref(null)
 
 const changes = computed(() => {
   if (!piece.value) return {}
@@ -115,6 +121,7 @@ const changes = computed(() => {
   if (artist.value && artist.value.artistId !== piece.value.artistSummary?.artistId) result.artistId = artist.value.artistId
   if (visibility.value !== null && visibility.value !== piece.value.isPublic) result.isPublic = visibility.value
   if (coverFile.value) result.coverImage = coverFile.value
+  if (tagsChanged(tags.value, piece.value.tags ?? [])) result.tags = [...tags.value]
   return result
 })
 const pendingArtist = computed(() => !artist.value && Boolean(artistPicker.value?.pendingName))
@@ -122,7 +129,7 @@ const canSave = computed(() => !saving.value && Boolean(title.value.trim())
   && (Object.keys(changes.value).length > 0 || pendingArtist.value))
 const goingPrivate = computed(() => visibility.value === false && piece.value?.isPublic !== false)
 
-function open(target) {
+function open(target, focusTags = false) {
   piece.value = target
   title.value = target.name
   artist.value = target.artistSummary?.artistId ? target.artistSummary : null
@@ -130,8 +137,11 @@ function open(target) {
   clearCover()
   coverPreview.value = target.coverUrl ? resolveCoverURL(target.coverUrl) : ''
   error.value = ''
+  tags.value = [...(target.tags ?? [])]
+  tagsError.value = ''
   dialogEl.value.showModal()
   document.documentElement.classList.add('scroll-locked')
+  if (focusTags) nextTick(() => tagPicker.value?.focus())
 }
 
 function close() {
@@ -181,11 +191,12 @@ async function save() {
     if (!Object.keys(fields).length) return close()
     const updated = await updateMusicPiece(piece.value.musicPieceId, fields)
     notification.success(`Saved changes to “${updated?.name ?? title.value.trim()}”.`)
-    emit('saved', updated)
+    emit('saved', { ...updated, tags: updated?.tags ?? fields.tags ?? piece.value.tags ?? [] })
     close()
   } catch (err) {
     if (err.sessionEnded) return
-    if (err.code === 'MUSIC_PIECE_NOT_FOUND') error.value = "This song isn't in your uploads anymore."
+    if (isTagsError(err)) tagsError.value = tagsErrorMessage(err)
+    else if (err.code === 'MUSIC_PIECE_NOT_FOUND') error.value = "This song isn't in your uploads anymore."
     else if (err.code === 'ARTIST_NOT_FOUND') error.value = UPLOAD_ERRORS.ARTIST_NOT_FOUND
     else if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     // Only a cover is uploaded here, so a too-big request means the cover

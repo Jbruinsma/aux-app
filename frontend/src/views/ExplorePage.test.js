@@ -13,7 +13,7 @@ vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: 
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
 
-const piece = (n) => ({
+const piece = (n) => ({ tags: [],
   musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistId: `a${n}`, artistName: `Artist ${n}` },
   uploader: { userId: `u${n}`, pfpUrl: null, username: `user${n}` }, isAvailable: true,
 })
@@ -50,6 +50,21 @@ async function render() {
 }
 
 const section = (heading) => wrapper.find(`section[aria-labelledby="${heading}"]`)
+
+it.each(['MUSIC', 'PLAYLISTS'])('shows tags on %s search results', async (category) => {
+  vi.useFakeTimers()
+  route.query = { category }
+  const item = category === 'MUSIC' ? { ...piece(1), tags: ['chill', 'r&b'] }
+    : { playlistId: 'p1', playlistName: 'Mix', ownerUsername: 'pal', tags: ['chill', 'r&b'] }
+  backend({ '/api/tags': [], '/api/core/top': [], '/api/core/search': { results: [item], totalResults: 1 } })
+  await render()
+  await wrapper.get('#explore-search').setValue('mix')
+  await vi.advanceTimersByTimeAsync(400)
+  await flushPromises()
+  const selector = category === 'MUSIC' ? '.piece-tags' : '.playlist-tags'
+  expect(wrapper.get(selector).text()).toContain('r&b')
+  expect(wrapper.get(selector).text()).toContain('chill')
+})
 
 it('shows genre tiles that link to their tag page, and this week\'s top songs ranked across two lists', async () => {
   backend({

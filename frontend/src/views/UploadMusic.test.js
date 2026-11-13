@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { useNotificationStore } from '@/stores/notification.js'
 import { fetchAPI, request } from '@/utils/api.js'
 import UploadMusic from './UploadMusic.vue'
+import TagPicker from '@/components/TagPicker.vue'
 
 const { route, push } = vi.hoisted(() => ({ route: { query: {} }, push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push, replace: vi.fn() }) }))
@@ -59,6 +60,20 @@ it('creates the typed artist, uploads the song with every field, then goes to th
     .toEqual({ name: 'Late Night', artistId: 'a1', isPublic: 'false', mp3File: 'file', coverImage: 'file' })
   expect(useNotificationStore().message).toBe('Uploaded “Late Night”. It\'s in My Uploads on your dashboard.')
   expect(push).toHaveBeenCalledWith({ name: 'Dashboard' })
+})
+
+it('sends individual tag fields and keeps server tag errors underneath the picker', async () => {
+  await fillIn()
+  const picker = wrapper.getComponent(TagPicker)
+  picker.vm.$emit('update:modelValue', ['chill', 'r&b'])
+  await flushPromises()
+  request.mockResolvedValueOnce({ artistId: 'a1', artistName: 'New Band' })
+    .mockRejectedValueOnce({ status: 400, code: 'INVALID_FIELD', parameter: 'tags', message: 'Choose another tag' })
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(request.mock.calls[1][2].getAll('tags')).toEqual(['chill', 'r&b'])
+  expect(picker.props('error')).toBe('Choose another tag')
+  expect(wrapper.get('#song-title').element.value).toBe('Late Night')
 })
 
 it('adds the new song to the playlist it came from, and explains a rejected upload', async () => {

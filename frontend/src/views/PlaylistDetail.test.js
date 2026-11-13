@@ -32,8 +32,9 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const track = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
+const track = (n) => ({ tags: [], musicPieceId: `m${n}`, name: `Song ${n}`, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
 const playlist = (overrides) => ({
+  tags: [],
   playlistId: 'p1', playlistName: 'Mix', playlistOwner: { username: 'owner' }, isSaved: false,
   totalPieces: 1, musicPieces: [track(1)], nextCursor: null, editors: [], access: null, ...overrides,
 })
@@ -43,6 +44,21 @@ async function render() {
   await flushPromises()
   return wrapper
 }
+
+it('shows tags in the header and offers Add tags only to an owner without tags', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'OWNER', tags: ['chill', 'r&b'] }))
+  await render()
+  expect(wrapper.get('.playlist-tags').text()).toContain('r&b')
+  expect(wrapper.find('.add-tags').exists()).toBe(false)
+  fetchAPI.mockResolvedValue(playlist({ access: 'OWNER' }))
+  await wrapper.vm.loadPlaylist()
+  await flushPromises()
+  expect(wrapper.get('.add-tags').text()).toBe('Add tags')
+  fetchAPI.mockResolvedValue(playlist({ access: 'EDITOR' }))
+  await wrapper.vm.loadPlaylist()
+  await flushPromises()
+  expect(wrapper.find('.add-tags').exists()).toBe(false)
+})
 
 it.each([
   [null, true, false],

@@ -16,7 +16,7 @@ const profile = (overrides) => ({
   username: 'pal', pfpUrl: null, bannerUrl: null, profileDetails: null, playlists: [], isMe: false, isFollowing: false,
   followingMe: false, followersCount: '12', followingCount: '8', uploadsCount: '3', ...overrides,
 })
-const piece = (id, artistId, playCount) => ({
+const piece = (id, artistId, playCount) => ({ tags: [],
   musicPieceId: id, name: `Song ${id}`, coverUrl: null, artistSummary: { artistId, artistName: `Artist ${artistId}`, artistPfpUrl: null }, playCount,
 })
 
