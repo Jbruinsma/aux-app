@@ -20,6 +20,7 @@ jobs:
       AUX_PRIVATE_TRACKS_R2_SECRET_ACCESS_KEY: ci
       AUX_PRIVATE_TRACKS_R2_BUCKET: ci
       AUX_R2_PUBLIC_BASE_URL: https://ci.invalid
+      RESEND_API_KEY: ci
       SPRING_DATASOURCE_URL: jdbc:sqlite:/tmp/ci.db
     steps:
       - uses: actions/checkout@v4
