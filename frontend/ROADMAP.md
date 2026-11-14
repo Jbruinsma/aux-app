@@ -505,6 +505,27 @@ and `mockups/mobile-player.html`.
 
 **Done when:** the queue opens from the bar, browsing and picking covers work, and real covers tint the background.
 
+### 37. Recommended songs on playlists
+
+A "Recommended" section under a playlist's songs, so short playlists don't end in empty space. Mockup:
+`mockups/playlist-recommended.html`.
+
+**Files:** new `src/components/PlaylistRecommendations.vue`, new `src/utils/recommendations.js`,
+`src/views/PlaylistDetail.vue`
+**API:** `GET /api/music-pieces/{musicPieceId}/discover`, `POST /api/playlists/{playlistId}/pieces`, the `library` event
+
+- [x] Seed `discover` with up to 3 of the newest public songs, merge the results, drop songs already in the playlist,
+      and show the top 5. Hidden when there are no results or the requests fail.
+- [x] Show it once every song has loaded, so it sits after the last song on long playlists too.
+- [x] Clicking a row plays the song on its own. Refresh asks again.
+- [x] Owners and editors: Add puts the song at the end of the list straight away (taken out again if the request fails),
+      and the next recommendation fills its place.
+- [x] Everyone else: Add opens a menu of their own playlists (from the `library` event) to add the song to.
+- [x] Offer playlists the user edits in that menu too, using `access` on `LibraryPlaylist` (`OWNER` or `EDITOR`).
+
+**Done when:** a short playlist shows 5 recommendations, owners can add them in one click, and listeners can add them
+to their own playlists.
+
 ## P2: Later
 
 ### 15. Build the artist page
