@@ -85,7 +85,7 @@ html:has(.aux-page) #app {
   margin-bottom: 0;
 }
 
-/* Short pages stretch so the footer always sits at the bottom of the window */
+/* Short pages stretch to fill the window */
 .aux-page {
   display: flex;
   flex-direction: column;
@@ -98,6 +98,11 @@ html:has(.aux-page) #app {
 .aux-page > main {
   flex: 1 0 auto;
 }
+
+/* On pages with a footer, the header and content fill the whole window and the footer starts just below it, so it's
+   only seen by scrolling. On phones the header wraps taller than --header-height, which only moves the footer further
+   down */
+.aux-page:has(> footer) > main { min-height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px)); }
 
 /* Pages that show the fixed music player extend the footer underneath it, so nothing is hidden. BottomPlayer sets
    player-open or player-collapsed on <html>: a collapsed player leaves only its small toggle in the corner */

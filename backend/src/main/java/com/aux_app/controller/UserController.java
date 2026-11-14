@@ -505,8 +505,11 @@ public class UserController {
                       all time. Ties go to the artist played most recently. Empty when the caller has played nothing.
                     - `library`: playlists the caller owns (public and private), playlists they're an accepted listener
                       or editor of (public and private), plus playlists they saved from others (public only). `isSaved`
-                      is true for saved playlists. Saved ones come first, most recently saved first; the rest follow,
-                      newest created first.
+                      is true for saved playlists. `access` is the caller's access, as on `GET /api/playlists/{username}/{playlistId}`:
+                      `OWNER`, `EDITOR` or `LISTENER`, and null for a playlist they only saved. Use it to offer the
+                      playlists the caller can add songs to (`OWNER` or `EDITOR`). Saved ones come first, most recently
+                      saved first; the rest follow, newest created first. Sent again when the owner changes the
+                      caller's permission.
                     - `matches`: up to 20 listeners who share the caller's taste, best first, for the Dashboard's
                       "People who hear it too". Leaves out the caller, users they follow, and users who haven't finished
                       onboarding. Taste comes from counted plays of public pieces (not the caller's own uploads), each
