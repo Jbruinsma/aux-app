@@ -271,6 +271,17 @@
             <p v-else class="meta">Loading more songs…</p>
           </div>
         </section>
+
+        <!-- Only once every song has loaded, so it sits after the real last song and never suggests one already here -->
+        <PlaylistRecommendations
+          v-if="tracks.length && !playlist.nextCursor"
+          :key="playlist.playlistId"
+          :playlist-id="playlist.playlistId"
+          :tracks="tracks"
+          :can-edit="canEdit"
+          @added="onRecommendationAdded"
+          @add-failed="onRecommendationFailed"
+        />
       </template>
     </main>
 
@@ -334,6 +345,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import PlaylistRecommendations from '@/components/PlaylistRecommendations.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import {
   acceptInvite,
@@ -569,6 +581,24 @@ async function removeTrack(track) {
   } finally {
     removingId.value = null
   }
+}
+
+/* Recommended: a song an owner or editor adds joins the end of the list straight away, and leaves again if the request
+   fails */
+
+function onRecommendationAdded(piece) {
+  const current = playlist.value
+  if (!current || current.musicPieces.some((track) => track.musicPieceId === piece.musicPieceId)) return
+  current.musicPieces.push({ ...piece, isAvailable: true })
+  current.totalPieces = (current.totalPieces ?? current.musicPieces.length - 1) + 1
+}
+
+function onRecommendationFailed(piece) {
+  const current = playlist.value
+  const index = current?.musicPieces.findIndex((track) => track.musicPieceId === piece.musicPieceId) ?? -1
+  if (index === -1) return
+  current.musicPieces.splice(index, 1)
+  current.totalPieces = Math.max(0, current.totalPieces - 1)
 }
 
 onMounted(() => {

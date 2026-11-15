@@ -9,5 +9,6 @@ public record LibraryPlaylist(
         @JsonUnwrapped CorePlaylist corePlaylist,
         @Schema(description = "Username of the playlist owner", example = "justin") String ownerUsername,
         @Schema(description = "Number of tracks in the playlist", example = "12") int totalPieces,
-        @Schema(description = "Whether the caller has saved the playlist; false for the caller's own unsaved playlists", example = "true") boolean isSaved
+        @Schema(description = "Whether the caller has saved the playlist; false for the caller's own unsaved playlists", example = "true") boolean isSaved,
+        @Schema(description = "Caller's access: OWNER, or EDITOR or LISTENER as an accepted member. Null for a playlist they only saved", nullable = true) PlaylistAccess access
 ) {}

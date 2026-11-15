@@ -11,6 +11,8 @@ const { route, push } = vi.hoisted(() => ({ route: { params: {} }, push: vi.fn()
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push, replace: vi.fn() }) }))
 vi.mock('@/router/index.js', () => ({ default: { push, replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
+// Recommended has its own tests (PlaylistRecommendations.test.js); here it would add discover calls to fetchAPI's history
+vi.mock('@/components/PlaylistRecommendations.vue', () => ({ default: { name: 'PlaylistRecommendations', props: ['playlistId', 'tracks', 'canEdit'], template: '<div class="recs-stub" />' } }))
 
 let observe
 let wrapper
@@ -302,4 +304,36 @@ it("links each song's artist to the artist page, outside the Play button", async
   const row = wrapper.get('.track')
   expect(row.get('.artist-col').text()).toBe('Frank Ocean')
   expect(row.get('.track-main').find('.artist-col').exists()).toBe(false)
+})
+
+it('shows Recommended only once every song has loaded, and not on an empty playlist', async () => {
+  fetchAPI.mockResolvedValueOnce(playlist({ totalPieces: 2, nextCursor: 'c1' })).mockResolvedValueOnce({ musicPieces: [track(2)], nextCursor: null })
+  await render()
+  expect(wrapper.find('.recs-stub').exists()).toBe(false)
+  observe()
+  await flushPromises()
+  const recs = wrapper.getComponent({ name: 'PlaylistRecommendations' })
+  expect(recs.props()).toMatchObject({ playlistId: 'p1', canEdit: false })
+  expect(recs.props('tracks').map(t => t.musicPieceId)).toEqual(['m1', 'm2'])
+  wrapper.unmount()
+
+  fetchAPI.mockResolvedValueOnce(playlist({ totalPieces: 0, musicPieces: [] }))
+  await render()
+  expect(wrapper.find('.recs-stub').exists()).toBe(false)
+})
+
+it('puts a recommended song at the end of the list when an editor adds it, and takes it out if that fails', async () => {
+  fetchAPI.mockResolvedValue(playlist({ access: 'EDITOR' }))
+  await render()
+  const recs = wrapper.getComponent({ name: 'PlaylistRecommendations' })
+  expect(recs.props('canEdit')).toBe(true)
+  const added = track(7)
+  recs.vm.$emit('added', added)
+  await flushPromises()
+  expect(wrapper.findAll('.track-name').map(n => n.text())).toEqual(['Song 1', 'Song 7'])
+  expect(wrapper.text()).toContain('2 songs')
+  recs.vm.$emit('add-failed', added)
+  await flushPromises()
+  expect(wrapper.findAll('.track-name').map(n => n.text())).toEqual(['Song 1'])
+  expect(wrapper.text()).toContain('1 song')
 })

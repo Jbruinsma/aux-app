@@ -4,6 +4,7 @@ import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.base.Country;
 import com.aux_app.dto.playlist.CorePlaylist;
 import com.aux_app.dto.playlist.LibraryPlaylist;
+import com.aux_app.dto.playlist.PlaylistAccess;
 import com.aux_app.dto.playlist.ProfilePlaylist;
 import com.aux_app.dto.users.ProfileDetails;
 import com.aux_app.dto.users.UserProfile;
@@ -125,7 +126,8 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                         new CorePlaylist(r.getPlaylistId(), r.getPlaylistName(), r.getPlaylistCoverUrl()),
                         r.getOwnerUsername(),
                         r.getTotalPieces(),
-                        Integer.valueOf(1).equals(r.getIsSaved())))
+                        Integer.valueOf(1).equals(r.getIsSaved()),
+                        r.getAccess() == null || r.getAccess().isEmpty() ? null : PlaylistAccess.valueOf(r.getAccess())))
                 .toList();
     }
 
@@ -138,7 +140,9 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                    p.playlist_cover_url AS playlistCoverUrl,
                    o.username AS ownerUsername,
                    (usp.user_id IS NOT NULL) AS isSaved,
-                   (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces
+                   (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.playlist_id) AS totalPieces,
+                   COALESCE(CASE WHEN p.owner_id = :userId THEN 'OWNER'
+                                 WHEN pm.status = 'ACCEPTED' THEN pm.permission END, '') AS access -- '' not NULL: see TagRepository.PIECE_TAGS
             FROM playlists p
             JOIN users o ON o.user_id = p.owner_id
             LEFT JOIN user_saved_playlists usp ON usp.playlist_id = p.playlist_id AND usp.user_id = :userId
@@ -157,6 +161,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getOwnerUsername();
         Integer getIsSaved(); // SQLite has no boolean type: 1 or 0
         int getTotalPieces();
+        String getAccess(); // OWNER, EDITOR, LISTENER, or '' for a playlist only saved
     }
 
     interface UserSearchRow {

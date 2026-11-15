@@ -24,8 +24,39 @@
       @repeat="musicStore.cycleRepeat()"
       @seek="v => progress = v"
     />
+    <QueueView
+      v-if="shouldShowPlayer && !isMobile"
+      :open="queueOpen"
+      :queue="musicStore.playlist"
+      :index="musicStore.queueIndex"
+      :piece="currentMusicPiece"
+      :playlist-link="playlistLink"
+      :is-playing="isPlaying"
+      :can-play="canPlay"
+      :can-skip="canSkip"
+      :can-shuffle="canShuffle"
+      :shuffle-on="shuffleOn"
+      :repeat-mode="repeatMode"
+      :repeat-label="REPEAT_LABELS[repeatMode]"
+      :progress="progress"
+      :duration="duration"
+      :progress-fill="progressFill"
+      :current-time-label="formattedCurrentTime"
+      :duration-label="formattedDuration"
+      :volume="Number(volume)"
+      :volume-fill="volumeFill"
+      @close="setQueueOpen(false)"
+      @play-at="playQueueAt"
+      @toggle-play="togglePlay"
+      @prev="prevTrack"
+      @next="nextTrack"
+      @shuffle="toggleShuffle"
+      @repeat="musicStore.cycleRepeat()"
+      @seek="v => progress = v"
+      @volume="v => volume = v"
+    />
     <button
-      v-if="showArrow && !isMobile"
+      v-if="showArrow && !isMobile && !queueOpen"
       type="button"
       class="collapse-toggle"
       :class="{ collapsed }"
@@ -39,16 +70,31 @@
       </svg>
     </button>
 
-    <div class="bottom-player" :class="{ collapsed }" v-if="shouldShowPlayer && !isMobile">
+    <div class="bottom-player" :class="{ collapsed, 'queue-open': queueOpen }" v-if="shouldShowPlayer && !isMobile" :inert="queueOpen">
       <div class="now-playing-info">
-        <img v-if="currentMusicPiece?.cover" class="song-cover" :src="currentMusicPiece.cover" alt="" />
-        <span v-else class="song-cover cover-empty" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-          </svg>
-        </span>
+        <!-- The cover and the title both open the queue; only the title is a tab stop, so keyboard users meet it once -->
+        <button type="button" class="cover-btn" tabindex="-1" aria-hidden="true" :disabled="!canOpenQueue" @click="setQueueOpen(true)">
+          <img v-if="currentMusicPiece?.cover" class="song-cover" :src="currentMusicPiece.cover" alt="" />
+          <span v-else class="song-cover cover-empty">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+            </svg>
+          </span>
+        </button>
         <div class="song-details">
-          <p class="song-title">{{ currentMusicPiece?.title || 'No song playing' }}</p>
+          <button
+            ref="queueBtnRef"
+            type="button"
+            class="title-btn"
+            :disabled="!canOpenQueue"
+            aria-haspopup="dialog"
+            :aria-expanded="queueOpen ? 'true' : 'false'"
+            :aria-label="`Show queue: ${currentMusicPiece?.title || 'No song playing'}`"
+            @click="setQueueOpen(true)"
+          >
+            <span class="song-title">{{ currentMusicPiece?.title || 'No song playing' }}</span>
+            <svg class="title-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>
+          </button>
           <p v-if="currentMusicPiece?.artist || uploader" class="song-artist">
             <router-link
               v-if="currentMusicPiece.artist && currentMusicPiece.artistId"
@@ -132,7 +178,7 @@
 
     <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" style="width:0; height:0; opacity:0;"></audio>
 
-    <div class="progress-bar-container" :class="{ collapsed }" v-if="shouldShowPlayer && !isMobile">
+    <div class="progress-bar-container" :class="{ collapsed, 'queue-open': queueOpen }" v-if="shouldShowPlayer && !isMobile" :inert="queueOpen">
       <span class="time">{{ formattedCurrentTime }}</span>
       <input
         class="slider"
@@ -157,11 +203,31 @@ import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import MobilePlayer from '@/components/MobilePlayer.vue'
+import QueueView from '@/components/QueueView.vue'
 
 const userStore = useUserStore()
 const musicStore = useMusicStore()
 
 const collapsed = ref(false)
+
+// Desktop queue (QueueView.vue): opened from the song in the bar, it takes the whole window and the bar steps aside
+const queueOpen = ref(false)
+const queueBtnRef = ref(null)
+const canOpenQueue = computed(() => Boolean(musicStore.currentMusicPiece?.uuid))
+
+async function setQueueOpen(value) {
+  if (value && !canOpenQueue.value) return
+  queueOpen.value = value
+  document.body.classList.toggle('player-sheet-open', value)
+  if (value) return
+  await nextTick()
+  queueBtnRef.value?.focus({ preventScroll: true })
+}
+
+function playQueueAt(index) {
+  musicStore.playAt(index)
+  musicStore.saveLastPlayback()
+}
 
 // At 720px and below the player is a mini player that opens a full-screen one (MobilePlayer.vue), with no collapse
 const MOBILE_QUERY = '(max-width: 720px)'
@@ -177,7 +243,10 @@ watchEffect(() => {
   root.toggle('player-open', !isCollapsed)
   root.toggle('player-collapsed', isCollapsed)
 })
+// The queue is desktop only; the mobile player has its own full-screen view. It also closes if the song goes away
+watch([isMobile, canOpenQueue], ([mobile, canOpen]) => { if (queueOpen.value && (mobile || !canOpen)) setQueueOpen(false) })
 onBeforeUnmount(() => {
+  if (queueOpen.value) document.body.classList.remove('player-sheet-open')
   mobileQuery?.removeEventListener?.('change', onMobileChange)
   document.documentElement.classList.remove('player-open', 'player-collapsed')
 })
@@ -395,6 +464,9 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .bottom-player.collapsed { transform: translateY(calc(100% + 32px)); }
 .progress-bar-container { bottom: 0; z-index: 99; height: 32px; display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--page-gutter); }
 .progress-bar-container.collapsed { transform: translateY(100%); }
+/* While the queue is open it has all of these controls, so the bar drops away underneath it */
+.bottom-player.queue-open { transform: translateY(calc(100% + 32px)); transition: transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; }
+.progress-bar-container.queue-open { transform: translateY(100%); transition: transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; }
 .time { font: 500 12px/16px var(--font-sans); color: var(--ink-muted); font-variant-numeric: tabular-nums; min-width: 32px; }
 .time:last-child { text-align: right; }
 
@@ -403,10 +475,16 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .collapse-toggle.collapsed { bottom: var(--space-4); }
 
 .now-playing-info { display: flex; align-items: center; gap: var(--space-3); min-width: 0; flex: 1; }
-.song-cover { width: 48px; height: 48px; flex: none; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface); }
+.song-cover { width: 48px; height: 48px; flex: none; border-radius: var(--radius-sm); object-fit: cover; background: var(--surface); display: block; }
 .cover-empty { display: grid; place-items: center; color: var(--ink-muted); border: 1px solid var(--line); }
 .song-details { min-width: 0; }
 .song-title { margin: 0; font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cover-btn { background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; flex: none; padding: 0; }
+.cover-btn:disabled, .title-btn:disabled { cursor: default; }
+.title-btn { align-items: center; background: none; border: 0; border-radius: var(--radius-sm); color: inherit; cursor: pointer; display: flex; gap: var(--space-1); max-width: 100%; min-width: 0; padding: 0; text-align: left; }
+.title-btn:hover:not(:disabled) .song-title { text-decoration: underline; }
+.title-chev { color: var(--ink-muted); flex: none; }
+.title-btn:disabled .title-chev { display: none; }
 .song-artist { align-items: center; color: var(--ink-muted); display: flex; font: 500 14px/20px var(--font-sans); gap: var(--space-2); margin: 0; min-width: 0; white-space: nowrap; }
 .artist-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .artist-link { color: inherit; text-decoration: none; }

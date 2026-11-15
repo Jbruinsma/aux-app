@@ -483,6 +483,50 @@ the player fetches streams ahead of time.
 
 **Done when:** playing, pausing and seeking each send one report, and private songs never show to friends.
 
+### 36. Desktop queue and cover glow
+
+Clicking the song in the desktop bar opens the queue: the playing cover large in the middle, played songs to the
+left, up next to the right. The background takes the cover's most prominent color. Mockups: `mockups/desktop-queue.html`
+and `mockups/mobile-player.html`.
+
+**Files:** new `src/components/QueueView.vue`, new `src/utils/coverColor.js`, `src/components/BottomPlayer.vue`,
+`src/components/MobilePlayer.vue`, `src/stores/music.js`
+**API:** none new. The queue is the store's fetched `playlist`, split at `queueIndex`
+
+- [x] Make the queue position reactive (`queueIndex`) so the view follows the song.
+- [x] Open the view from the cover or title in the desktop bar. The bar hides while it's open, and the view carries
+      all of its controls (shuffle and repeat at the top; scrubber, transport and volume at the bottom).
+- [x] Clicking a cover plays it. The arrows, ←/→ and a sideways trackpad scroll browse without changing the song, and
+      "Back to now playing" recenters.
+- [x] No "load more" at the end of the row. The store's early fetch (3 songs left) grows it.
+- [x] Read the cover's prominent color on a canvas and radiate it behind the cover, fading into `surface`. Same on the
+      mobile full player.
+- [x] Glow shows on real covers. The public R2 bucket now sends `Access-Control-Allow-Origin: *` (policy added
+      2026-11-13). If it's ever removed, the players fall back to a plain background.
+
+**Done when:** the queue opens from the bar, browsing and picking covers work, and real covers tint the background.
+
+### 37. Recommended songs on playlists
+
+A "Recommended" section under a playlist's songs, so short playlists don't end in empty space. Mockup:
+`mockups/playlist-recommended.html`.
+
+**Files:** new `src/components/PlaylistRecommendations.vue`, new `src/utils/recommendations.js`,
+`src/views/PlaylistDetail.vue`
+**API:** `GET /api/music-pieces/{musicPieceId}/discover`, `POST /api/playlists/{playlistId}/pieces`, the `library` event
+
+- [x] Seed `discover` with up to 3 of the newest public songs, merge the results, drop songs already in the playlist,
+      and show the top 5. Hidden when there are no results or the requests fail.
+- [x] Show it once every song has loaded, so it sits after the last song on long playlists too.
+- [x] Clicking a row plays the song on its own. Refresh asks again.
+- [x] Owners and editors: Add puts the song at the end of the list straight away (taken out again if the request fails),
+      and the next recommendation fills its place.
+- [x] Everyone else: Add opens a menu of their own playlists (from the `library` event) to add the song to.
+- [x] Offer playlists the user edits in that menu too, using `access` on `LibraryPlaylist` (`OWNER` or `EDITOR`).
+
+**Done when:** a short playlist shows 5 recommendations, owners can add them in one click, and listeners can add them
+to their own playlists.
+
 ## P2: Later
 
 ### 15. Build the artist page

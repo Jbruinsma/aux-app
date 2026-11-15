@@ -236,7 +236,8 @@ public class PlaylistMembersService extends PlaylistService {
         PlaylistMemberResponse updated = PlaylistMemberResponse.of(members.save(member), found.invitee());
         // A pending invite shows its permission, in the invites list and in its notification
         notifications.updateInvitePermission(found.invitee().getUserId(), member.getPlaylistId(), member.getPermission());
-        publishTo(found.invitee().getUserId(), Section.INVITES, Section.NOTIFICATIONS);
+        // LIBRARY too: an accepted member's library shows their access, which just changed
+        publishTo(found.invitee().getUserId(), Section.INVITES, Section.LIBRARY, Section.NOTIFICATIONS);
         return updated;
     }
 

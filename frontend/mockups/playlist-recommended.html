@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlist recommendations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+:root,[data-theme="light"]{--focus-ring:#6a4778;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--success:#2e7d5b;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
+[data-theme="dark"]{--focus-ring:#b593c4;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--success:#6ccb9a;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
+:root{--dur-fast:150ms;--dur-med:300ms;--ease:cubic-bezier(.2,0,0,1);--font-sans:Montserrat, "Segoe UI", Helvetica, Arial, sans-serif;--frame-h:820px;--gutter:32px;--header-h:69px;--radius-md:6px;--radius-pill:999px;--radius-sm:3px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px}
+*,*::before,*::after{box-sizing:border-box}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{background:var(--surface-alt);color:var(--ink);font:400 16px/24px var(--font-sans);margin:0}
+button{color:inherit;font:inherit}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+h1,h2,p,ol{margin:0}
+ol{list-style:none;padding:0}
+
+/* Page chrome around the browser frame */
+.page{margin:0 auto;max-width:1280px;padding:var(--space-8) var(--space-6)}
+.page-head{align-items:flex-start;display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between;margin-bottom:var(--space-6)}
+.page-head h1{font:700 28px/34px var(--font-sans)}
+.page-head p{color:var(--ink-muted);font:500 14px/20px var(--font-sans);margin-top:var(--space-1);max-width:72ch}
+.tools{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.seg{border:1px solid var(--line-strong);border-radius:var(--radius-sm);display:flex;overflow:hidden}
+.seg button{background:var(--surface);border:0;cursor:pointer;font:600 14px/20px var(--font-sans);padding:9px 14px}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--purple-soft);color:var(--link)}
+.tool-btn{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;font:600 14px/20px var(--font-sans);padding:9px 14px}
+.notes{display:grid;gap:var(--space-6);grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:var(--space-8)}
+.notes section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-4)}
+.notes h2{font:700 20px/28px var(--font-sans);margin:0 0 var(--space-2)}
+.notes ul{font:500 14px/20px var(--font-sans);margin:0;padding-left:20px}
+.notes li+li{margin-top:var(--space-2)}
+code{background:var(--surface-alt);border-radius:var(--radius-sm);font:600 13px/20px var(--font-sans);padding:1px 6px}
+
+/* Browser frame; scrolls inside so the fold is visible */
+.frame{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-md);height:var(--frame-h);overflow:hidden;position:relative}
+.chrome{align-items:center;background:var(--surface-alt);border-bottom:1px solid var(--line);display:flex;gap:var(--space-2);height:36px;padding:0 var(--space-3)}
+.chrome span{background:var(--line-strong);border-radius:var(--radius-pill);height:10px;opacity:.6;width:10px}
+.chrome .url{background:var(--surface);border-radius:var(--radius-sm);color:var(--ink-muted);flex:1;font:500 12px/16px var(--font-sans);height:auto;margin-left:var(--space-3);max-width:420px;opacity:1;padding:3px var(--space-3);width:auto}
+.app{height:calc(100% - 36px);overflow-y:auto;position:relative;scrollbar-width:thin}
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.top-in{align-items:center;display:flex;gap:var(--space-6);min-height:68px;padding:0 var(--gutter)}
+.logo{color:var(--link);font:800 24px/1 var(--font-sans);letter-spacing:-.02em}
+[data-theme="light"] .logo{color:var(--primary)}
+.nav{display:flex;flex:1;gap:var(--space-4);justify-content:flex-end}
+.nav span{color:var(--ink-muted);font:600 14px/20px var(--font-sans)}
+main{min-height:calc(var(--frame-h) - 36px - var(--header-h));padding:0 var(--gutter) var(--space-8)}
+
+/* Playlist head (matches PlaylistDetail.vue) */
+.head{align-items:flex-end;border-bottom:1px solid var(--line);display:flex;gap:var(--space-6);padding:var(--space-8) 0 var(--space-6)}
+.cover{border-radius:var(--radius-sm);display:block;height:232px;object-fit:cover;width:232px}
+.eyebrow{color:var(--ink-muted);font:600 12px/16px var(--font-sans);margin-bottom:var(--space-1)}
+.head h1{font:700 28px/34px var(--font-sans)}
+.meta{color:var(--ink-muted);font:500 14px/20px var(--font-sans);margin-top:var(--space-2)}
+.meta b{color:var(--ink);font-weight:600}
+.actions{display:flex;gap:var(--space-3);margin-top:var(--space-4)}
+.btn{align-items:center;border:1px solid transparent;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;font:600 15px/22px var(--font-sans);gap:var(--space-2);padding:10px 18px}
+.btn.primary{background:var(--primary);color:var(--on-primary)}
+.btn.primary:hover{background:var(--purple-hover)}
+.btn.secondary{background:var(--surface);border-color:var(--line-strong);color:var(--ink)}
+.btn.secondary:hover{background:var(--surface-alt)}
+.btn svg{fill:none;height:18px;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;width:18px}
+.btn svg.filled{fill:currentColor;stroke:none}
+
+/* Track rows (matches PlaylistDetail.vue) */
+section.list{padding-top:var(--space-6)}
+.list-head{align-items:flex-end;display:flex;gap:var(--space-4);justify-content:space-between;margin-bottom:var(--space-3)}
+.list-head h2{font:700 20px/28px var(--font-sans)}
+.list-sub{color:var(--ink-muted);font:500 14px/20px var(--font-sans);margin-top:2px}
+.text-btn{align-items:center;background:none;border:0;border-radius:var(--radius-sm);color:var(--link);cursor:pointer;display:inline-flex;font:600 14px/20px var(--font-sans);gap:var(--space-1);padding:var(--space-2)}
+.text-btn:hover{text-decoration:underline}
+.text-btn svg{fill:none;height:16px;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;width:16px}
+.text-btn.spinning svg{animation:spin 600ms var(--ease)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tracks{border-top:1px solid var(--line)}
+.track{align-items:center;border-bottom:1px solid var(--line);display:flex;transition:background var(--dur-fast) var(--ease)}
+.track:hover{background:var(--surface-alt)}
+.track.just-added{animation:arrive 1600ms var(--ease)}
+@keyframes arrive{0%,40%{background:var(--purple-soft)}100%{background:transparent}}
+.track-main{align-items:center;background:none;border:0;color:inherit;cursor:pointer;display:grid;flex:1;gap:var(--space-3);grid-template-columns:32px 40px minmax(0,1fr);min-width:0;padding:var(--space-3) var(--space-2) var(--space-3) var(--space-3);text-align:left}
+.rank{color:var(--ink-muted);display:grid;font:500 14px/20px var(--font-sans);place-items:center}
+.rank>*{grid-area:1/1}
+.rank-play{fill:var(--link);height:20px;opacity:0;width:20px}
+.track:hover .rank-number{opacity:0}
+.track:hover .rank-play{opacity:1}
+.art{border-radius:var(--radius-sm);display:block;height:40px;width:40px}
+.track-text{display:flex;flex-direction:column;min-width:0}
+.track-name{font:600 16px/24px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track-artist{color:var(--ink-muted);display:none;font:500 14px/20px var(--font-sans)}
+.artist-col{color:var(--ink-muted);flex:none;font:500 14px/20px var(--font-sans);max-width:25%;overflow:hidden;padding:0 var(--space-2);text-overflow:ellipsis;white-space:nowrap}
+.uploader{align-items:center;color:var(--ink-muted);display:flex;flex:none;font:500 14px/20px var(--font-sans);gap:var(--space-2);padding:0 var(--space-2)}
+.pfp{background:var(--primary);border-radius:var(--radius-pill);color:var(--on-primary);display:grid;font:700 11px/1 var(--font-sans);height:24px;place-items:center;width:24px}
+.track-more{background:none;border:0;border-radius:var(--radius-sm);color:var(--ink-muted);cursor:pointer;display:grid;height:36px;margin-right:var(--space-2);place-items:center;width:36px}
+.track-more svg{fill:currentColor;height:20px;width:20px}
+
+/* Recommended section */
+.recs{margin-top:var(--space-4)}
+.rec .rank-number{opacity:0}
+.add-btn{align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);color:var(--ink);cursor:pointer;display:inline-flex;flex:none;font:600 14px/20px var(--font-sans);gap:var(--space-1);margin-right:var(--space-2);min-width:84px;justify-content:center;padding:7px 12px;transition:background var(--dur-fast) var(--ease)}
+.add-btn:hover{background:var(--surface-alt)}
+.add-btn svg{fill:none;height:16px;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;width:16px}
+.add-btn.added{border-color:var(--success);color:var(--success);cursor:default}
+.rec.leaving{opacity:0;transform:translateY(-4px);transition:opacity var(--dur-med) var(--ease),transform var(--dur-med) var(--ease)}
+.rec.entering{animation:enter var(--dur-med) var(--ease)}
+@keyframes enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.rec .track-more{display:none}
+.add-btn .chev{display:none;height:14px;margin-left:-2px;width:14px}
+.listener .add-btn .chev{display:block}
+.add-wrap{flex:none;margin-right:var(--space-2);position:relative}
+.add-wrap .add-btn{margin-right:0}
+
+/* Listener: Add opens a picker of your own playlists (same menu look as the playlist page's menus) */
+.picker{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:0 8px 24px rgba(0,0,0,.16);min-width:280px;opacity:0;padding:var(--space-1) 0;pointer-events:none;position:absolute;right:0;top:calc(100% + var(--space-1));transform:translateY(-4px);transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease),visibility 0s linear var(--dur-fast);visibility:hidden;z-index:10}
+.picker.up{bottom:calc(100% + var(--space-1));top:auto;transform:translateY(4px)}
+.picker.open{opacity:1;pointer-events:auto;transform:none;transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease),visibility 0s;visibility:visible}
+.picker-title{color:var(--ink-muted);font:600 12px/16px var(--font-sans);padding:var(--space-2) var(--space-4) var(--space-1)}
+.picker-list{max-height:248px;overflow-y:auto}
+.picker-item{align-items:center;background:none;border:0;color:var(--ink);cursor:pointer;display:grid;gap:var(--space-3);grid-template-columns:32px minmax(0,1fr) 20px;min-height:44px;padding:var(--space-1) var(--space-4);text-align:left;width:100%}
+.picker-item:hover,.picker-item:focus-visible{background:var(--surface-alt)}
+.picker-item img{border-radius:var(--radius-sm);display:block;height:32px;width:32px}
+.picker-name{display:block;font:600 14px/20px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picker-count{color:var(--ink-muted);display:block;font:500 12px/16px var(--font-sans)}
+.picker-item .tick{color:var(--success);height:20px;opacity:0;width:20px}
+.picker-item.done .tick{opacity:1}
+.tick{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2}
+.picker-empty{color:var(--ink-muted);font:500 14px/20px var(--font-sans);padding:var(--space-2) var(--space-4)}
+.skeleton .art,.skeleton .bar{animation:pulse 1.2s var(--ease) infinite alternate;background:var(--surface-alt)}
+.skeleton .track-main{cursor:default}
+.skeleton:hover{background:none}
+.bar{border-radius:var(--radius-sm);display:block;height:14px;width:var(--w,40%)}
+.bar+.bar{height:12px;margin-top:6px}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+
+/* Footer: starts at the bottom of the window */
+.foot{background:var(--surface-alt);color:var(--ink-muted);font:500 14px/20px var(--font-sans);padding:var(--space-8) var(--gutter)}
+.foot-cols{display:flex;gap:120px}
+.foot-cols span{color:var(--link);display:block;line-height:28px}
+
+.toast{background:var(--ink);border-radius:var(--radius-md);bottom:var(--space-6);color:var(--surface);font:600 14px/20px var(--font-sans);left:50%;opacity:0;padding:var(--space-2) var(--space-4);pointer-events:none;position:absolute;transform:translateX(-50%);transition:opacity var(--dur-med) var(--ease);white-space:nowrap;z-index:50}
+.toast.show{opacity:1}
+.sr-only{clip:rect(0 0 0 0);height:1px;overflow:hidden;position:absolute;white-space:nowrap;width:1px}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Playlist recommendations</h1>
+      <p>A "Recommended" section under the song list, built from <code>GET /api/music-pieces/{id}/discover</code>. Owners and editors add a song to this playlist in one click; everyone else adds it to one of their own playlists. The footer still starts at the bottom of the window.</p>
+    </div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="View as">
+        <button type="button" aria-pressed="true" data-role="owner">Owner or editor</button>
+        <button type="button" aria-pressed="false" data-role="listener">Listener</button>
+      </div>
+      <button type="button" class="tool-btn" data-loading-demo>Show loading</button>
+      <button type="button" class="tool-btn" aria-pressed="false" data-no-playlists>Listener has no playlists</button>
+      <button type="button" class="tool-btn" id="theme">Light mode</button>
+    </div>
+  </header>
+
+  <div class="frame owner" id="frame">
+    <div class="chrome" aria-hidden="true"><span></span><span></span><span></span><span class="url">aux.app/test1/playlist/vibes</span></div>
+    <div class="app" id="app">
+      <div class="top"><div class="top-in"><span class="logo">Aux</span><div class="nav"><span>Music</span><span>Artists</span><span>Explore</span><span>Friends</span><span>Charts</span></div></div></div>
+      <main>
+        <header class="head">
+          <img class="cover" data-cover="city" alt="">
+          <div>
+            <p class="eyebrow">Playlist</p>
+            <h1>Vibes</h1>
+            <p class="meta"><b>test1</b> · <span data-count>4 songs</span></p>
+            <p class="meta">Editors <b>test2</b></p>
+            <div class="actions">
+              <button type="button" class="btn primary"><svg class="filled" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>Play</button>
+              <button type="button" class="btn secondary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73"/></svg>Shuffle</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="list" aria-labelledby="songs-heading">
+          <div class="list-head"><h2 id="songs-heading">Songs</h2></div>
+          <ol class="tracks" data-songs></ol>
+        </section>
+
+        <section class="list recs" aria-labelledby="recs-heading" data-recs-section>
+          <div class="list-head">
+            <div>
+              <h2 id="recs-heading">Recommended</h2>
+              <p class="list-sub">Based on the songs in this playlist</p>
+            </div>
+            <button type="button" class="text-btn" data-refresh>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/></svg>Refresh
+            </button>
+          </div>
+          <ol class="tracks" data-recs></ol>
+        </section>
+        <p class="sr-only" aria-live="polite" data-live></p>
+      </main>
+      <footer class="foot">
+        <div class="foot-cols"><div><span>Music</span></div><div><span>Report a problem</span><span>Getting started</span></div><div><span>Your profile</span><span>Settings</span></div><div><span>Send feedback</span></div></div>
+      </footer>
+    </div>
+    <div class="toast" role="status" data-toast></div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>Behavior</h2>
+      <ul>
+        <li>Shows under the song list on any playlist with at least one public song. Heading "Recommended", with "Based on the songs in this playlist" in <code>ink-muted</code>, and a Refresh text button on the right.</li>
+        <li>5 rows that reuse the playlist's track rows: art, title, artist column, uploader. The rank column is left blank and shows the play icon on hover. Clicking a row plays just that song.</li>
+        <li><b>Owner or editor:</b> each row has an Add button (secondary, small). Clicking it changes the button to a green "Added" check, the row fades out, and the song appears at the end of Songs with a brief <code>purple-soft</code> highlight. The next recommendation fades in at the bottom, and the change is read out by screen readers.</li>
+        <li><b>Listener</b> (not the owner or an editor of this playlist): the same Add button, with a small chevron, opens "Add to playlist", a menu of your own playlists with cover, name and song count. Picking one adds the song there, shows "Added to Late night", and briefly turns the button into "Added". The song stays in the list, since it wasn't added to this playlist, and a check marks the playlists it went to this visit. Adding it again to the same playlist says "already in". Arrow keys move through the menu, Esc closes it, and it opens upward near the bottom of the window.</li>
+        <li>A listener with no playlists of their own sees "You don't have any playlists yet."</li>
+        <li>Refresh asks again. Equal matches come back in random order from the server, so the list changes.</li>
+        <li>While loading: 5 placeholder rows. On an error or with no results, the section is hidden. It's an extra, so no error message.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Data</h2>
+      <ul>
+        <li>Picks up to 3 public songs from the playlist as seeds (newest added first) and calls <code>discover</code> for each in parallel. Results are merged: a song that comes up for more than one seed ranks higher. Songs already in the playlist are dropped, and the top 5 are shown. The rest are kept to fill in after an Add.</li>
+        <li><code>discover</code> already leaves out your own uploads, your favorites and anything you played in the last 7 days. Seeds must be public, so a playlist of only private songs gets no section.</li>
+        <li>Add uses <code>POST /api/playlists/{playlistId}/pieces</code> with one id, either this playlist or the one picked. The song is added to the list straight away and removed again if the request fails, with an error toast. A response with <code>failedCount: 1</code> means the song was already there.</li>
+        <li>The listener's playlists come from the <code>library</code> event (already in the events store): entries whose <code>ownerUsername</code> is the current user. Playlists you can edit but don't own aren't offered, because <code>LibraryPlaylist</code> doesn't say whether you're an editor or a listener.</li>
+        <li>Three requests per page view. A playlist-level <code>GET /api/playlists/{playlistId}/discover</code> would be one request and could leave out the playlist's songs on the server. That would be a backend nice-to-have, not a blocker.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Decided</h2>
+      <ul>
+        <li>Title: "Recommended". 5 songs.</li>
+        <li>No "New playlist" in the listener's menu.</li>
+        <li>Playlists you edit join the menu once the backend adds <code>access</code> to <code>LibraryPlaylist</code> (in <code>BACKEND_REQUESTS.md</code>).</li>
+        <li>On long playlists the section shows once every song has loaded, below the last one.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  /* Mock covers drawn on canvases */
+  function cover(draw) { var c = document.createElement('canvas'); c.width = c.height = 120; var x = c.getContext('2d'); draw(x); return c.toDataURL('image/jpeg', .85); }
+  function lin(x, stops, a) { var g = x.createLinearGradient(0, 0, a ? 120 : 0, 120); stops.forEach(function (s, i) { g.addColorStop(i / (stops.length - 1), s); }); x.fillStyle = g; x.fillRect(0, 0, 120, 120); }
+  var COVERS = {
+    city: cover(function (x) { lin(x, ['#0b1220', '#1d2b45']); x.fillStyle = '#e8c27a'; for (var i = 0; i < 40; i++) x.fillRect(Math.random() * 120, 40 + Math.random() * 80, 2, 3); x.fillStyle = '#d9d2b8'; x.fillRect(52, 20, 14, 100); }),
+    c1: cover(function (x) { lin(x, ['#e7d5c1', '#a0785a'], true); }),
+    c2: cover(function (x) { lin(x, ['#9fb3c8', '#d6dde3', '#56685d', '#25302a']); }),
+    c3: cover(function (x) { lin(x, ['#2b2b2b', '#5a4a3a', '#141414']); }),
+    c4: cover(function (x) { x.fillStyle = '#e0313f'; x.fillRect(0, 0, 120, 120); x.fillStyle = '#3d5fa8'; x.fillRect(40, 40, 40, 40); }),
+    c5: cover(function (x) { lin(x, ['#6a4778', '#b593c4', '#f1ecf3'], true); }),
+    c6: cover(function (x) { lin(x, ['#1f2a44', '#3f5b8a', '#a9c0e0'], true); x.fillStyle = '#f2c14e'; x.beginPath(); x.arc(80, 45, 20, 0, 7); x.fill(); }),
+    c7: cover(function (x) { lin(x, ['#e8c39e', '#b0705a', '#3b2620']); }),
+    c8: cover(function (x) { lin(x, ['#cfcfcf', '#2d2d2d'], true); x.fillStyle = '#c8402e'; x.fillRect(0, 66, 120, 18); }),
+    c9: cover(function (x) { lin(x, ['#0f3d3e', '#2e8b7a', '#c7f0d8']); }),
+    c10: cover(function (x) { lin(x, ['#3a1c32', '#a2416b', '#f4a8b8'], true); })
+  };
+  document.querySelector('[data-cover="city"]').src = COVERS.city;
+
+  var songs = [
+    { t: 'Kendrick Lamar - Savior ft. Baby Keem & Sam Dew (Official Audio)', a: 'Kendrick Lamar', u: 'test1', c: 'c1' },
+    { t: 'Violent Crimes', a: 'Kanye West', u: 'test1', c: 'c2' },
+    { t: 'Bando (Slowed to Perfection)', a: 'Ta2cute', u: 'test1', c: 'c3' },
+    { t: 'Devil In A New Dress', a: 'Kanye West', u: 'test1', c: 'c4' }
+  ];
+  var POOL = [
+    ['Runaway', 'Kanye West', 'mo', 'c8'], ['DNA.', 'Kendrick Lamar', 'rj', 'c8'], ['Nights', 'Frank Ocean', 'muaz', 'c5'],
+    ['Good Days', 'SZA', 'milind', 'c7'], ['Money Trees', 'Kendrick Lamar', 'mo', 'c6'], ['Ivy', 'Frank Ocean', 'rj', 'c5'],
+    ['Father Stretch My Hands', 'Kanye West', 'test2', 'c2'], ['Pink + White', 'Frank Ocean', 'muaz', 'c10'], ['Snooze', 'SZA', 'milind', 'c7'],
+    ['Alright', 'Kendrick Lamar', 'rj', 'c9'], ['Ghost Town', 'Kanye West', 'mo', 'c3'], ['Kill Bill', 'SZA', 'test2', 'c10'],
+    ['Self Control', 'Frank Ocean', 'muaz', 'c6'], ['Swimming Pools', 'Kendrick Lamar', 'milind', 'c9'], ['Blood on the Leaves', 'Kanye West', 'rj', 'c4'],
+    ['Saturn', 'SZA', 'mo', 'c1'], ['Solo', 'Frank Ocean', 'test2', 'c5'], ['N95', 'Kendrick Lamar', 'muaz', 'c8']
+  ].map(function (r) { return { t: r[0], a: r[1], u: r[2], c: r[3] }; });
+  var SHOWN = 5;
+  var recs = [];
+  var queue = [];
+
+  var PLAY = '<svg class="rank-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+  var MORE = '<button type="button" class="track-more" aria-label="More options"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>';
+  var PLUS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+  var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  var CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  // The listener's own playlists: library entries where ownerUsername is them
+  var MY_PLAYLISTS = [
+    { id: 'p1', name: 'Late night', count: 11, c: 'c6' },
+    { id: 'p2', name: 'Gym', count: 17, c: 'c8' },
+    { id: 'p3', name: 'Road trip', count: 24, c: 'c7' },
+    { id: 'p4', name: 'Sunday morning coffee and records', count: 6, c: 'c5' },
+    { id: 'p5', name: 'Throwbacks', count: 32, c: 'c10' }
+  ];
+  var noPlaylists = false;
+  // Song title -> playlist ids it was added to this visit, so the picker can show a check
+  var addedTo = {};
+  function isListener() { return document.getElementById('frame').classList.contains('listener'); }
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+  function row(s, rank, isRec) {
+    var li = document.createElement('li');
+    li.className = 'track' + (isRec ? ' rec' : '');
+    li.innerHTML =
+      '<button type="button" class="track-main" aria-label="Play ' + esc(s.t) + ' by ' + esc(s.a) + '">' +
+        '<span class="rank" aria-hidden="true"><span class="rank-number">' + (rank || '') + '</span>' + PLAY + '</span>' +
+        '<img class="art" src="' + COVERS[s.c] + '" alt="">' +
+        '<span class="track-text"><span class="track-name">' + esc(s.t) + '</span></span></button>' +
+      '<span class="artist-col">' + esc(s.a) + '</span>' +
+      '<span class="uploader"><span class="pfp" aria-hidden="true">' + s.u.charAt(0).toUpperCase() + '</span>' + esc(s.u) + '</span>' +
+      (isRec ? '<div class="add-wrap"><button type="button" class="add-btn" data-label="' + esc(s.t) + '">' + PLUS + 'Add' + CHEV + '</button></div>' : '') +
+      MORE;
+    li._song = s;
+    return li;
+  }
+
+  function labelAdds() {
+    document.querySelectorAll('.add-btn:not(.added)').forEach(function (b) {
+      var t = b.getAttribute('data-label');
+      if (isListener()) { b.setAttribute('aria-label', 'Add ' + t + ' to one of your playlists'); b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false'); }
+      else { b.setAttribute('aria-label', 'Add ' + t + ' to Vibes'); b.removeAttribute('aria-haspopup'); b.removeAttribute('aria-expanded'); }
+    });
+  }
+
+  /* Listener's playlist picker */
+  var openPicker = null;
+  function closePicker(refocus) {
+    if (!openPicker) return;
+    var btn = openPicker.parentNode.querySelector('.add-btn');
+    openPicker.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    var p = openPicker; openPicker = null;
+    setTimeout(function () { p.remove(); }, 160);
+    if (refocus) btn.focus();
+  }
+  function showPicker(btn) {
+    var wrap = btn.parentNode, s = wrap.closest('.track')._song;
+    var done = addedTo[s.t] || [];
+    var menu = document.createElement('div');
+    menu.className = 'picker';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Add to playlist');
+    var list = noPlaylists ? '<p class="picker-empty">You don\'t have any playlists yet.</p>' :
+      '<div class="picker-list">' + MY_PLAYLISTS.map(function (pl) {
+        return '<button type="button" class="picker-item' + (done.indexOf(pl.id) > -1 ? ' done' : '') + '" role="menuitem" tabindex="-1" data-pl="' + pl.id + '">' +
+          '<img src="' + COVERS[pl.c] + '" alt=""><span><span class="picker-name">' + esc(pl.name) + '</span><span class="picker-count">' + pl.count + ' songs</span></span>' +
+          '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>';
+      }).join('') + '</div>';
+    menu.innerHTML = '<p class="picker-title">Add to playlist</p>' + list;
+    wrap.appendChild(menu);
+    // Opens upward when there isn't room below
+    var app = document.getElementById('app');
+    if (btn.getBoundingClientRect().bottom + 340 > app.getBoundingClientRect().bottom) menu.classList.add('up');
+    requestAnimationFrame(function () { menu.classList.add('open'); });
+    btn.setAttribute('aria-expanded', 'true');
+    openPicker = menu;
+    menu.querySelector('[role="menuitem"]').focus();
+  }
+
+  function renderSongs() {
+    var ol = document.querySelector('[data-songs]');
+    ol.innerHTML = '';
+    songs.forEach(function (s, i) { ol.appendChild(row(s, i + 1, false)); });
+    document.querySelector('[data-count]').textContent = songs.length + ' songs';
+  }
+
+  function inPlaylist(s) { return songs.some(function (x) { return x.t === s.t; }); }
+
+  function loadRecs() {
+    // Random order stands in for the server's random tie-breaks
+    var fresh = POOL.filter(function (s) { return !inPlaylist(s); }).sort(function () { return Math.random() - .5; });
+    recs = fresh.slice(0, SHOWN);
+    queue = fresh.slice(SHOWN);
+    var ol = document.querySelector('[data-recs]');
+    ol.innerHTML = '';
+    recs.forEach(function (s) { ol.appendChild(row(s, 0, true)); });
+    labelAdds();
+  }
+
+  function showSkeleton() {
+    var ol = document.querySelector('[data-recs]');
+    ol.innerHTML = '';
+    for (var i = 0; i < 5; i++) {
+      var li = document.createElement('li');
+      li.className = 'track skeleton';
+      li.setAttribute('aria-hidden', 'true');
+      li.innerHTML = '<div class="track-main"><span class="rank"></span><span class="art"></span><span class="track-text"><span class="bar" style="--w:' + (30 + Math.random() * 30) + '%"></span><span class="bar" style="--w:18%"></span></span></div>';
+      ol.appendChild(li);
+    }
+  }
+
+  var toast = document.querySelector('[data-toast]'), toastTimer;
+  function say(msg) {
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+  }
+
+  document.getElementById('frame').addEventListener('click', function (e) {
+    var pick = e.target.closest('.picker-item');
+    if (pick) {
+      var song = pick.closest('.track')._song;
+      var pl = MY_PLAYLISTS.find(function (x) { return x.id === pick.dataset.pl; });
+      var list = addedTo[song.t] || (addedTo[song.t] = []);
+      var btn = pick.closest('.add-wrap').querySelector('.add-btn');
+      closePicker(true);
+      if (list.indexOf(pl.id) > -1) { say(song.t + ' is already in ' + pl.name); return; }
+      list.push(pl.id); pl.count++;
+      say('Added to ' + pl.name);
+      document.querySelector('[data-live]').textContent = 'Added ' + song.t + ' to ' + pl.name;
+      btn.classList.add('added'); btn.innerHTML = CHECK + 'Added';
+      setTimeout(function () { btn.classList.remove('added'); btn.innerHTML = PLUS + 'Add' + CHEV; labelAdds(); }, 1500);
+      return;
+    }
+    if (openPicker && !e.target.closest('.picker')) {
+      var same = e.target.closest('.add-wrap') === openPicker.parentNode;
+      closePicker();
+      if (same) return;
+    }
+    var add = e.target.closest('.add-btn');
+    if (add && !add.classList.contains('added') && isListener()) { showPicker(add); return; }
+    if (add && !add.classList.contains('added')) {
+      var li = add.closest('.track'), s = li._song;
+      add.classList.add('added'); add.innerHTML = CHECK + 'Added'; add.setAttribute('aria-label', s.t + ' added');
+      songs.push(s);
+      var songRow = row(s, songs.length, false);
+      songRow.classList.add('just-added');
+      document.querySelector('[data-songs]').appendChild(songRow);
+      document.querySelector('[data-count]').textContent = songs.length + ' songs';
+      document.querySelector('[data-live]').textContent = 'Added ' + s.t + ' to Vibes';
+      setTimeout(function () {
+        li.classList.add('leaving');
+        setTimeout(function () {
+          var next = queue.shift();
+          if (next) { var n = row(next, 0, true); n.classList.add('entering'); li.parentNode.appendChild(n); labelAdds(); }
+          li.remove();
+        }, 300);
+      }, 700);
+      return;
+    }
+    var main = e.target.closest('.track-main');
+    if (main && !main.closest('.skeleton')) say('Plays ' + main.closest('.track')._song.t);
+  });
+
+  document.getElementById('frame').addEventListener('keydown', function (e) {
+    if (!openPicker) return;
+    var items = [].slice.call(openPicker.querySelectorAll('[role="menuitem"]'));
+    var i = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); closePicker(true); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === 'Tab') closePicker();
+  });
+
+  var refresh = document.querySelector('[data-refresh]');
+  refresh.addEventListener('click', function () {
+    refresh.classList.remove('spinning'); void refresh.offsetWidth; refresh.classList.add('spinning');
+    showSkeleton();
+    setTimeout(loadRecs, 500);
+  });
+  document.querySelector('[data-loading-demo]').addEventListener('click', function () { showSkeleton(); setTimeout(loadRecs, 1500); });
+
+  document.querySelectorAll('[data-role]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-role]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      var f = document.getElementById('frame');
+      f.classList.toggle('owner', b.dataset.role === 'owner');
+      f.classList.toggle('listener', b.dataset.role === 'listener');
+      closePicker();
+      labelAdds();
+    });
+  });
+
+  // ?h=1000 previews a taller window
+  var h = new URLSearchParams(location.search).get('h'); if (h) document.documentElement.style.setProperty('--frame-h', h + 'px');
+  document.querySelector('[data-no-playlists]').addEventListener('click', function (e) {
+    noPlaylists = !noPlaylists;
+    e.currentTarget.setAttribute('aria-pressed', noPlaylists);
+    e.currentTarget.textContent = noPlaylists ? 'Listener has playlists' : 'Listener has no playlists';
+    closePicker();
+  });
+  // ?role=listener&open=1 previews the picker
+  var qs = new URLSearchParams(location.search);
+  renderSongs(); loadRecs();
+  if (qs.get('role') === 'listener') document.querySelector('[data-role="listener"]').click();
+  if (qs.get('open')) setTimeout(function () { showPicker(document.querySelectorAll('.add-btn')[1]); }, 50);
+
+  var root = document.documentElement, themeBtn = document.getElementById('theme');
+  function sync() { themeBtn.textContent = root.getAttribute('data-theme') === 'dark' ? 'Light mode' : 'Dark mode'; }
+  themeBtn.addEventListener('click', function () { root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); sync(); });
+  sync();
+})();
+</script>
+</body>
+</html>
