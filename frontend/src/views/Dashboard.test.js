@@ -7,6 +7,7 @@ import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { fetchAPI } from '@/utils/api.js'
 import Dashboard from './Dashboard.vue'
+import EditPieceDialog from '@/components/EditPieceDialog.vue'
 
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: {} }), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
@@ -14,7 +15,7 @@ vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), reques
 // The samples are switched off on main; turn them on here to check they only fill empty rows
 vi.mock('@/utils/dashboardPreview.js', async (original) => ({ ...(await original()), DASHBOARD_PREVIEW: true }))
 
-const piece = (n) => ({
+const piece = (n) => ({ tags: [],
   musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistId: `a${n}`, artistName: `Artist ${n}` },
   uploader: { userId: `u${n}`, pfpUrl: null, username: `user${n}` }, isAvailable: true,
 })
@@ -37,6 +38,18 @@ async function render() {
 }
 
 const section = (heading) => wrapper.get(`section[aria-labelledby="${heading}"]`).text()
+
+it('offers Add tags for untagged uploads and opens the edit picker', async () => {
+  useEventsStore().uploads = { uploadedMusicPieces: [piece(1), { ...piece(2), tags: ['chill'] }] }
+  await render()
+  const dialog = wrapper.getComponent(EditPieceDialog)
+  const links = wrapper.findAll('.add-tags')
+  expect(links).toHaveLength(1)
+  await links[0].trigger('click')
+  await flushPromises()
+  expect(dialog.get('#edit-title').element.value).toBe('Song 1')
+  expect(dialog.get('.tag-picker .hint').text()).toContain('Add tags to help people find this')
+})
 
 it('makes no REST calls for its rows, which load from the event stream and update live', async () => {
   const events = useEventsStore()

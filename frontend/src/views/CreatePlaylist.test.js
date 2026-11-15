@@ -5,6 +5,7 @@ import { useNotificationStore } from '@/stores/notification.js'
 import { useUserStore } from '@/stores/user.js'
 import { fetchAPI, postToAPI, request } from '@/utils/api.js'
 import CreatePlaylist from './CreatePlaylist.vue'
+import TagPicker from '@/components/TagPicker.vue'
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: {} }), useRouter: () => ({ push, replace: vi.fn() }) }))
@@ -59,5 +60,45 @@ it('creates the playlist, then sends each invite with its own access', async () 
   expect(request).toHaveBeenNthCalledWith(1, 'POST', expect.stringContaining('/api/playlists/p9/members'), { userId: 'u2', permission: 'EDITOR' }, { notifyOnError: false })
   expect(request).toHaveBeenNthCalledWith(2, 'POST', expect.stringContaining('/api/playlists/p9/members'), { userId: 'u3', permission: 'LISTENER' }, { notifyOnError: false })
   expect(useNotificationStore().message).toBe("Playlist created, but the invite to bud didn't send. Try again from Manage access.")
+  expect(push).toHaveBeenCalledWith({ name: 'Playlist', params: { username: 'me', id: 'p9' } })
+  expect(postToAPI.mock.calls[0][1].getAll('tags')).toEqual([])
+})
+
+it('picks tags on the first step, and goes back there when the server rejects them', async () => {
+  fetchAPI.mockResolvedValue([])
+  postToAPI.mockReset()
+  postToAPI.mockRejectedValueOnce({ status: 400, code: 'INVALID_FIELD', parameter: 'tags', message: 'Choose another tag' })
+  wrapper = mount(CreatePlaylist, { global: { stubs: { AppHeader: true, AppFooter: true, StepBanner: true, RouterLink: true } } })
+  await wrapper.get('#playlist-name').setValue('Road trip')
+  wrapper.getComponent(TagPicker).vm.$emit('update:modelValue', ['chill', 'late night'])
+  await flushPromises()
+  await wrapper.get('form').trigger('submit')
+  Object.defineProperty(wrapper.get('#cover-input').element, 'files', { value: [new File(['x'], 'c.png', { type: 'image/png' })] })
+  await wrapper.get('#cover-input').trigger('change')
+  await flushPromises()
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.text()).toContain('Invite people')
+  expect(wrapper.findComponent(TagPicker).exists()).toBe(false)
+
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(postToAPI.mock.calls[0][1].getAll('tags')).toEqual(['chill', 'late night'])
+  expect(wrapper.text()).toContain('Name your playlist')
+  const picker = wrapper.getComponent(TagPicker)
+  expect(picker.props('error')).toBe('Choose another tag')
+  expect(picker.props('modelValue')).toEqual(['chill', 'late night'])
+
+  picker.vm.$emit('update:modelValue', ['chill'])
+  await flushPromises()
+  expect(picker.props('error')).toBe('')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  postToAPI.mockResolvedValueOnce({ playlistId: 'p9', playlistOwner: { username: 'me' } })
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(postToAPI.mock.calls.at(-1)[1].getAll('tags')).toEqual(['chill'])
   expect(push).toHaveBeenCalledWith({ name: 'Playlist', params: { username: 'me', id: 'p9' } })
 })

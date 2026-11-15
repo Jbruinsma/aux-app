@@ -193,20 +193,21 @@ there are none. Tag rules and `GET /api/tags` are in the OpenAPI docs.
 **API:** `GET /api/tags?q=`, and the `tags` field on `POST /api/music-pieces/create`,
 `PUT /api/music-pieces/{musicPieceId}`, `POST /api/playlists` and `PUT /api/playlists/{playlistId}`
 
-- [ ] Build `TagPicker.vue` with chips and a text input. Before the user types, show suggestions from `GET /api/tags`
+- [x] Build `TagPicker.vue` with chips and a text input. Before the user types, show suggestions from `GET /api/tags`
       with no `q`. As they type, pass the text as `q`. Let Enter add a tag that isn't suggested. Stop at 5 tags.
-- [ ] Check tags the way the server does: lowercase, 2-24 letters, digits, spaces, `&` or `-`. Show a
+- [x] Check tags the way the server does: lowercase, 2-24 letters, digits, spaces, `&` or `-`. Show a
       `400 INVALID_FIELD` on `tags` under the picker anyway, because only the server checks for profanity.
-- [ ] Append one `tags` form field per tag. Never join tags with commas.
-- [ ] Add the picker to UploadMusic and CreatePlaylist. Saving without tags must still work. Show a hint such as
+- [x] Append one `tags` form field per tag. Never join tags with commas.
+- [x] Add the picker to UploadMusic and CreatePlaylist. Saving without tags must still work. Show a hint such as
       "Add tags to help people find this" while no tags are picked.
-- [ ] Add the picker to EditPlaylist, for the owner only: an editor who sends `tags` gets
+- [x] Add the picker to EditPlaylist, for the owner only: an editor who sends `tags` gets
       `403 PLAYLIST_ACTION_FORBIDDEN`. Leave `tags` out when the tags didn't change. To remove every tag, send one
       empty `tags` value. The `PUT` response has no `tags`, so keep the list that was sent.
-- [ ] Add the picker to the piece Edit dialog from task 13.
-- [ ] Show the playlist's tags in the PlaylistDetail header, and each piece's tags in search results.
-- [ ] When `tags` is empty, show an "Add tags" link on My uploads cards and on PlaylistDetail for the owner.
-- [ ] Add `tags: []` to the mock pieces in `src/utils/dashboardPreview.js` and in the tests.
+- [x] Add the picker to the piece Edit dialog from task 13.
+- [x] Show the playlist's tags in the PlaylistDetail header, and each piece's tags in search results. Each tag is a
+      gray chip that links to its Explore tag page. Playlist tiles don't show tags.
+- [x] When `tags` is empty, show an "Add tags" link on My uploads cards and on PlaylistDetail for the owner.
+- [x] Add `tags: []` to the mock pieces in `src/utils/dashboardPreview.js` and in the tests.
 
 **Done when:** a user can tag a new upload and a new playlist, the tags show on the playlist page and in search, and
 saving without tags still works.

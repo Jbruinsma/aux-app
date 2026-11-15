@@ -29,6 +29,7 @@ const piece = (id, name, cover, artist) => ({
     artistSummary: ARTISTS[artist],
     isFavorite: false,
     isAvailable: true,
+    tags: [],
     uploader: UPLOADER,
   },
   playlistId: null,

@@ -62,6 +62,7 @@
           </div>
 
           <ArtistPicker ref="artistPicker" v-model="artist" />
+          <TagPicker v-model="tags" :error="tagsError" :disabled="uploading" @update:model-value="tagsError = ''" />
 
           <div class="field">
             <label class="check">
@@ -95,6 +96,8 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ArtistPicker from '@/components/ArtistPicker.vue'
+import TagPicker from '@/components/TagPicker.vue'
+import { isTagsError, tagsErrorMessage } from '@/utils/tags.js'
 import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
 import {
   TITLE_MAX,
@@ -135,6 +138,8 @@ const artistPicker = ref(null)
 const isPublic = ref(false)
 const uploading = ref(false)
 const error = ref('')
+const tags = ref([])
+const tagsError = ref('')
 
 const hasArtist = computed(() => Boolean(artist.value || artistPicker.value?.pendingName))
 const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(mp3File.value && coverFile.value && title.value.trim() && hasArtist.value))
@@ -213,6 +218,7 @@ async function upload() {
       isPublic: isPublic.value,
       mp3File: mp3File.value,
       coverImage: coverFile.value,
+      tags: [...tags.value],
     })
     if (targetPlaylist.value) {
       const result = await addPiecesToPlaylist(targetPlaylist.value.id, [piece.musicPieceId]).catch(() => null)
@@ -225,7 +231,8 @@ async function upload() {
     }
   } catch (err) {
     if (err.sessionEnded) return
-    if (UPLOAD_ERRORS[err.code]) error.value = UPLOAD_ERRORS[err.code]
+    if (isTagsError(err)) tagsError.value = tagsErrorMessage(err)
+    else if (UPLOAD_ERRORS[err.code]) error.value = UPLOAD_ERRORS[err.code]
     else if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     else if (err.code === 'INVALID_FIELD') error.value = `Give the song a title of 1 to ${TITLE_MAX} characters, and choose an artist.`
     else if (err.code === 'RATE_LIMITED') error.value = "You're uploading too quickly. Wait a minute, then try again."

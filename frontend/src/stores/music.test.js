@@ -48,7 +48,7 @@ it('handles absent history and a last track without a playlist or artist', async
   expect(() => { music.toggleShuffle(); music.moveForward(); music.moveBackward() }).not.toThrow()
 })
 
-const piece = (n) => ({ musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
+const piece = (n) => ({ tags: [], musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistName: 'Artist' }, uploader: { userId: 'u9', pfpUrl: null, username: 'uploader' }, isAvailable: true })
 const stream = (n) => ({ url: `https://audio.example/m${n}?sig=1`, expiresInSeconds: 3600, playToken: `t${n}`, minListenSeconds: 30 })
 
 // Answers GET /play and /stream like the backend. `pages` maps a cursor (or 'first') to a queue page

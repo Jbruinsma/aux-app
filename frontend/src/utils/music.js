@@ -1,5 +1,6 @@
 import { fetchAPI, request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
+import { appendTags } from '@/utils/tags.js'
 
 // The backend's limits for an upload (POST /api/music-pieces/create); checked here first to save a 25MB round trip
 export const MAX_MP3_BYTES = 25 * 1024 * 1024
@@ -57,24 +58,26 @@ export function findOrCreateArtist(artistName) {
 }
 
 // Returns the new MusicPieceOverview. The server crops the cover; send the original
-export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage }) {
+export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage, tags = [] }) {
   const form = new FormData()
   form.append('name', name)
   form.append('artistId', artistId)
   form.append('isPublic', isPublic)
   form.append('mp3File', mp3File)
   form.append('coverImage', coverImage)
+  appendTags(form, tags)
   return request('POST', `${API_BASE_URL}/api/music-pieces/create`, form, { notifyOnError: false })
 }
 
 // Partial update of the caller's own piece: only the fields given are sent; the rest stay as they are. Returns the
 // updated MusicPieceOverview. The server crops the cover; send the original
-export function updateMusicPiece(musicPieceId, { name, artistId, isPublic, coverImage } = {}) {
+export function updateMusicPiece(musicPieceId, { name, artistId, isPublic, coverImage, tags } = {}) {
   const form = new FormData()
   if (name !== undefined) form.append('name', name)
   if (artistId !== undefined) form.append('artistId', artistId)
   if (isPublic !== undefined) form.append('isPublic', isPublic)
   if (coverImage !== undefined) form.append('coverImage', coverImage)
+  if (tags !== undefined) appendTags(form, tags, true)
   return request('PUT', `${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}`, form, { notifyOnError: false })
 }
 
