@@ -19,11 +19,20 @@
       <span class="text">
         <span class="ti">{{ piece.name }}</span>
         <router-link
-          v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
+          v-if="byline === 'uploader' && piece.uploader?.username"
+          class="ar uploader-link"
+          :to="{ name: 'Profile', params: { username: piece.uploader.username } }"
+        >
+          <img v-if="piece.uploader.pfpUrl" class="uploader-pfp" :src="resolveCoverURL(piece.uploader.pfpUrl)" alt="" loading="lazy" />
+          <span v-else class="uploader-pfp uploader-initial" aria-hidden="true">{{ piece.uploader.username.charAt(0).toUpperCase() }}</span>
+          <span class="uploader-name"><span class="sr-only">Uploaded by </span>{{ piece.uploader.username }}</span>
+        </router-link>
+        <router-link
+          v-else-if="byline === 'artist' && linkArtists && piece.artistSummary?.artistName && piece.artistSummary.artistId"
           class="ar artist-link"
           :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
         >{{ piece.artistSummary.artistName }}</router-link>
-        <span v-else-if="piece.artistSummary?.artistName" class="ar">{{ piece.artistSummary.artistName }}</span>
+        <span v-else-if="byline === 'artist' && piece.artistSummary?.artistName" class="ar">{{ piece.artistSummary.artistName }}</span>
       </span>
       <span v-if="hasCounts" class="cnt">
         <span class="ctrk"><span class="fill" :style="{ width: `${countShare(piece)}%` }"></span></span>
@@ -39,11 +48,15 @@ import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
 
 // The style guide's track row: optional rank, play button, 40px art, title and artist, and a play count bar when the
-// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button
+// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button. The line under the title is the
+// artist by default, or the uploader (`byline="uploader"`) where every row has the same artist, like an artist's page
 const props = defineProps({
   pieces: { type: Array, required: true },
   label: { type: String, required: true },
   ranked: Boolean,
+  // Link the artist to their page; turn off where the list is already one artist's
+  linkArtists: { type: Boolean, default: true },
+  byline: { type: String, default: 'artist', validator: (value) => ['artist', 'uploader'].includes(value) },
   // Rank of the first row, for a list split across columns
   start: { type: Number, default: 1 },
 })
@@ -81,7 +94,7 @@ function countShare(piece) {
 .play { align-items: center; background: none; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 32px; justify-content: center; padding: 0; width: 32px; }
 .play:hover { border-color: var(--primary); color: var(--link); }
 .on .play { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-.play:focus-visible, .artist-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.play:focus-visible, .artist-link:focus-visible, .uploader-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .play-spacer { height: 32px; width: 32px; }
 .art { border-radius: var(--radius-sm); display: block; height: 40px; object-fit: cover; width: 40px; }
 .art-empty { align-items: center; background: var(--surface-alt); color: var(--ink-muted); display: flex; justify-content: center; }
@@ -91,10 +104,17 @@ function countShare(piece) {
 .ar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .artist-link { text-decoration: none; }
 .artist-link:hover { color: var(--link); text-decoration: underline; }
+.uploader-link { align-items: center; display: flex; gap: 6px; text-decoration: none; }
+.uploader-link:hover .uploader-name { color: var(--link); text-decoration: underline; }
+.uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
+.uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
+.uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cnt { display: flex; flex-direction: column; gap: 2px; }
 .ctrk { background: var(--surface-alt); border-radius: var(--radius-pill); height: 6px; overflow: hidden; }
 .on .ctrk { background: var(--surface); }
 .fill { background: var(--purple); border-radius: var(--radius-pill); display: block; height: 100%; }
+
+.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 
 @media (max-width: 720px) {
   .counted .tr { grid-template-columns: 32px 40px minmax(0, 1fr); }

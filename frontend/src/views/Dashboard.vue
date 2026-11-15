@@ -63,6 +63,15 @@
                       </span>
                     </span>
                   </component>
+                  <component
+                    :is="recent.preview ? 'span' : 'router-link'"
+                    v-if="item.playlistId && item.playlistOwnerUsername"
+                    class="card-playlist"
+                    :to="recent.preview ? null : { name: 'Playlist', params: { username: item.playlistOwnerUsername, id: item.playlistId } }"
+                  >
+                    <svg class="card-playlist-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h13M3 12h13M3 18h8M17 18V9l4-1" /></svg>
+                    <span class="card-playlist-name"><span class="sr-only">Played from </span>{{ item.playlistName || 'a playlist' }}</span>
+                  </component>
                 </li>
               </ul>
               <span v-if="hinting" :key="hintRun" class="drag-hint" aria-hidden="true" @animationend="hinting = false">
@@ -154,7 +163,7 @@
                 aria-label="My Uploads songs"
               >
                 <li v-for="(piece, index) in uploads.items" :key="piece.musicPieceId" class="card" :class="{ playing: isPlayingUpload(piece) }">
-                  <button type="button" class="card-main" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
+                  <button type="button" class="card-main card-art-btn" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
                     <span class="card-art-wrap">
                       <img v-if="piece.coverUrl" class="card-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
                       <span v-else class="card-art card-art-empty" aria-hidden="true">
@@ -162,11 +171,13 @@
                       </span>
                       <span class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg></span>
                     </span>
+                  </button>
+                  <router-link class="card-main" :to="{ name: 'Piece', params: { musicPieceId: piece.musicPieceId } }">
                     <span class="card-body">
                       <span class="card-title">{{ piece.name }}</span>
                       <span v-if="piece.artistSummary?.artistName" class="card-meta">{{ piece.artistSummary.artistName }}</span>
                     </span>
-                  </button>
+                  </router-link>
                   <button type="button" class="card-edit" :aria-label="`Edit ${piece.name}`" title="Edit song" @click="editDialog.open(piece)">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
@@ -442,6 +453,7 @@ button.card-main, a.card-main { cursor: pointer; text-decoration: none; }
 button.card-main:focus-visible, a.card-main:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .scroller.dragging .card-main { cursor: grabbing; }
 .card-art-wrap { display: block; position: relative; }
+.card-art-btn { flex: none; }
 .card-play { align-items: center; background: var(--primary); border-radius: var(--radius-pill); bottom: var(--space-3); display: flex; height: 40px; justify-content: center; opacity: 0; position: absolute; right: var(--space-3); transition: opacity var(--dur-fast) var(--ease); width: 40px; }
 .card-play svg { fill: var(--on-primary); height: 18px; width: 18px; }
 .card-main:hover .card-play, .card-main:focus-visible .card-play, .playing .card-play { opacity: 1; }
@@ -459,6 +471,13 @@ button.card-main:hover .card-title, a.card-main:hover .card-title, .playing .car
 .uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
 .uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
 .uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-playlist { align-items: center; background: var(--surface-alt); color: var(--ink-muted); display: flex; font: 500 12px/16px var(--font-sans); gap: var(--space-1); min-width: 0; padding: 0 var(--space-4) var(--space-3); text-decoration: none; }
+.playing .card-playlist { background: var(--purple-soft); }
+a.card-playlist:hover { color: var(--link); }
+a.card-playlist:hover .card-playlist-name { text-decoration: underline; }
+a.card-playlist:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.card-playlist-icon { fill: none; flex: none; height: 14px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 14px; }
+.card-playlist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 

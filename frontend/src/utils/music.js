@@ -86,6 +86,20 @@ export function fetchUploads() {
   return fetchAPI(`${API_BASE_URL}/api/music-pieces`, { notifyOnError: false })
 }
 
+// MusicPieceDetails: the overview's fields plus durationSeconds (null for old uploads), playCount (all time, everyone)
+// and createdAt. Public; with no token only public pieces are found. 404 MUSIC_PIECE_NOT_FOUND, also for someone
+// else's private piece
+export function fetchMusicPiece(musicPieceId) {
+  return fetchAPI(`${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}`, { notifyOnError: false })
+}
+
+// 204 either way; favoriting twice or unfavoriting a non-favorite does nothing. Favoriting needs a piece the caller can
+// play (404 MUSIC_PIECE_NOT_FOUND otherwise)
+export function setPieceFavorite(musicPieceId, favorite) {
+  const url = `${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}/favorite`
+  return request(favorite ? 'PUT' : 'DELETE', url, undefined, { notifyOnError: false })
+}
+
 // { results: [MusicPieceOverview], totalResults }; also matches artist names
 export function searchMusic(query, { limit = 20, offset = 0 } = {}) {
   const params = new URLSearchParams({ category: 'MUSIC', query, limit, offset })

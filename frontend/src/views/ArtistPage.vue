@@ -68,7 +68,7 @@
               <TrackRows
                 :pieces="songs.items"
                 :label="`Songs by ${artist.artistName}, most played first`"
-                :link-artists="false"
+                byline="uploader"
                 ranked
                 @play="(index) => musicStore.playPieces(songs.items, index)"
               />
@@ -103,7 +103,7 @@ import { useNotificationStore } from '@/stores/notification.js'
 
 // GET /api/artists/{artistId}: laid out like a user's profile. Anyone can view it; favoriting needs an account, and
 // the artist's creator (canEdit) can change its picture and banner. Songs come from GET /api/artists/{id}/music-pieces,
-// most played first, and play on their own, like My uploads. Add music opens Upload with this artist already picked
+// most played first, each with who uploaded it, and play on their own, like My uploads. Add music opens Upload with this artist already picked
 const route = useRoute()
 const userStore = useUserStore()
 const notification = useNotificationStore()

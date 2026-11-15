@@ -1994,6 +1994,164 @@
         } ]
       }
     },
+    "/api/music-pieces/{musicPieceId}/favorite" : {
+      "put" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Favorite a music piece",
+        "description" : "Does nothing if the caller already favorited the piece. The piece must be playable by the caller\non its own: public, or uploaded by the caller. Favorites of other people's public pieces count\ntoward compatibility, so everyone online gets fresh `matches`.\n",
+        "operationId" : "favoriteMusicPiece",
+        "parameters" : [ {
+          "name" : "musicPieceId",
+          "in" : "path",
+          "description" : "Public id of the music piece",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "m_92kd0Z"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Music piece is now a favorite"
+          },
+          "404" : {
+            "description" : "Music piece not found or not playable by the caller (code MUSIC_PIECE_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "music-piece-controller" ],
+        "summary" : "Unfavorite a music piece",
+        "description" : "Does nothing if the piece wasn't a favorite or doesn't exist. Works on a piece that has since gone private, so a favorite can always be taken back.",
+        "operationId" : "unfavoriteMusicPiece",
+        "parameters" : [ {
+          "name" : "musicPieceId",
+          "in" : "path",
+          "description" : "Public id of the music piece",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "m_92kd0Z"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Music piece is no longer a favorite"
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/artists/{artistId}/pfp" : {
       "put" : {
         "tags" : [ "artist-controller" ],

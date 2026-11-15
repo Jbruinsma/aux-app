@@ -91,7 +91,7 @@ it('confirms both password code delivery and the completed password change', asy
   expect(useNotificationStore().message).toBe('Your password is changed.')
 })
 
-it('uses a neutral notice for mocked account deletion and keeps the session', async () => {
+it('confirms a deleted account after logging out', async () => {
   route.params.tab = 'account'
   vi.useFakeTimers()
   await render(Settings)
@@ -100,11 +100,14 @@ it('uses a neutral notice for mocked account deletion and keeps the session', as
   dialog.close = vi.fn()
   await wrapper.findAll('button').find(b => b.text() === 'Delete account').trigger('click')
   await vi.advanceTimersByTimeAsync(6000)
-  await wrapper.get('dialog .btn.primary').trigger('click')
-  await vi.advanceTimersByTimeAsync(400)
-  expect(useNotificationStore().type).toBe('neutral')
-  expect(useNotificationStore().message).toContain("account wasn't deleted")
-  expect(useUserStore().loggedIn).toBe(true)
+  request.mockResolvedValue(null)
+  await wrapper.get('#delete-password').setValue('hunter22!')
+  await wrapper.get('dialog form').trigger('submit')
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringContaining('/api/users/me'), { currentPassword: 'hunter22!' }, { notifyOnError: false })
+  expect(useNotificationStore().type).toBe('success')
+  expect(useNotificationStore().message).toBe('Your account is deleted.')
+  expect(useUserStore().loggedIn).toBe(false)
 })
 
 it('keeps login success in the global store when the login view unmounts', async () => {

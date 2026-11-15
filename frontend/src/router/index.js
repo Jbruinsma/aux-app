@@ -19,6 +19,7 @@ import ExplorePage from '@/views/ExplorePage.vue'
 import ExploreTag from '@/views/ExploreTag.vue'
 import ArtistPage from '@/views/ArtistPage.vue'
 import ArtistsPage from '@/views/ArtistsPage.vue'
+import MusicPiecePage from '@/views/MusicPiecePage.vue'
 import { useUserStore } from '@/stores/user.js'
 
 const routes = [
@@ -93,6 +94,7 @@ const routes = [
   { path: '/add-friends/:username/:id', name: 'AddFriends', component: AddFriends },
   { path: '/edit-playlist/:username/:id', name: 'Edit', component: EditPlaylist },
   { path: '/artist/:artistId', name: 'Artist', component: ArtistPage, meta: { nav: 'Artists' } },
+  { path: '/piece/:musicPieceId', name: 'Piece', component: MusicPiecePage },
   {
     path: '/artists',
     name: 'Artists',

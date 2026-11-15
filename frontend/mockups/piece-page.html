@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Song page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+:root,[data-theme="light"]{--focus-ring:#6a4778;--ink:#222222;--ink-muted:#6b6b6b;--line:#e5e5e5;--line-strong:#8a8a8a;--link:#6a4778;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#573a63;--purple-soft:#f1ecf3;--success:#2e7d5b;--surface:#ffffff;--surface-alt:#f5f5f5;--white:#ffffff}
+[data-theme="dark"]{--focus-ring:#b593c4;--ink:#f2f2f2;--ink-muted:#a3a3a3;--line:#2e2e2e;--line-strong:#6b6b6b;--link:#b593c4;--on-primary:#ffffff;--primary:#6a4778;--purple:#6a4778;--purple-hover:#7d5a8c;--purple-soft:#2a2030;--success:#6ccb9a;--surface:#121212;--surface-alt:#1e1e1e;--white:#ffffff}
+:root{--dur-fast:150ms;--dur-med:300ms;--ease:cubic-bezier(.2,0,0,1);--font-sans:Montserrat, "Segoe UI", Helvetica, Arial, sans-serif;--frame-h:760px;--gutter:32px;--header-h:69px;--radius-md:6px;--radius-pill:999px;--radius-sm:3px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px}
+*,*::before,*::after{box-sizing:border-box}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{background:var(--surface-alt);color:var(--ink);font:400 16px/24px var(--font-sans);margin:0}
+button{color:inherit;font:inherit}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+h1,h2,p,dl,dd,ul{margin:0}
+ul{list-style:none;padding:0}
+a{color:inherit}
+
+/* Page chrome around the browser frame */
+.page{margin:0 auto;max-width:1280px;padding:var(--space-8) var(--space-6)}
+.page-head{align-items:flex-start;display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between;margin-bottom:var(--space-6)}
+.page-head h1{font:700 28px/34px var(--font-sans)}
+.page-head p{color:var(--ink-muted);font:500 14px/20px var(--font-sans);margin-top:var(--space-1);max-width:72ch}
+.tools{display:flex;flex-direction:column;gap:var(--space-2)}
+.tool-row{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.tool-label{color:var(--ink-muted);font:600 12px/16px var(--font-sans);min-width:56px}
+.seg{border:1px solid var(--line-strong);border-radius:var(--radius-sm);display:flex;overflow:hidden}
+.seg button{background:var(--surface);border:0;cursor:pointer;font:600 14px/20px var(--font-sans);padding:7px 12px}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--purple-soft);color:var(--link)}
+.tool-btn{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);cursor:pointer;font:600 14px/20px var(--font-sans);padding:7px 12px}
+.tool-btn[aria-pressed="true"]{background:var(--purple-soft);color:var(--link)}
+.section-title{font:700 20px/28px var(--font-sans);margin:var(--space-8) 0 var(--space-3)}
+.notes{display:grid;gap:var(--space-6);grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:var(--space-8)}
+.notes section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-4)}
+.notes h2{font:700 20px/28px var(--font-sans);margin:0 0 var(--space-2)}
+.notes ul{font:500 14px/20px var(--font-sans);list-style:disc;margin:0;padding-left:20px}
+.notes li+li{margin-top:var(--space-2)}
+code{background:var(--surface-alt);border-radius:var(--radius-sm);font:600 13px/20px var(--font-sans);padding:1px 6px}
+
+/* Browser frame; scrolls inside */
+.frame{background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-md);height:var(--frame-h);overflow:hidden;position:relative}
+.frame.short{height:auto}
+.chrome{align-items:center;background:var(--surface-alt);border-bottom:1px solid var(--line);display:flex;gap:var(--space-2);height:36px;padding:0 var(--space-3)}
+.chrome span{background:var(--line-strong);border-radius:var(--radius-pill);height:10px;opacity:.6;width:10px}
+.chrome .url{background:var(--surface);border-radius:var(--radius-sm);color:var(--ink-muted);flex:1;font:500 12px/16px var(--font-sans);height:auto;margin-left:var(--space-3);max-width:420px;opacity:1;padding:3px var(--space-3);width:auto}
+.app{height:calc(100% - 36px);overflow-y:auto;position:relative;scrollbar-width:thin}
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.top-in{align-items:center;display:flex;gap:var(--space-6);min-height:68px;padding:0 var(--gutter)}
+.logo{color:var(--link);font:800 24px/1 var(--font-sans);letter-spacing:-.02em}
+[data-theme="light"] .logo{color:var(--primary)}
+.nav{display:flex;flex:1;gap:var(--space-4);justify-content:flex-end}
+.nav span{color:var(--ink-muted);font:600 14px/20px var(--font-sans)}
+main{padding:0 var(--gutter) var(--space-8)}
+
+/* Song head (same as the playlist page's head) */
+.head{align-items:end;border-bottom:1px solid var(--line);display:grid;gap:var(--space-6);grid-template-columns:232px minmax(0,1fr);padding:var(--space-8) 0 var(--space-6)}
+.cover{aspect-ratio:1;background:var(--surface-alt);border-radius:var(--radius-sm);display:block;object-fit:cover;width:100%}
+.head-text{min-width:0}
+.eyebrow{align-items:center;color:var(--ink-muted);display:flex;font:600 12px/16px var(--font-sans);gap:var(--space-2);margin:0 0 var(--space-1)}
+.badge{border:1px solid var(--line-strong);border-radius:var(--radius-pill);font:600 11px/14px var(--font-sans);padding:1px var(--space-2)}
+.head h1{font:700 28px/34px var(--font-sans);margin:0 0 var(--space-2);overflow-wrap:anywhere}
+.meta{align-items:center;color:var(--ink-muted);display:flex;flex-wrap:wrap;font:500 14px/20px var(--font-sans);gap:var(--space-2);margin:0}
+.meta+.meta{margin-top:var(--space-2)}
+.meta a{text-decoration:none}
+.meta a:hover{color:var(--link);text-decoration:underline}
+.artist-link{color:var(--ink);font-weight:600}
+.uploader{align-items:center;display:inline-flex;gap:var(--space-2)}
+.pfp{background:var(--primary);border-radius:var(--radius-pill);color:var(--on-primary);display:grid;flex:none;font:700 11px/1 var(--font-sans);height:24px;place-items:center;width:24px}
+.tag-list{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
+.tag{background:var(--surface-alt);border-radius:var(--radius-pill);color:var(--ink-muted);display:inline-block;font:600 12px/16px var(--font-sans);padding:var(--space-1) var(--space-3);text-decoration:none}
+.tag:hover{color:var(--ink);text-decoration:underline}
+.actions{align-items:center;display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4)}
+.btn{align-items:center;border:1px solid transparent;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;font:600 15px/22px var(--font-sans);gap:var(--space-2);padding:10px 18px;text-decoration:none}
+.btn.primary{background:var(--primary);color:var(--on-primary)}
+.btn.primary:hover{background:var(--purple-hover)}
+.btn.secondary{background:var(--surface);border-color:var(--line-strong);color:var(--ink)}
+.btn.secondary:hover{background:var(--surface-alt)}
+.btn svg{fill:none;flex:none;height:18px;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;width:18px}
+.btn svg.filled{fill:currentColor;stroke:none}
+.btn .heart.on{fill:var(--link);stroke:var(--link)}
+.btn.playing{background:var(--purple-hover)}
+
+/* Details list */
+.details{padding-top:var(--space-6)}
+.details h2{font:700 20px/28px var(--font-sans);margin:0 0 var(--space-3)}
+.facts{border-top:1px solid var(--line);max-width:560px}
+.fact{border-bottom:1px solid var(--line);display:grid;gap:var(--space-4);grid-template-columns:140px minmax(0,1fr);padding:var(--space-3)}
+.fact dt{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.fact dd{font:600 14px/20px var(--font-sans)}
+
+/* Not found and loading */
+.page-state{align-items:flex-start;display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-8) 0}
+.page-state h1{font:700 28px/34px var(--font-sans)}
+.page-state p{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.skeleton .cover,.skeleton .bar{animation:pulse 1.2s var(--ease) infinite alternate;background:var(--surface-alt)}
+.bar{border-radius:var(--radius-sm);display:block;height:14px;width:var(--w,40%)}
+.bar+.bar{margin-top:var(--space-3)}
+.bar.title{height:28px}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+
+/* My uploads card (matches Dashboard.vue) */
+.cards-demo{display:flex;gap:var(--space-4);padding:var(--space-6) var(--gutter)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);display:flex;flex-direction:column;overflow:hidden;position:relative;width:200px}
+.card-art-btn{background:none;border:0;cursor:pointer;display:block;padding:0;position:relative}
+.card-art{aspect-ratio:1;display:block;width:100%}
+.card-play{align-items:center;background:var(--primary);border-radius:var(--radius-pill);bottom:var(--space-3);color:var(--on-primary);display:flex;height:40px;justify-content:center;opacity:0;position:absolute;right:var(--space-3);transition:opacity var(--dur-fast) var(--ease);width:40px}
+.card-play svg{fill:currentColor;height:18px;width:18px}
+.card-art-btn:hover .card-play,.card-art-btn:focus-visible .card-play{opacity:1}
+.card-art-btn:hover .card-play{background:var(--purple-hover)}
+.card-body{background:var(--surface-alt);border-top:1px solid var(--line);display:flex;flex:1;flex-direction:column;gap:2px;padding:var(--space-3) var(--space-4);text-decoration:none}
+.card-title{font:600 15px/22px var(--font-sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-body:hover .card-title{color:var(--link);text-decoration:underline}
+.card-meta{color:var(--ink-muted);font:500 14px/20px var(--font-sans)}
+.card-edit{align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-pill);color:var(--ink);cursor:pointer;display:flex;height:32px;justify-content:center;position:absolute;right:var(--space-2);top:var(--space-2);width:32px}
+.card-edit svg{fill:none;height:16px;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2;width:16px}
+.callout{color:var(--ink-muted);font:500 13px/18px var(--font-sans);max-width:260px}
+.callout b{color:var(--ink)}
+
+.toast{background:var(--ink);border-radius:var(--radius-md);bottom:var(--space-6);color:var(--surface);font:600 14px/20px var(--font-sans);left:50%;opacity:0;padding:var(--space-2) var(--space-4);pointer-events:none;position:absolute;transform:translateX(-50%);transition:opacity var(--dur-med) var(--ease);white-space:nowrap;z-index:50}
+.toast.show{opacity:1}
+.sr-only{clip:rect(0 0 0 0);height:1px;overflow:hidden;position:absolute;white-space:nowrap;width:1px}
+
+@media (max-width:720px){
+  .head{align-items:start;grid-template-columns:1fr}
+  .head .cover{max-width:232px}
+  .fact{grid-template-columns:110px minmax(0,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div>
+      <h1>Song page</h1>
+      <p>Roadmap task 25: a details page for one song at <code>/piece/{musicPieceId}</code>, built from <code>GET /api/music-pieces/{musicPieceId}</code>. Laid out like the playlist page's head, with the song's details listed below. Use the controls to switch who's looking and which state the page is in.</p>
+    </div>
+    <div class="tools">
+      <div class="tool-row">
+        <span class="tool-label">View as</span>
+        <div class="seg" role="group" aria-label="View as">
+          <button type="button" aria-pressed="true" data-viewer="uploader">Uploader</button>
+          <button type="button" aria-pressed="false" data-viewer="listener">Listener</button>
+          <button type="button" aria-pressed="false" data-viewer="guest">Signed out</button>
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-label">State</span>
+        <div class="seg" role="group" aria-label="Page state">
+          <button type="button" aria-pressed="true" data-state="ready">Loaded</button>
+          <button type="button" aria-pressed="false" data-state="loading">Loading</button>
+          <button type="button" aria-pressed="false" data-state="missing">Not found</button>
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-label">Song</span>
+        <button type="button" class="tool-btn" aria-pressed="false" data-toggle="private">Private</button>
+        <button type="button" class="tool-btn" aria-pressed="true" data-toggle="album">In an album</button>
+        <button type="button" class="tool-btn" aria-pressed="true" data-toggle="tags">Has tags</button>
+        <button type="button" class="tool-btn" aria-pressed="false" data-toggle="nolength">No length stored</button>
+        <button type="button" class="tool-btn" id="theme">Light mode</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="frame" id="frame">
+    <div class="chrome" aria-hidden="true"><span></span><span></span><span></span><span class="url">aux.app/piece/m_92kd0Z</span></div>
+    <div class="app">
+      <div class="top"><div class="top-in"><span class="logo">Aux</span><div class="nav"><span>Music</span><span>Artists</span><span>Explore</span><span>Friends</span><span>Charts</span></div></div></div>
+      <main id="main"></main>
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">My uploads card on the Dashboard</h2>
+  <div class="frame short">
+    <div class="cards-demo">
+      <div class="card">
+        <button type="button" class="card-art-btn" aria-label="Play Let It Happen by Tame Impala" data-card-play>
+          <img class="card-art" data-cover="main" alt="">
+          <span class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z"/></svg></span>
+        </button>
+        <a class="card-body" href="#" data-card-open>
+          <span class="card-title">Let It Happen</span>
+          <span class="card-meta">Tame Impala</span>
+        </a>
+        <button type="button" class="card-edit" aria-label="Edit Let It Happen" title="Edit song">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+      </div>
+      <p class="callout"><b>Cover:</b> plays the song right there, as the whole card does today. The round play button shows on hover.<br><br><b>Title and artist:</b> open the song page.<br><br><b>Pencil:</b> edits, unchanged.</p>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h2>What's on the page</h2>
+      <ul>
+        <li><b>Head:</b> 232px cover, a "Song" eyebrow (with a Private badge for your own private songs), the title, the artist linked to their page, the album if it's in one, and the uploader with their picture, linked to their profile.</li>
+        <li><b>Tags:</b> the same gray chips as playlists, each opening its Explore tag page. Hidden when there are none.</li>
+        <li><b>Actions:</b> Play (plays it on its own, <code>playPieces([piece])</code>), Favorite when signed in, and Edit for the uploader, which opens the existing Edit song dialog.</li>
+        <li><b>Details:</b> length, all-time plays and upload date. Length is left out for old uploads that don't have one stored.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>States</h2>
+      <ul>
+        <li><b>Loading:</b> skeleton blocks in the head's shape.</li>
+        <li><b>Not found</b> (<code>404 MUSIC_PIECE_NOT_FOUND</code>, which also covers someone else's private song): "This song isn't on Aux" with a Go home button, like the artist page.</li>
+        <li><b>Couldn't load</b> (any other error): "We couldn't load this song" with Try again. Not shown here; it's the same layout as Not found.</li>
+        <li><b>Signed out:</b> Play still works for public songs. Favorite becomes "Log in to favorite", as on the artist page.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Notes</h2>
+      <ul>
+        <li><b>Favoriting</b> uses <code>PUT</code>/<code>DELETE /api/music-pieces/{id}/favorite</code>, like artists.</li>
+        <li><b>Album:</b> shown as plain text for now, since album pages don't exist yet (task 38). It becomes a link then.</li>
+        <li><b>Plays</b> are all-time and from everyone, including the uploader. The landing page's Top list counts only this week, without the uploader's own plays.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  function cover(draw) { var c = document.createElement('canvas'); c.width = c.height = 240; var x = c.getContext('2d'); draw(x); return c.toDataURL('image/jpeg', .85); }
+  var COVER = cover(function (x) {
+    var g = x.createLinearGradient(0, 0, 240, 240); g.addColorStop(0, '#1f2a44'); g.addColorStop(.6, '#3f5b8a'); g.addColorStop(1, '#a9c0e0');
+    x.fillStyle = g; x.fillRect(0, 0, 240, 240); x.fillStyle = '#f2c14e'; x.beginPath(); x.arc(160, 90, 40, 0, 7); x.fill();
+  });
+  document.querySelector('[data-cover="main"]').src = COVER;
+
+  var state = { viewer: 'uploader', page: 'ready', private: false, album: true, tags: true, nolength: false, favorite: false, playing: false };
+  var main = document.getElementById('main');
+  var toast = document.getElementById('toast');
+  var toastTimer;
+  function say(text) { toast.textContent = text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1800); }
+
+  var PLAY = '<svg class="filled" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+  var PAUSE = '<svg class="filled" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+  var HEART = function (on) { return '<svg class="heart' + (on ? ' on' : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>'; };
+  var PENCIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+  function render() {
+    var guest = state.viewer === 'guest';
+    var mine = state.viewer === 'uploader';
+    if (state.page === 'loading') {
+      main.innerHTML = '<div class="head skeleton" aria-busy="true"><div class="cover"></div><div><span class="bar" style="--w:60px"></span><span class="bar title" style="--w:55%"></span><span class="bar" style="--w:30%"></span><span class="bar" style="--w:40%"></span></div></div>' +
+        '<p class="sr-only" role="status">Loading song…</p>';
+      return;
+    }
+    if (state.page === 'missing') {
+      main.innerHTML = '<section class="page-state"><h1>This song isn\'t on Aux</h1><p>It may have been deleted, or it\'s private.</p><a class="btn secondary" href="#">Go home</a></section>';
+      return;
+    }
+    var priv = state.private && mine;
+    var fav = guest
+      ? '<a class="btn secondary" href="#">Log in to favorite</a>'
+      : '<button type="button" class="btn secondary" aria-pressed="' + state.favorite + '" data-fav>' + HEART(state.favorite) + (state.favorite ? 'Favorited' : 'Favorite') + '</button>';
+    main.innerHTML =
+      '<header class="head">' +
+        '<img class="cover" src="' + COVER + '" alt="">' +
+        '<div class="head-text">' +
+          '<p class="eyebrow">Song' + (priv ? ' <span class="badge">Private</span>' : '') + '</p>' +
+          '<h1>Let It Happen</h1>' +
+          '<p class="meta"><a class="artist-link" href="#">Tame Impala</a>' + (state.album ? '<span aria-hidden="true">·</span><span>Currents</span>' : '') + '</p>' +
+          '<p class="meta"><a class="uploader" href="#"><span class="pfp" aria-hidden="true">J</span><span><span class="sr-only">Uploaded by </span>justin</span></a></p>' +
+          (state.tags ? '<ul class="tag-list" aria-label="Song tags"><li><a class="tag" href="#">psychedelic</a></li><li><a class="tag" href="#">synth</a></li><li><a class="tag" href="#">late night</a></li></ul>' : '') +
+          '<div class="actions">' +
+            '<button type="button" class="btn primary' + (state.playing ? ' playing' : '') + '" data-play>' + (state.playing ? PAUSE + 'Pause' : PLAY + 'Play') + '</button>' +
+            fav +
+            (mine ? '<button type="button" class="btn secondary" data-edit>' + PENCIL + 'Edit</button>' : '') +
+          '</div>' +
+        '</div>' +
+      '</header>' +
+      '<section class="details" aria-labelledby="details-heading">' +
+        '<h2 id="details-heading">Details</h2>' +
+        '<dl class="facts">' +
+          (state.nolength ? '' : '<div class="fact"><dt>Length</dt><dd>7:47</dd></div>') +
+          '<div class="fact"><dt>Plays</dt><dd>1,280</dd></div>' +
+          '<div class="fact"><dt>Uploaded</dt><dd>Oct 3, 2026</dd></div>' +
+        '</dl>' +
+      '</section>';
+  }
+
+  main.addEventListener('click', function (e) {
+    if (e.target.closest('[data-play]')) { state.playing = !state.playing; render(); }
+    else if (e.target.closest('[data-fav]')) { state.favorite = !state.favorite; render(); say(state.favorite ? 'Let It Happen is in your favorites.' : 'Removed Let It Happen from your favorites.'); }
+    else if (e.target.closest('[data-edit]')) say('Opens the Edit song dialog');
+    else if (e.target.closest('a')) { e.preventDefault(); }
+  });
+  document.querySelector('[data-card-play]').addEventListener('click', function () { say('Plays Let It Happen'); });
+  document.querySelector('[data-card-open]').addEventListener('click', function (e) { e.preventDefault(); state.page = 'ready'; render(); document.getElementById('frame').scrollIntoView({ behavior: 'smooth' }); say('Opened the song page'); });
+
+  function seg(attr, key) {
+    document.querySelectorAll('[' + attr + ']').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('[' + attr + ']').forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+        state[key] = b.getAttribute(attr); render();
+      });
+    });
+  }
+  seg('data-viewer', 'viewer');
+  seg('data-state', 'page');
+  document.querySelectorAll('[data-toggle]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-toggle'); state[k] = !state[k]; b.setAttribute('aria-pressed', state[k]); render();
+    });
+  });
+
+  var root = document.documentElement, themeBtn = document.getElementById('theme');
+  function sync() { themeBtn.textContent = root.getAttribute('data-theme') === 'dark' ? 'Light mode' : 'Dark mode'; }
+  themeBtn.addEventListener('click', function () { root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); sync(); });
+  sync();
+  render();
+})();
+</script>
+</body>
+</html>

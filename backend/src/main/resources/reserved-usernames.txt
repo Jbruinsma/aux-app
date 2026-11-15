@@ -8,6 +8,8 @@ dashboard
 login
 logout
 onboarding
+piece
+pieces
 playlist
 playlists
 profile

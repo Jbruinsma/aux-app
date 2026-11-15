@@ -21,13 +21,20 @@
         <div class="wrap top-in">
           <div>
             <h2>Top</h2>
-            <p class="section-lead">The albums getting the most plays on Aux right now.</p>
+            <p class="section-lead">{{ topLead }}</p>
           </div>
           <ul class="grid">
-            <li v-for="album in topAlbums" :key="album.album" class="tile">
-              <img class="cover" :src="album.cover" :alt="`${album.album} cover`" loading="lazy" />
-              <span class="tile-name">{{ album.album }}</span>
-              <span class="tile-meta">{{ album.artist }}</span>
+            <li v-for="song in topTiles" :key="song.key" class="tile">
+              <img
+                v-if="song.cover"
+                class="cover"
+                :src="song.cover"
+                :alt="`${song.name} cover`"
+                loading="lazy"
+              />
+              <div v-else class="cover" />
+              <span class="tile-name">{{ song.name }}</span>
+              <span class="tile-meta">{{ song.artist }}</span>
             </li>
           </ul>
         </div>
@@ -37,34 +44,72 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import HeroLayout from '@/components/HeroLayout.vue'
 import { fetchAPI } from '@/utils/api.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// Hardcoded until GET /api/core/top is implemented (analytics)
+const TOP_COUNT = 3
+
+// Shown while there aren't enough plays for a real top list (or the call fails),
+// so the landing page never looks empty
 const COVER_BASE = 'https://aux.justinabruinsma.com/music-cover'
-const topAlbums = [
-  { album: 'DAMN.', artist: 'Kendrick Lamar', cover: `${COVER_BASE}/top-damn.webp` },
+const FALLBACK_TILES = [
   {
-    album: 'My Beautiful Dark Twisted Fantasy',
+    key: 'fallback-damn',
+    name: 'DAMN.',
+    artist: 'Kendrick Lamar',
+    cover: `${COVER_BASE}/top-damn.webp`,
+  },
+  {
+    key: 'fallback-mbdtf',
+    name: 'My Beautiful Dark Twisted Fantasy',
     artist: 'Kanye West',
     cover: `${COVER_BASE}/top-mbdtf.webp`,
   },
-  { album: 'UP 2 ME', artist: 'Yeat', cover: `${COVER_BASE}/top-up2me.jpg` },
+  { key: 'fallback-up2me', name: 'UP 2 ME', artist: 'Yeat', cover: `${COVER_BASE}/top-up2me.jpg` },
 ]
 
+// This week's most-played songs from the server
+const topSongs = ref([])
+// Real songs first, topped up with the fallback picks so there are always TOP_COUNT tiles
+const topTiles = computed(() => [...topSongs.value, ...FALLBACK_TILES].slice(0, TOP_COUNT))
+const topLead = computed(() =>
+  topSongs.value.length >= TOP_COUNT
+    ? 'The songs getting the most plays on Aux this week.'
+    : "What's playing on Aux right now.",
+)
 // Random users with a custom pfp; the row stays hidden if the call fails
 const pfps = ref([])
-onMounted(async () => {
+
+onMounted(() => {
+  loadTop()
+  loadPfps()
+})
+
+async function loadTop() {
+  try {
+    const pieces = await fetchAPI(`${API_BASE_URL}/api/core/top`)
+    topSongs.value = pieces.slice(0, TOP_COUNT).map((piece) => ({
+      key: piece.musicPieceId,
+      name: piece.name,
+      artist: piece.artistSummary?.artistName ?? '',
+      cover: piece.coverUrl ? resolveCoverURL(piece.coverUrl) : '',
+    }))
+  } catch {
+    // fetchAPI already logs the error
+  }
+}
+
+async function loadPfps() {
   try {
     const urls = await fetchAPI(`${API_BASE_URL}/api/core/users`)
     pfps.value = urls.map(resolveCoverURL)
   } catch {
     // fetchAPI already logs the error
   }
-})
+}
 </script>
 
 <style scoped>

@@ -15,11 +15,14 @@ import com.aux_app.entity.AlbumEntity;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.UserEntity;
+import com.aux_app.entity.UserFavoriteTrackEntity;
+import com.aux_app.entity.UserFavoriteTrackId;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.AlbumRepository;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.PlayEventRepository;
+import com.aux_app.repository.UserFavoriteTrackRepository;
 import com.aux_app.services.AlbumService;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
@@ -49,6 +52,7 @@ public class MusicPieceController {
     private final AlbumService albumService;
     private final MusicPieceRepository musicPieces;
     private final PlayEventRepository plays;
+    private final UserFavoriteTrackRepository favorites;
     private final PlaybackEventService playbackEvents;
     private final TagService tags;
     private final RecommendationService recommendations;
@@ -61,6 +65,7 @@ public class MusicPieceController {
             AlbumService albumService,
             MusicPieceRepository musicPieces,
             PlayEventRepository plays,
+            UserFavoriteTrackRepository favorites,
             PlaybackEventService playbackEvents,
             TagService tags,
             RecommendationService recommendations,
@@ -72,6 +77,7 @@ public class MusicPieceController {
         this.albumService = albumService;
         this.musicPieces = musicPieces;
         this.plays = plays;
+        this.favorites = favorites;
         this.playbackEvents = playbackEvents;
         this.tags = tags;
         this.recommendations = recommendations;
@@ -357,6 +363,65 @@ public class MusicPieceController {
                 this.musicPieces.findOverviews(List.of(piece.getPublicId()), user.getUserId()).getFirst(),
                 this.recommendations.discover(piece, user)
         );
+    }
+
+    @PutMapping("/{musicPieceId}/favorite")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Favorite a music piece",
+            description = """
+                    Does nothing if the caller already favorited the piece. The piece must be playable by the caller
+                    on its own: public, or uploaded by the caller. Favorites of other people's public pieces count
+                    toward compatibility, so everyone online gets fresh `matches`.
+                    """)
+    @ApiResponse(responseCode = "204", description = "Music piece is now a favorite")
+    @ApiResponse(responseCode = "404", description = "Music piece not found or not playable by the caller (code MUSIC_PIECE_NOT_FOUND)")
+    public void favoriteMusicPiece(
+            @CurrentUser UserEntity user,
+            @Parameter(description = "Public id of the music piece", example = "m_92kd0Z") @PathVariable String musicPieceId
+    ) {
+        MusicPieceEntity piece = this.musicPieces.findByPublicId(musicPieceId);
+
+        if (piece == null || !piece.isPlayableBy(user.getUserId())) {
+            throw new AuxException(
+                    HttpStatus.NOT_FOUND,
+                    "MUSIC_PIECE_NOT_FOUND",
+                    "Music piece not found",
+                    "musicPieceId"
+            );
+        }
+
+        UserFavoriteTrackId id = new UserFavoriteTrackId(user.getUserId(), piece.getMusicPieceId());
+
+        // Skip the save so a repeat call keeps the original created_at
+        if (!this.favorites.existsById(id)) {
+            this.favorites.save(new UserFavoriteTrackEntity(user.getUserId(), piece.getMusicPieceId()));
+            publishMatches();
+        }
+    }
+
+    @DeleteMapping("/{musicPieceId}/favorite")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Unfavorite a music piece",
+            description = "Does nothing if the piece wasn't a favorite or doesn't exist. Works on a piece that has since gone private, so a favorite can always be taken back."
+    )
+    @ApiResponse(responseCode = "204", description = "Music piece is no longer a favorite")
+    public void unfavoriteMusicPiece(
+            @CurrentUser UserEntity user,
+            @Parameter(description = "Public id of the music piece", example = "m_92kd0Z") @PathVariable String musicPieceId
+    ) {
+        MusicPieceEntity piece = this.musicPieces.findByPublicId(musicPieceId);
+        UserFavoriteTrackId id = piece == null ? null : new UserFavoriteTrackId(user.getUserId(), piece.getMusicPieceId());
+
+        if (id != null && this.favorites.existsById(id)) {
+            this.favorites.deleteById(id);
+            publishMatches();
+        }
+    }
+
+    private void publishMatches() {
+        events.publishEvent(LiveEventService.Update.everyoneOnline(Set.of(LiveEventService.Section.MATCHES)));
     }
 
     @GetMapping("/{musicPieceId}/stream")
