@@ -17,13 +17,6 @@
       </button>
     </header>
 
-    <div v-if="lines" class="timing" role="group" aria-label="Lyrics timing">
-      <span class="timing-label">{{ offsetLabel }}</span>
-      <button type="button" class="btn secondary small" :aria-label="'Show lyrics half a second earlier'" @click="nudge(-0.5)">Earlier</button>
-      <button type="button" class="btn secondary small" :aria-label="'Show lyrics half a second later'" @click="nudge(0.5)">Later</button>
-      <button v-if="offset" type="button" class="btn text small" @click="nudge(-offset)">Reset</button>
-    </div>
-
     <div
       ref="scroller"
       class="body"
@@ -64,22 +57,19 @@
 
     <button v-if="lines && !following" type="button" class="btn primary resync" @click="resync">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
-      Sync to song
+      Sync
     </button>
-
-    <p class="credit">Lyrics from LRCLIB</p>
   </section>
 </template>
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { fetchLyrics, lineAt, readOffset, saveOffset } from '@/utils/lyrics.js'
+import { fetchLyrics, lineAt } from '@/utils/lyrics.js'
 import { useCoverColor } from '@/utils/coverColor.js'
 
 // The playing song's lyrics, from LRCLIB (src/utils/lyrics.js), matched by length. Timed lyrics follow the song with
 // the line being sung centered; clicking a line emits `seek` with its time. Scrolling by hand stops the following so
-// later lines can be read, and "Sync to song" brings it back. Earlier and Later nudge the timing for this song when
-// LRCLIB's copy runs ahead or behind.
+// later lines can be read, and "Sync" brings it back.
 // `stage` fills the lyrics side of the desktop full-screen view (QueueView), which has its own controls and tinted
 // background. `page` is the phone's full-screen lyrics, with its own header and the cover's color behind it
 const props = defineProps({
@@ -97,25 +87,18 @@ const closeBtn = ref(null)
 const lyrics = ref(null)
 const state = ref('waiting')
 const following = ref(true)
-const offset = ref(0)
 let request = null
 
 const glowColor = useCoverColor(() => (props.variant === 'page' ? props.piece?.cover || '' : ''))
 
 const lines = computed(() => lyrics.value?.lines ?? null)
-const active = computed(() => (lines.value ? lineAt(lines.value, props.position - offset.value) : -1))
-const offsetLabel = computed(() => {
-  if (!offset.value) return 'Out of time?'
-  const amount = `${Math.abs(offset.value).toFixed(1)}s`
-  return offset.value > 0 ? `Lyrics ${amount} later` : `Lyrics ${amount} earlier`
-})
+const active = computed(() => (lines.value ? lineAt(lines.value, props.position) : -1))
 
 async function load() {
   request?.abort()
   const piece = props.piece
   lyrics.value = null
   if (!piece?.uuid || !(props.duration > 0)) return (state.value = 'waiting')
-  offset.value = readOffset(piece.uuid)
   following.value = true
   state.value = 'loading'
   const controller = new AbortController()
@@ -171,13 +154,7 @@ function resync() {
 
 function jump(line) {
   following.value = true
-  emit('seek', Math.max(0, line.time + offset.value))
-}
-
-function nudge(amount) {
-  offset.value = Math.round((offset.value + amount) * 10) / 10
-  saveOffset(props.piece.uuid, offset.value)
-  if (following.value) nextTick(() => scrollToActive(true))
+  emit('seek', line.time)
 }
 
 function clock(seconds) {
@@ -200,11 +177,7 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .icon-btn { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; flex: none; height: 36px; justify-content: center; padding: 0; width: 36px; }
 .icon-btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .icon-btn svg { fill: none; height: 20px; stroke: currentColor; stroke-linecap: round; stroke-width: 2; width: 20px; }
-.timing { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-6) var(--space-3); }
-.stage .timing { padding: 0 0 var(--space-3); }
-.timing-label { flex: 1; font: 500 12px/16px var(--font-sans); min-width: 0; opacity: 0.75; }
 .btn.small { font-size: 14px; padding: 4px 10px; }
-.btn.text { color: var(--ink); }
 .body { flex: 1; mask-image: linear-gradient(to bottom, transparent 0, #000 var(--space-8), #000 calc(100% - var(--space-8)), transparent 100%); overflow-y: auto; overscroll-behavior: contain; padding: var(--space-8) var(--space-6); scrollbar-width: none; }
 .stage .body { padding: var(--space-8) 0; }
 .body::-webkit-scrollbar { display: none; }
@@ -223,8 +196,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .plain { font: 700 22px/32px var(--font-sans); margin: 0; white-space: pre-line; }
 .resync { align-items: center; align-self: center; bottom: calc(var(--space-8) * 1.5); display: flex; gap: var(--space-2); position: absolute; }
 .resync svg { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
-.credit { font: 500 12px/16px var(--font-sans); margin: 0; opacity: 0.6; padding: var(--space-2) var(--space-6); }
-.stage .credit { padding: var(--space-2) 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .line, .lyrics.page { transition: none; }

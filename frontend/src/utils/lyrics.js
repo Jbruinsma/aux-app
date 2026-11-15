@@ -84,23 +84,3 @@ export function lineAt(lines, seconds) {
   }
   return found
 }
-
-// Per-song timing nudge in seconds (positive: lyrics come later), kept in this browser
-const offsetKey = (musicPieceId) => `aux-lyrics-offset-${musicPieceId}`
-
-export function readOffset(musicPieceId) {
-  try {
-    return Number(localStorage.getItem(offsetKey(musicPieceId))) || 0
-  } catch {
-    return 0
-  }
-}
-
-export function saveOffset(musicPieceId, offset) {
-  try {
-    if (offset) localStorage.setItem(offsetKey(musicPieceId), String(offset))
-    else localStorage.removeItem(offsetKey(musicPieceId))
-  } catch {
-    // Blocked storage: the nudge lasts until the page reloads
-  }
-}

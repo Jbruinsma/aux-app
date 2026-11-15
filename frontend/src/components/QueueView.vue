@@ -20,23 +20,9 @@
       </div>
       <p class="label">
         <template v-if="playlistLink">Playing from <router-link :to="playlistLink.to">{{ playlistLink.name || 'playlist' }}</router-link></template>
-        <template v-else>Now playing</template>
+        <template v-else>Now Playing</template>
       </p>
-      <div class="modes">
-        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
-        </button>
-        <button type="button" class="icon-btn toggle" :class="{ active: lyricsOpen }" :disabled="!piece?.uuid" aria-label="Lyrics" title="Lyrics" :aria-pressed="lyricsOpen ? 'true' : 'false'" @click="emit('lyrics')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
-        </button>
-        <button type="button" class="icon-btn toggle" :class="{ active: repeatMode !== 'OFF' }" :disabled="!canPlay" :aria-label="repeatLabel" :title="repeatLabel" @click="emit('repeat')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
-            <path v-if="repeatMode === 'PIECE'" d="M11 10h1v4" />
-            <path v-else-if="repeatMode === 'OFF'" d="m3 3 18 18" />
-          </svg>
-        </button>
-      </div>
+      <span></span>
     </div>
 
     <div v-if="lyricsOpen" class="lyrics-stage">
@@ -121,9 +107,26 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" /></svg>
           </button>
         </div>
-        <div class="volume">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></svg>
-          <input class="slider" type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" @input="e => emit('volume', parseFloat(e.target.value))" />
+        <div class="right">
+          <div class="modes">
+            <button type="button" class="icon-btn toggle" :class="{ active: lyricsOpen }" :disabled="!piece?.uuid" aria-label="Lyrics" title="Lyrics" :aria-pressed="lyricsOpen ? 'true' : 'false'" @click="emit('lyrics')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
+            </button>
+            <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
+            </button>
+            <button type="button" class="icon-btn toggle" :class="{ active: repeatMode !== 'OFF' }" :disabled="!canPlay" :aria-label="repeatLabel" :title="repeatLabel" @click="emit('repeat')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                <path v-if="repeatMode === 'PIECE'" d="M11 10h1v4" />
+                <path v-else-if="repeatMode === 'OFF'" d="m3 3 18 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="volume">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></svg>
+            <input class="slider" type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" @input="e => emit('volume', parseFloat(e.target.value))" />
+          </div>
         </div>
       </div>
     </div>
@@ -232,6 +235,29 @@ watch(() => props.open, async (isOpen) => {
   closeRef.value?.focus({ preventScroll: true })
 })
 
+// Switching between the cover row and lyrics: the playing cover glides from the middle to the left (or back) while the
+// rest fades in, so the view doesn't snap. Measured before the switch renders, animated after
+const TWEEN = { duration: 450, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+
+watch(() => props.lyricsOpen, async (toLyrics) => {
+  const root = rootRef.value
+  const calm = typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!props.open || !root || calm) return
+  const from = root.querySelector(toLyrics ? '.slot.on .cover' : '.now-cover')?.getBoundingClientRect()
+  await nextTick()
+  const cover = root.querySelector(toLyrics ? '.now-cover' : '.slot.on .cover')
+  if (typeof cover?.animate !== 'function') return
+  const to = cover.getBoundingClientRect()
+  if (from?.width && to.width) {
+    const glide = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`
+    cover.animate([{ transform: glide, transformOrigin: 'top left' }, { transform: 'none', transformOrigin: 'top left' }], TWEEN)
+  }
+  const rest = toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .nudge'
+  for (const el of root.querySelectorAll(rest)) {
+    el.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { ...TWEEN, delay: 120, fill: 'backwards' })
+  }
+})
+
 // Following a link (the playlist name) leaves the queue
 watch(() => route?.fullPath, () => { if (props.open) emit('close') })
 
@@ -260,11 +286,11 @@ function onKeydown(e) {
 
 <style scoped>
 /* The cover's color radiates from behind the middle cover and fades into surface. The style guide's one gradient */
-.queue-view { --cover: clamp(180px, min(28vw, calc(100dvh - 400px)), 340px); --gap: var(--space-8); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); inset: 0; position: fixed; transform: translateY(100%); transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 150; }
-.queue-view.open { transform: none; transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
-.queue-view.glow { background: radial-gradient(ellipse 55% 70% at 50% 42%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 45%, var(--surface) 100%); }
-/* Lyrics: the glow moves behind the cover on the left */
-.queue-view.glow.lyrics-mode { background: radial-gradient(ellipse 50% 75% at 28% 45%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 50%, var(--surface) 100%); }
+.queue-view { --cover: clamp(180px, min(28vw, calc(100dvh - 400px)), 340px); --gap: var(--space-8); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); inset: 0; position: fixed; transform: translateY(100%); transition: --glow 700ms var(--ease), --glow-x 450ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 150; }
+.queue-view.open { transform: none; transition: --glow 700ms var(--ease), --glow-x 450ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
+.queue-view.glow { background: radial-gradient(ellipse 55% 70% at var(--glow-x) 42%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 45%, var(--surface) 100%); }
+/* Lyrics: the glow slides over behind the cover on the left */
+.queue-view.lyrics-mode { --glow-x: 30%; }
 .queue-view :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 
@@ -284,7 +310,8 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .label { color: var(--ink-muted); font: 600 14px/20px var(--font-sans); margin: 0; text-align: center; }
 .label a { color: var(--link); text-decoration: none; }
 .label a:hover { text-decoration: underline; }
-.modes { align-items: center; display: flex; gap: var(--space-2); justify-self: end; }
+.right { align-items: center; display: flex; gap: var(--space-6); justify-self: end; }
+.modes { align-items: center; display: flex; gap: var(--space-2); }
 
 .stage { flex: 1; min-height: 0; overflow: hidden; position: relative; }
 .track { left: 50%; list-style: none; margin: 0; padding: 0; position: absolute; top: 50%; transform: translateX(calc(var(--view) * -1 * (var(--cover) + var(--gap)) - var(--cover) / 2)); transition: transform var(--dur-med) var(--ease); }
@@ -330,7 +357,7 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .time:last-child { text-align: right; }
 .controls { align-items: center; display: grid; grid-template-columns: 1fr auto 1fr; margin-top: var(--space-2); }
 .transport { align-items: center; display: flex; gap: var(--space-6); }
-.volume { align-items: center; color: var(--ink-muted); display: flex; gap: var(--space-2); justify-self: end; }
+.volume { align-items: center; color: var(--ink-muted); display: flex; gap: var(--space-2); }
 .volume .slider { flex: none; width: 100px; }
 .slider { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; flex: 1; height: 16px; margin: 0; }
 .slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--purple) var(--fill, 0%), var(--line) var(--fill, 0%)); border-radius: var(--radius-pill); height: 4px; }

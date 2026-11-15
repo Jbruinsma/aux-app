@@ -32,27 +32,21 @@ it('highlights the line being sung, and seeks to a line when it is clicked', asy
   expect(wrapper.get('.line.now').text()).toBe('Third line')
 })
 
-it('stops following when scrolled by hand, and Sync to song brings it back', async () => {
+it('stops following when scrolled by hand, and Sync brings it back', async () => {
   await render()
   expect(wrapper.find('.resync').exists()).toBe(false)
   await wrapper.get('.body').trigger('wheel')
-  expect(wrapper.get('.resync').text()).toBe('Sync to song')
+  expect(wrapper.get('.resync').text()).toBe('Sync')
   Element.prototype.scrollTo.mockClear()
   await wrapper.get('.resync').trigger('click')
   expect(wrapper.find('.resync').exists()).toBe(false)
   expect(Element.prototype.scrollTo).toHaveBeenCalled()
 })
 
-it('nudges the timing for the song and keeps it', async () => {
-  const piece = { uuid: 'm-nudge', title: 'Song', artist: 'Artist' }
-  await render({ piece, position: 5.2 })
-  expect(wrapper.get('.line.now').text()).toBe('Second line')
-  await wrapper.findAll('.timing button').find((button) => button.text() === 'Later').trigger('click')
-  expect(wrapper.get('.timing-label').text()).toBe('Lyrics 0.5s later')
-  expect(wrapper.get('.line.now').text()).toBe('First line')
-  expect(localStorage.getItem('aux-lyrics-offset-m-nudge')).toBe('0.5')
-  await wrapper.findAll('.line')[1].trigger('click')
-  expect(wrapper.emitted('seek')).toEqual([[5.5]])
+it('has no timing controls or credit line', async () => {
+  await render()
+  expect(wrapper.find('.timing').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('LRCLIB')
 })
 
 it('says so when LRCLIB has nothing for the song', async () => {
