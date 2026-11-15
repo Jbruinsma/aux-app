@@ -3603,7 +3603,7 @@
       "post" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Upload a music piece",
-        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its\n  uploader, and by the other collaborators on private playlists the uploader adds it to.\n- `mp3File` (required): an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the\n  caller's 2GB storage quota.\n- `albumId`: one of the artist's albums (`GET /api/artists/{artistId}/albums`). Omit for a single.\n- `coverImage`: same rules as a playlist cover. Send the original image; the server crops it to a\n  square and stores it as WebP. Required for a single. With `albumId`, omit it to show the\n  album's cover (`usesAlbumCover` is then true and the piece follows later cover changes), or\n  send it to keep the piece's own cover while it sits in the album.\n- `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24\n  letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
+        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its\n  uploader, and by the other collaborators on private playlists the uploader adds it to.\n- `mp3File`: an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the caller's 2GB\n  storage quota.\n- `importId`: a READY YouTube import (`POST /api/imports/youtube`), in place of `mp3File`. Send\n  exactly one of the two. Same limits and quota as an upload. Used up once the piece is created;\n  if creating fails (bad field, quota) it stays READY, so fix the form and send it again.\n- `albumId`: one of the artist's albums (`GET /api/artists/{artistId}/albums`). Omit for a single.\n- `coverImage`: same rules as a playlist cover. Send the original image; the server crops it to a\n  square and stores it as WebP. Required for a single. With `albumId`, omit it to show the\n  album's cover (`usesAlbumCover` is then true and the piece follows later cover changes), or\n  send it to keep the piece's own cover while it sits in the album.\n- `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24\n  letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
         "operationId" : "createMusicPiece",
         "requestBody" : {
           "content" : {
@@ -3626,7 +3626,17 @@
             }
           },
           "400" : {
-            "description" : "Missing or bad field, including no cover for a single (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "description" : "Missing or bad field, including no cover for a single or not exactly one of `mp3File` and `importId` (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "`importId` sent by someone who isn't a tester or admin (code YOUTUBE_IMPORT_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -3636,7 +3646,17 @@
             }
           },
           "404" : {
-            "description" : "Artist not found (code ARTIST_NOT_FOUND), or album not found (code ALBUM_NOT_FOUND)",
+            "description" : "Artist not found (code ARTIST_NOT_FOUND), album not found (code ALBUM_NOT_FOUND), or no such import (code IMPORT_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Import not READY (code IMPORT_NOT_READY), or already being used by another request (code IMPORT_IN_USE)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -3675,16 +3695,6 @@
               }
             }
           },
-          "403" : {
-            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AuxServerError"
-                }
-              }
-            }
-          },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
@@ -3696,6 +3706,178 @@
                 }
               }
             },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/imports/youtube" : {
+      "get" : {
+        "tags" : [ "youtube-import-controller" ],
+        "summary" : "Check whether the caller can import from YouTube",
+        "description" : "Testers and admins only, and only while the server has the feature on. Use it to show or hide the YouTube option on the upload page.",
+        "operationId" : "availability",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/YoutubeImportAvailability"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "youtube-import-controller" ],
+        "summary" : "Start importing a YouTube video's audio",
+        "description" : "Phase one of uploading from YouTube. JSON body: `url`, a link to one video. The server checks the\nvideo (30 seconds to 10 minutes, not live) and converts its audio to MP3 in the background; poll\n`GET /api/imports/youtube/{importId}` until `status` is READY or FAILED (usually 10-60 seconds).\nPhase two is the normal `POST /api/music-pieces/create`, with `importId` in place of `mp3File`.\nA READY import is kept for 30 minutes. At most 2 running and 5 unused imports per user, and 20 per hour.\nTesters and admins only.\n",
+        "operationId" : "start",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/YoutubeImportCreation"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Import queued; body is its current state",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/YoutubeImport"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Not a link to a single YouTube video (code INVALID_YOUTUBE_URL), or missing `url` (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Caller isn't a tester or admin (code YOUTUBE_IMPORT_FORBIDDEN); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Per-user limit reached (code IMPORT_LIMIT). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Feature is off (code YOUTUBE_IMPORT_DISABLED), or the server is busy (code IMPORT_BUSY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -5985,6 +6167,194 @@
         } ]
       }
     },
+    "/api/imports/youtube/{importId}" : {
+      "get" : {
+        "tags" : [ "youtube-import-controller" ],
+        "summary" : "Get an import's progress",
+        "description" : "Only the caller's own imports. A FAILED import says why in `error`.",
+        "operationId" : "get",
+        "parameters" : [ {
+          "name" : "importId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/YoutubeImport"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No such import of the caller's, or it expired (code IMPORT_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "youtube-import-controller" ],
+        "summary" : "Cancel or discard an import",
+        "description" : "Stops a running import, or deletes a finished one the caller no longer wants.",
+        "operationId" : "discard",
+        "parameters" : [ {
+          "name" : "importId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Import gone",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No such import of the caller's (code IMPORT_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "A music piece is being created from it right now (code IMPORT_IN_USE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/api/core/users" : {
       "get" : {
         "tags" : [ "core-controller" ],
@@ -7737,7 +8107,12 @@
           "mp3File" : {
             "type" : "string",
             "format" : "binary",
-            "description" : "MP3, at most 25MB and 30 seconds to 10 minutes long. Counts toward the uploader's 2GB quota"
+            "description" : "MP3, at most 25MB and 30 seconds to 10 minutes long. Counts toward the uploader's 2GB quota. Send this or `importId`"
+          },
+          "importId" : {
+            "type" : "string",
+            "description" : "Id of a READY YouTube import (`POST /api/imports/youtube`), in place of `mp3File`. Testers and admins only",
+            "example" : "6f1c2a9e-3b7d-4e0a-9c51-8d2f4b6a7e10"
           },
           "tags" : {
             "type" : "array",
@@ -7748,7 +8123,88 @@
             }
           }
         },
-        "required" : [ "artistId", "mp3File", "name" ]
+        "required" : [ "artistId", "name" ]
+      },
+      "YoutubeImportCreation" : {
+        "type" : "object",
+        "description" : "A YouTube video to import as an MP3",
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "description" : "Link to one YouTube video: `youtube.com/watch?v=`, `youtu.be/`, `/shorts/`, `/embed/` or `/live/`, on\nwww., m. or music.youtube.com. Extra query parameters (`t`, `si`, `list`) are ignored; playlists,\nchannels and other sites are rejected",
+            "example" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "url" ]
+      },
+      "ErrorDetails" : {
+        "type" : "object",
+        "description" : "Details of an error response",
+        "properties" : {
+          "error" : {
+            "type" : "string",
+            "description" : "HTTP reason phrase, e.g. `Not Found`"
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable error code, e.g. `PLAYLIST_NOT_FOUND`"
+          },
+          "message" : {
+            "type" : "string",
+            "description" : "Human-readable explanation"
+          },
+          "parameter" : {
+            "type" : [ "string", "null" ],
+            "description" : "Name of the offending field or parameter; null when none applies"
+          }
+        }
+      },
+      "YoutubeImport" : {
+        "type" : "object",
+        "description" : "A YouTube import. Poll `GET /api/imports/youtube/{importId}` every couple of seconds until it is READY or FAILED",
+        "properties" : {
+          "importId" : {
+            "type" : "string",
+            "description" : "Send as `importId` to `POST /api/music-pieces/create` once READY",
+            "example" : "6f1c2a9e-3b7d-4e0a-9c51-8d2f4b6a7e10"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "QUEUED: waiting for a free slot. FETCHING_INFO: checking the video. DOWNLOADING: getting and converting the\naudio. READY: send `importId` to `POST /api/music-pieces/create`. FAILED: see `error`; start a new import to retry",
+            "enum" : [ "QUEUED", "FETCHING_INFO", "DOWNLOADING", "READY", "FAILED" ]
+          },
+          "videoId" : {
+            "type" : "string",
+            "description" : "YouTube video id",
+            "example" : "dQw4w9WgXcQ"
+          },
+          "title" : {
+            "type" : [ "string", "null" ],
+            "description" : "The video's title, to prefill the piece's name. Null until FETCHING_INFO is done"
+          },
+          "durationSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Length of the audio in seconds. Null until FETCHING_INFO is done"
+          },
+          "thumbnailUrl" : {
+            "type" : "string",
+            "description" : "YouTube's thumbnail, for a preview only. The piece still needs its own cover (or an album's)",
+            "example" : "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+          },
+          "error" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/ErrorDetails",
+            "description" : "Why it FAILED; null otherwise. Codes: AUDIO_TOO_SHORT, AUDIO_TOO_LONG, AUDIO_TOO_LARGE, VIDEO_IS_LIVE, VIDEO_UNAVAILABLE, VIDEO_REJECTED, IMPORT_BLOCKED, IMPORT_TIMED_OUT, IMPORT_FAILED"
+          },
+          "expiresAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "When a READY import is thrown away if it hasn't been used; null otherwise"
+          }
+        }
       },
       "RegistrationCredentials" : {
         "type" : "object",
@@ -8454,6 +8910,16 @@
           }
         }
       },
+      "YoutubeImportAvailability" : {
+        "type" : "object",
+        "description" : "Whether the caller can import from YouTube",
+        "properties" : {
+          "available" : {
+            "type" : "boolean",
+            "description" : "True when the feature is on and the caller is a tester or admin. Hide the YouTube option when false"
+          }
+        }
+      },
       "TopMusicPiece" : {
         "type" : "object",
         "description" : "A music piece in the top list",
@@ -8771,28 +9237,6 @@
           "errorDetails" : {
             "$ref" : "#/components/schemas/ErrorDetails",
             "description" : "What went wrong"
-          }
-        }
-      },
-      "ErrorDetails" : {
-        "type" : "object",
-        "description" : "Details of an error response",
-        "properties" : {
-          "error" : {
-            "type" : "string",
-            "description" : "HTTP reason phrase, e.g. `Not Found`"
-          },
-          "code" : {
-            "type" : "string",
-            "description" : "Stable machine-readable error code, e.g. `PLAYLIST_NOT_FOUND`"
-          },
-          "message" : {
-            "type" : "string",
-            "description" : "Human-readable explanation"
-          },
-          "parameter" : {
-            "type" : [ "string", "null" ],
-            "description" : "Name of the offending field or parameter; null when none applies"
           }
         }
       },

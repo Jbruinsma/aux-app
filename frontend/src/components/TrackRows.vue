@@ -1,7 +1,7 @@
 <template>
   <ol class="rows" :class="{ ranked, counted: hasCounts, 'with-action': Boolean($slots.action) }" :aria-label="label">
     <li v-for="(piece, index) in pieces" :key="piece.musicPieceId ?? `${index}-${piece.name}`" class="tr" :class="{ on: isCurrent(piece) }">
-      <span v-if="ranked" class="rk">{{ start + index }}</span>
+      <span v-if="ranked" class="rk">{{ numbers ? (numbers[index] ?? '') : start + index }}</span>
       <button
         v-if="canPlay(piece)"
         type="button"
@@ -18,7 +18,12 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
       </span>
       <span class="text">
-        <span class="ti">{{ piece.name }}</span>
+        <router-link
+          v-if="linked && piece.musicPieceId"
+          class="ti ti-link"
+          :to="{ name: 'Piece', params: { musicPieceId: piece.musicPieceId } }"
+        >{{ piece.name }}</router-link>
+        <span v-else class="ti">{{ piece.name }}</span>
         <span class="sub">
           <router-link
             v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
@@ -55,15 +60,19 @@ import { resolveCoverURL } from '@/utils/display.js'
 // The style guide's track row: optional rank, play button, 40px art, title and artist, and a play count bar when the
 // pieces carry `playCount`. A piece without a `musicPieceId` gets no play button. The playing piece's button shows
 // pause and pauses it; pressed again it resumes where it was instead of starting over, so `play` is only emitted for
-// the other pieces. The `action` slot ({ piece, index }) adds a small button at the end of each row
+// the other pieces. With `linked`, the title links to the piece's page and the whole row opens it. The `action` slot ({ piece, index }) adds a small button at the end of each row
 const props = defineProps({
   pieces: { type: Array, required: true },
   label: { type: String, required: true },
   ranked: Boolean,
   // Rank of the first row, for a list split across columns
   start: { type: Number, default: 1 },
+  // Shown in the rank column instead of 1, 2, 3 (an album's track numbers); a null leaves that row's blank
+  numbers: { type: Array, default: null },
   // Adds who uploaded each piece after the artist
   showUploader: Boolean,
+  // Clicking a row opens the piece's page
+  linked: Boolean,
 })
 const emit = defineEmits(['play'])
 
@@ -102,7 +111,7 @@ function countShare(piece) {
 .rows.ranked { --cols: 20px 32px 40px minmax(0, 1fr); }
 .rows.counted { --cols: 32px 40px minmax(0, 1fr) minmax(90px, 200px); }
 .rows.ranked.counted { --cols: 20px 32px 40px minmax(0, 1fr) minmax(90px, 200px); }
-.tr { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: var(--space-3); grid-template-columns: var(--cols); padding: var(--space-2) var(--space-3); }
+.tr { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: var(--space-3); grid-template-columns: var(--cols); padding: var(--space-2) var(--space-3); position: relative; }
 .with-action .tr { grid-template-columns: var(--cols) 36px; }
 .act { display: flex; justify-content: flex-end; }
 .tr:first-child { border-top: 1px solid var(--line); }
@@ -131,6 +140,12 @@ function countShare(piece) {
 .up-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr-only { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 .artist-link { text-decoration: none; }
+.ti-link { color: inherit; text-decoration: none; }
+.ti-link::after { content: ''; inset: 0; position: absolute; }
+.ti-link:hover { color: var(--link); text-decoration: underline; }
+.ti-link:focus-visible { outline: none; }
+.ti-link:focus-visible::after { border-radius: var(--radius-sm); outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.play, .artist-link, .up, .act { position: relative; z-index: 1; }
 .artist-link:hover { color: var(--link); text-decoration: underline; }
 .cnt { display: flex; flex-direction: column; gap: 2px; }
 .ctrk { background: var(--surface-alt); border-radius: var(--radius-pill); height: 6px; overflow: hidden; }

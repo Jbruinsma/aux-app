@@ -37,3 +37,11 @@ it('shows pause on the playing song, pauses and resumes it, and plays the others
   await buttons()[0].trigger('click')
   expect(wrapper.emitted('play')).toEqual([[0]])
 })
+
+it('links each title to its song page only when linked', () => {
+  const linkStub = { props: ['to'], template: '<a class="stub-link" :data-to="JSON.stringify(to)"><slot /></a>' }
+  const mountWith = (linked) => mount(TrackRows, { props: { pieces: [piece(1)], label: 'Songs', linked }, global: { stubs: { RouterLink: linkStub } } })
+  const titleLink = (wrapper) => wrapper.findAll('a.stub-link').find((a) => a.text() === 'Song 1')
+  expect(JSON.parse(titleLink(mountWith(true)).attributes('data-to'))).toEqual({ name: 'Piece', params: { musicPieceId: 'm1' } })
+  expect(titleLink(mountWith(false))).toBeUndefined()
+})

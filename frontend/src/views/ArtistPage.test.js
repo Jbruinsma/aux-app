@@ -5,12 +5,15 @@ import { useNotificationStore } from '@/stores/notification.js'
 import { useUserStore } from '@/stores/user.js'
 import { useMusicStore } from '@/stores/music.js'
 import { fetchAPI, request } from '@/utils/api.js'
+import { fetchAlbumTracklist } from '@/utils/albumOrder.js'
 import ArtistPage from './ArtistPage.vue'
 
 const { route } = vi.hoisted(() => ({ route: { params: {} } }))
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
+// No catalog lookups from tests; the album order test gives one
+vi.mock('@/utils/albumOrder.js', async (importOriginal) => ({ ...(await importOriginal()), fetchAlbumTracklist: vi.fn(async () => null) }))
 
 const details = (overrides) => ({
   artistId: 'a1', artistName: 'Frank Ocean', artistPfpUrl: null, artistBannerUrl: null, isFavorite: false, canEdit: false, ...overrides,
@@ -144,6 +147,23 @@ it("groups songs into albums from each album's own list, split from the singles"
   const playPieces = vi.spyOn(music, 'playPieces').mockReturnValue(true)
   await sections[0].get('.album-actions .btn.primary').trigger('click')
   expect(playPieces.mock.calls[0][0].map((piece) => piece.musicPieceId)).toEqual(['m3', 'm2'])
+})
+
+it("puts an album's songs in its tracklist order with track numbers and disc dividers, and plays them that way", async () => {
+  const songs = [onAlbum(song(1), blonde), onAlbum(song(2), blonde), onAlbum(song(3), blonde)]
+  fetchAlbumTracklist.mockResolvedValueOnce([{ disc: 1, track: 1, title: 'Song 3' }, { disc: 1, track: 4, title: 'Song 1' }, { disc: 2, track: 1, title: 'Song 9' }])
+  backend(details(), { first: { musicPieces: songs, nextCursor: null } }, { albums: [blonde], albumSongs: { al1: songs } })
+  await render()
+  expect(fetchAlbumTracklist).toHaveBeenCalledWith('Frank Ocean', 'Blonde')
+  const album = wrapper.get('section.album')
+  expect(album.findAll('.disc-title').map((title) => title.text())).toEqual(['Disc 1', 'Disc 2'])
+  expect(album.findAll('.ti').map((title) => title.text())).toEqual(['Song 3', 'Song 1', 'Song 2'])
+  expect(album.findAll('.rk').map((rank) => rank.text())).toEqual(['1', '4', '1'])
+
+  const playPieces = vi.spyOn(useMusicStore(), 'playPieces').mockReturnValue(true)
+  await album.findAll('button.play')[2].trigger('click')
+  expect(playPieces.mock.calls[0][0].map((piece) => piece.musicPieceId)).toEqual(['m3', 'm1', 'm2'])
+  expect(playPieces.mock.calls[0][1]).toBe(2)
 })
 
 async function openNewAlbum() {
