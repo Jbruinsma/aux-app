@@ -14,11 +14,15 @@ public record MusicPieceCreationDetails(
         @Schema(description = "Title, 1-200 chars, trimmed. Profanity is masked", example = "Dark Fantasy") @NotBlank @Size(max = 200) String name,
         @Schema(description = "Public id of an existing artist", example = "a_8f3k2Q") @NotBlank String artistId,
         @Schema(description = "Whether anyone can play the piece; defaults to false. A private piece can only be played by its uploader, and by collaborators on private playlists the uploader adds it to", example = "true") boolean isPublic,
-        @Schema(description = "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes", type = "string", format = "binary") @NotNull MultipartFile coverImage,
+        @Schema(description = "Public id of one of the artist's albums; omit for a single", example = "l_4Hq9xT") String albumId,
+        // Required without an album; checked in MusicPieceController
+        @Schema(description = "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes. Required for a single; with `albumId`, omit it to use the album's cover", type = "string", format = "binary") MultipartFile coverImage,
         @Schema(description = "MP3, at most 25MB and 30 seconds to 10 minutes long. Counts toward the uploader's 2GB quota", type = "string", format = "binary") @NotNull MultipartFile mp3File,
         @Schema(description = "Up to 5 tags, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24 letters, digits, spaces, '&' or '-'. Unknown tags are created. Omit for none", example = "[\"chill\", \"lo-fi\"]") List<String> tags
 ) {
     public MusicPieceCreationDetails {
         name = ProfanityFilter.mask(name);
+        albumId = albumId == null || albumId.isBlank() ? null : albumId;
+        coverImage = coverImage == null || coverImage.isEmpty() ? null : coverImage;
     }
 }

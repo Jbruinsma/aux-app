@@ -18,4 +18,4 @@ If the frontend requires data, endpoints, or structure updates that are not yet 
 4. Document the exact HTTP method, required route, expected request payload, and desired response shape so the backend developer knows exactly what to build.
 
 ## 4. Roadmap
-What's left to build lives in `./ROADMAP.md`. Tick an item's box when the work is done, and keep request and response details in the OpenAPI docs rather than in the roadmap.
+What's left to build lives in `./ROADMAP.md`, and only unfinished work belongs there. When an item is done, delete it instead of ticking its box; delete a task once none of its items are left. Keep request and response details in the OpenAPI docs rather than in the roadmap.

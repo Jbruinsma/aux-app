@@ -23,6 +23,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CAST(mp.is_public AS INTEGER) AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
+                   al.public_id AS albumId, al.album_name AS albumName,
+                   CAST(mp.uses_album_cover AS INTEGER) AS usesAlbumCover,
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
@@ -35,6 +37,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
             JOIN artists a ON a.artist_id = mp.artist_id
             JOIN users u ON u.user_id = mp.uploader_user_id
+            LEFT JOIN albums al ON al.album_id = mp.album_id
             LEFT JOIN user_favorite_tracks f ON f.user_id = pe.user_id AND f.music_piece_id = mp.music_piece_id
             LEFT JOIN playlists p ON p.playlist_id = pe.context_playlist_id
             LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = pe.user_id
@@ -63,6 +66,8 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CAST(mp.is_public AS INTEGER) AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
+                   al.public_id AS albumId, al.album_name AS albumName,
+                   CAST(mp.uses_album_cover AS INTEGER) AS usesAlbumCover,
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
                    COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
@@ -75,6 +80,7 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             JOIN music_pieces mp ON mp.music_piece_id = l.music_piece_id
             JOIN artists a ON a.artist_id = mp.artist_id
             JOIN users u ON u.user_id = mp.uploader_user_id
+            LEFT JOIN albums al ON al.album_id = mp.album_id
             LEFT JOIN user_favorite_tracks f ON f.user_id = :userId AND f.music_piece_id = mp.music_piece_id
             LEFT JOIN playlists p ON p.playlist_id = l.context_playlist_id
             LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = :userId
@@ -97,6 +103,9 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
         String getArtistId();
         String getArtistName();
         String getArtistPfpUrl();
+        String getAlbumId(); // null for a single
+        String getAlbumName();
+        Integer getUsesAlbumCover(); // 1 or 0
         String getUploaderId();
         String getUploaderUsername();
         String getUploaderPfpUrl();
