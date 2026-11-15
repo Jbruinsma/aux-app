@@ -7,7 +7,7 @@ endpoint before it exists, it's mocked in the frontend and the flag to switch it
 The Dashboard and the header get their data from the live event stream (`GET /api/users/me/events`), so changes to
 that data are asked for on the event, not on the REST endpoint it mirrors.
 
-Last checked against `main` on 2026-11-13. Nothing is waiting to be built; only the open questions are left.
+Last checked against `main` on 2026-11-14. Nothing is waiting to be built; only the open questions are left.
 
 ______________________________________________________
 
