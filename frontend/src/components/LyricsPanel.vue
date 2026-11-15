@@ -261,12 +261,13 @@ function clock(seconds) {
 .line.now { opacity: 1; transform: scale(1.03); }
 .line.gap { font-size: 20px; }
 .plain { font: 700 22px/32px var(--font-sans); margin: 0; white-space: pre-line; }
-.resync { align-items: center; align-self: center; bottom: calc(var(--space-8) * 1.5); display: flex; gap: var(--space-2); position: absolute; }
-.resync svg { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
+/* .btn.resync: the global .btn is inline-block with large padding, which left the icon off the text's center */
+.btn.resync { align-items: center; align-self: center; bottom: calc(var(--space-8) * 1.5); display: inline-flex; font: 600 13px/16px var(--font-sans); gap: 6px; padding: 6px 12px; position: absolute; }
+.resync svg { display: block; fill: none; flex: none; height: 14px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.25; width: 14px; }
 
 /* Phone controls, laid out like the player's. Folding slides them down out of the way, leaving the chevron */
 .controls { flex: none; padding: 0 var(--space-6) var(--space-4); position: relative; }
-.controls .resync { bottom: calc(100% + var(--space-3)); left: 50%; transform: translateX(-50%); }
+.controls .btn.resync { bottom: calc(100% + var(--space-3)); left: 50%; transform: translateX(-50%); }
 .fold { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 28px; justify-content: center; margin: 0 auto; opacity: 0.7; padding: 0; width: 44px; }
 .fold svg { fill: none; height: 22px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; transition: transform var(--dur-med) var(--ease); width: 22px; }
 .folded .fold svg { transform: rotate(180deg); }

@@ -17,8 +17,9 @@ const props = defineProps({
 const box = ref(null)
 const inner = ref(null)
 const overflow = ref(0)
-// A slow drift: about 12px a second, never quicker than 8 seconds each way (with a rest at each end)
-const seconds = computed(() => Math.max(8, Math.round(overflow.value / 12)))
+// A slow drift: the slide itself takes about overflow / 20 seconds (at least 4.8), with a short rest at each end so
+// it starts moving soon after the song does
+const seconds = computed(() => Math.round((Math.max(4.8, overflow.value / 20) / 0.88) * 10) / 10)
 const moving = computed(() => props.play && overflow.value > 0)
 let observer = null
 
@@ -47,8 +48,8 @@ defineExpose({ measure })
 .moving { mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent 100%); }
 .moving .marquee-text { animation: marquee var(--marquee-time) ease-in-out infinite alternate; }
 @keyframes marquee {
-  0%, 20% { transform: translateX(0); }
-  80%, 100% { transform: translateX(calc(-1 * var(--shift))); }
+  0%, 6% { transform: translateX(0); }
+  94%, 100% { transform: translateX(calc(-1 * var(--shift))); }
 }
 
 @media (prefers-reduced-motion: reduce) {
