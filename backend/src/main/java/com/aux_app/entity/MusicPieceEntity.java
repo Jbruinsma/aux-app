@@ -46,6 +46,14 @@ public class MusicPieceEntity {
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = false;
 
+    // Null for a single. Must be an album of artistId
+    @Column(name = "album_id")
+    private String albumId;
+
+    // When true, coverUrl is a copy of the album's cover and follows it; see AlbumService
+    @Column(name = "uses_album_cover", nullable = false)
+    private Boolean usesAlbumCover = false;
+
     @Column(name = "created_at")
     private Instant createdAt;
 
@@ -79,6 +87,8 @@ public class MusicPieceEntity {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Boolean getIsPublic() { return isPublic; }
+    public String getAlbumId() { return albumId; }
+    public boolean usesAlbumCover() { return Boolean.TRUE.equals(usesAlbumCover); }
 
     public void setIsPublic(Boolean isPublic) { this.isPublic = isPublic; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
@@ -87,6 +97,8 @@ public class MusicPieceEntity {
     public void setMp3FileUrl(String mp3FileUrl) { this.mp3FileUrl = mp3FileUrl; }
     public void setDurationSeconds(Integer durationSeconds) { this.durationSeconds = durationSeconds; }
     public void setSizeBytes(Integer sizeBytes) { this.sizeBytes = sizeBytes; }
+    public void setAlbumId(String albumId) { this.albumId = albumId; }
+    public void setUsesAlbumCover(boolean usesAlbumCover) { this.usesAlbumCover = usesAlbumCover; }
 
     // Outside any playlist. Inside one, see PlaybackEventService.isPlayable
     public boolean isPlayableBy(String userId) {

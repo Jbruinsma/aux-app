@@ -92,6 +92,7 @@ flowchart LR
     pieceC["MusicPieceController"]
     userC["UserController"]
     artistC["ArtistController"]
+    albumC["AlbumController"]
 
     session["SessionService"]
     otp["OtpService"]
@@ -101,6 +102,7 @@ flowchart LR
     onboard["OnboardingService"]
     uname["UsernameService"]
     upload["UploadService"]
+    album["AlbumService"]
     email["EmailService"]
 
     r2[("R2")]
@@ -111,6 +113,9 @@ flowchart LR
     pieceC --> playback & upload
     userC --> playback & onboard & uname & upload
     artistC --> upload
+    albumC --> album
+    pieceC --> album
+    album --> upload
     members -. "extends" .-> plsvc
     members --> email
     otp --> email
@@ -123,8 +128,8 @@ flowchart LR
     classDef service fill:#7c3aed,stroke:#5b21b6,color:#fff
     classDef data fill:#c2410c,stroke:#9a3412,color:#fff
     classDef external fill:#0f766e,stroke:#115e59,color:#fff
-    class authC,userC,artistC,pieceC,plC controller
-    class session,otp,onboard,uname,playback,members,plsvc,upload,email service
+    class authC,userC,artistC,albumC,pieceC,plC controller
+    class session,otp,onboard,uname,playback,members,plsvc,upload,email,album service
     class r2 data
     class resend external
 ```
@@ -137,6 +142,7 @@ Repositories are left out to keep lines readable: every controller and service r
 | `UserController` | `/api/users` | Onboarding, profile, settings, follows, last playback, live event stream, account deletion |
 | `CoreController` | `/api/core` | User list, top pieces, search |
 | `ArtistController` | `/api/artists` | Artists, artist images, favorites, an artist's pieces |
+| `AlbumController` | `/api/albums`, `/api/artists/{id}/albums` | An artist's albums, find or create, edit, delete, an album's pieces, a user's top albums |
 | `MusicPieceController` | `/api/music-pieces` | List, upload, edit, details, discover, stream, report plays |
 | `PlaylistController` | `/api/playlists` | Playlists, tracks, saves, members, invites, play queue |
 | `NotificationController` | `/api/notifications` | Notification pages, mark read |
@@ -155,6 +161,7 @@ Repositories are left out to keep lines readable: every controller and service r
 | `UploadService` | Re-encodes images to WebP, strips MP3s to audio frames, R2 storage, signed audio URLs |
 | `EmailService` | Sends mail through Resend |
 | `TagService` | Tag rules and setting a piece's or playlist's tags |
+| `AlbumService` | Album rules: who can edit, which album and cover a piece ends up with, keeping shared covers in sync |
 | `RecommendationService` | Music like a piece, for `/discover` |
 | `NotificationService` | Notification pages and read state |
 | `LiveEventService` | Open event streams; pushes fresh sections after data changes |
@@ -197,7 +204,7 @@ sequenceDiagram
 
 ## 5. Data model
 
-Flyway migrations: `V1__baseline.sql`, `V2__Public_ids.java` (adds a random base62 `public_id` to users, playlists, artists, and music_pieces), `V3__playlist_members.sql`, `V4__notifications.sql`, `V5__user_play_preferences.sql`, `V6__tags.sql`, `V7__music_pieces_artist_index.sql`.
+Flyway migrations: `V1__baseline.sql`, `V2__Public_ids.java` (adds a random base62 `public_id` to users, playlists, artists, and music_pieces), `V3__playlist_members.sql`, `V4__notifications.sql`, `V5__user_play_preferences.sql`, `V6__tags.sql`, `V7__music_pieces_artist_index.sql`, `V8__play_events_millis.sql`, `V9__albums.sql`.
 
 ### Core tables
 
@@ -208,6 +215,8 @@ erDiagram
     users ||--o{ playlists : owns
     users ||--o{ music_pieces : uploads
     artists ||--o{ music_pieces : performs
+    artists ||--o{ albums : has
+    albums ||--o{ music_pieces : groups
     playlists ||--o{ playlist_tracks : contains
     music_pieces ||--o{ playlist_tracks : "in"
     playlists ||--o{ playlist_members : "shared with"
@@ -238,6 +247,16 @@ erDiagram
         string mp3_file_url "R2 key"
         int duration_seconds
         bool is_public
+        string album_id FK "null for a single"
+        bool uses_album_cover "cover_url copies the album's"
+    }
+    albums {
+        string album_id PK
+        string public_id
+        string artist_id FK
+        string album_name "unique per artist, case-insensitive"
+        string cover_url "shared with pieces that use it"
+        string created_by_user_id FK
     }
     artists {
         string artist_id PK

@@ -11,13 +11,16 @@ import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.music_piece.MusicPieceStream;
 import com.aux_app.dto.music_piece.PlayEventCreation;
 import com.aux_app.dto.music_piece.UploadedMusicPiecesResponse;
+import com.aux_app.entity.AlbumEntity;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
+import com.aux_app.repository.AlbumRepository;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.PlayEventRepository;
+import com.aux_app.services.AlbumService;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.RecommendationService;
@@ -42,6 +45,8 @@ public class MusicPieceController {
 
     private final UploadService uploads;
     private final ArtistRepository artists;
+    private final AlbumRepository albums;
+    private final AlbumService albumService;
     private final MusicPieceRepository musicPieces;
     private final PlayEventRepository plays;
     private final PlaybackEventService playbackEvents;
@@ -52,6 +57,8 @@ public class MusicPieceController {
     public MusicPieceController(
             UploadService uploads,
             ArtistRepository artists,
+            AlbumRepository albums,
+            AlbumService albumService,
             MusicPieceRepository musicPieces,
             PlayEventRepository plays,
             PlaybackEventService playbackEvents,
@@ -61,6 +68,8 @@ public class MusicPieceController {
     ) {
         this.uploads = uploads;
         this.artists = artists;
+        this.albums = albums;
+        this.albumService = albumService;
         this.musicPieces = musicPieces;
         this.plays = plays;
         this.playbackEvents = playbackEvents;
@@ -95,15 +104,18 @@ public class MusicPieceController {
                       uploader, and by the other collaborators on private playlists the uploader adds it to.
                     - `mp3File` (required): an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the
                       caller's 2GB storage quota.
-                    - `coverImage` (required): same rules as a playlist cover. Send the original image; the server
-                      crops it to a square and stores it as WebP.
+                    - `albumId`: one of the artist's albums (`GET /api/artists/{artistId}/albums`). Omit for a single.
+                    - `coverImage`: same rules as a playlist cover. Send the original image; the server crops it to a
+                      square and stores it as WebP. Required for a single. With `albumId`, omit it to show the
+                      album's cover (`usesAlbumCover` is then true and the piece follows later cover changes), or
+                      send it to keep the piece's own cover while it sits in the album.
                     - `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24
                       letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.
                     The caller is the uploader. Returns the new piece; `isFavorite` is always `false`.
                     """)
     @ApiResponse(responseCode = "200", description = "Music piece created; body is the new piece")
-    @ApiResponse(responseCode = "400", description = "Missing or bad field (code INVALID_FIELD), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
-    @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND)")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field, including no cover for a single (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND), or album not found (code ALBUM_NOT_FOUND)")
     @ApiResponse(responseCode = "413", description = "Upload would pass the 2GB storage quota (code STORAGE_QUOTA_EXCEEDED), cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "File is not an MP3 (code UNSUPPORTED_AUDIO_TYPE), or cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public MusicPieceOverview createMusicPiece(
@@ -124,6 +136,20 @@ public class MusicPieceController {
             );
         }
 
+        AlbumEntity album = musicPieceCreationDetails.albumId() == null ? null
+                : this.albumService.albumForPiece(musicPieceCreationDetails.albumId(), artist.getArtistId());
+        boolean ownCover = musicPieceCreationDetails.coverImage() != null;
+
+        // Before the upload, so a missing cover fails fast. A piece always has a cover: its own or its album's
+        if (album == null && !ownCover) {
+            throw new AuxException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_FIELD",
+                    "A cover is required unless the piece is in an album",
+                    "coverImage"
+            );
+        }
+
         // Uploads the MP3 and saves the row; mp3_file_url gets the R2 key, signed into a URL at play time
         MusicPieceEntity newMusicPiece = this.uploads.storeTracks(
                 user,
@@ -140,17 +166,29 @@ public class MusicPieceController {
                     piece.setMp3FileUrl(track.key());
                     piece.setDurationSeconds(track.durationSeconds());
                     piece.setSizeBytes(track.sizeBytes());
+                    if (album != null) {
+                        // Read again inside the write transaction, so a cover changed since the lookup isn't missed
+                        AlbumEntity current = this.albums.findById(album.getAlbumId()).orElseThrow(() ->
+                                new AuxException(HttpStatus.NOT_FOUND, "ALBUM_NOT_FOUND", "Album not found", "albumId"));
+                        piece.setAlbumId(current.getAlbumId());
+                        if (!ownCover) {
+                            piece.setCoverUrl(current.getCoverUrl());
+                            piece.setUsesAlbumCover(true);
+                        }
+                    }
                     return List.of(piece);
                 }
         ).getFirst();
 
-        // The cover is required, so a failed cover undoes the whole piece
-        try {
-            this.uploads.replaceMusicPieceCover(newMusicPiece, musicPieceCreationDetails.coverImage());
-        } catch (RuntimeException e) {
-            this.musicPieces.delete(newMusicPiece);
-            this.uploads.deleteTrack(newMusicPiece.getMp3FileUrl());
-            throw e;
+        // A piece without the album's cover needs its own, so a failed cover undoes the whole piece
+        if (ownCover) {
+            try {
+                this.uploads.replaceMusicPieceCover(newMusicPiece, musicPieceCreationDetails.coverImage());
+            } catch (RuntimeException e) {
+                this.musicPieces.delete(newMusicPiece);
+                this.uploads.deleteTrack(newMusicPiece.getMp3FileUrl());
+                throw e;
+            }
         }
         if (newTags != null) {
             this.tags.setPieceTags(newMusicPiece.getMusicPieceId(), newTags);
@@ -205,17 +243,24 @@ public class MusicPieceController {
                     Partial update of a piece the caller uploaded. Every multipart field is optional; a missing or
                     blank field leaves that value unchanged.
                     - `name`: at most 200 chars, trimmed.
-                    - `artistId`: id of an existing artist.
+                    - `artistId`: id of an existing artist. Moving to another artist without a new `albumId` takes
+                      the piece out of its album; it keeps the cover it shows.
+                    - `albumId`: one of the artist's albums (after any `artistId` change) to move the piece into.
+                      A piece using its album's cover switches to the new album's cover.
+                    - `removeFromAlbum`: `true` makes the piece a single; it keeps the cover it shows, as its own.
+                    - `useAlbumCover`: `true` shows the album's cover and follows it from now on (the piece's own
+                      cover is deleted); `false` keeps the current image as the piece's own.
                     - `isPublic`: `true` or `false`. Making a piece private marks it unavailable on public playlists
                       and on playlists where the caller is no longer a collaborator; it stays in those playlists.
-                    - `coverImage`: same rules as on upload. Replaces the old cover.
+                    - `coverImage`: same rules as on upload. Replaces the old cover and becomes the piece's own, so
+                      the piece stops using its album's cover.
                     - `tags`: same rules as on upload. Replaces all tags; send a single blank `tags` value to remove
                       them all.
                     The MP3 can't be replaced; upload a new piece instead. Returns the piece after the update.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "400", description = "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)")
-    @ApiResponse(responseCode = "404", description = "Music piece not found or not the caller's (code MUSIC_PIECE_NOT_FOUND), or artist not found (code ARTIST_NOT_FOUND)")
+    @ApiResponse(responseCode = "400", description = "Bad field, including `albumId` with `removeFromAlbum` or `coverImage` with `useAlbumCover=true` (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), `useAlbumCover=true` for a single (code NOT_IN_ALBUM), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "404", description = "Music piece not found or not the caller's (code MUSIC_PIECE_NOT_FOUND), artist not found (code ARTIST_NOT_FOUND), or album not found (code ALBUM_NOT_FOUND)")
     @ApiResponse(responseCode = "413", description = "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public MusicPieceOverview editMusicPiece(
@@ -256,11 +301,15 @@ public class MusicPieceController {
         if (details.isPublic() != null) {
             piece.setIsPublic(details.isPublic());
         }
+        // After the artist change: the album must belong to the piece's new artist
+        String droppedCover = this.albumService.placePiece(
+                piece, details.albumId(), details.removeFromAlbum(), details.useAlbumCover(), details.coverImage() != null);
 
         if (details.coverImage() != null) {
             this.uploads.replaceMusicPieceCover(piece, details.coverImage());
         } else {
             this.musicPieces.save(piece);
+            this.uploads.deleteImageIfUnused(droppedCover);
         }
         if (newTags != null) {
             this.tags.setPieceTags(piece.getMusicPieceId(), newTags);

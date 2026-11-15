@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.aux_app.dto.album.AlbumSummary;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.music_piece.MusicPieceOverview;
 import com.aux_app.dto.users.PlaylistOwner;
@@ -73,6 +74,8 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
                 row.getName(),
                 row.getCoverUrl(),
                 new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
+                albumSummary(row.getAlbumId(), row.getAlbumName()),
+                Integer.valueOf(1).equals(row.getUsesAlbumCover()),
                 new PlaylistOwner(row.getUploaderId(), row.getUploaderPfpUrl(), row.getUploaderUsername()),
                 TagRepository.split(row.getTags()),
                 Integer.valueOf(1).equals(row.getIsPublic()),
@@ -86,11 +89,14 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
                    u.public_id AS uploaderId, u.username AS uploaderUsername, u.profile_picture_url AS uploaderPfpUrl,
                    CAST(mp.is_public AS INTEGER) AS isPublic, (uft.user_id IS NOT NULL) AS isFavorite,
+                   al.public_id AS albumId, al.album_name AS albumName,
+                   CAST(mp.uses_album_cover AS INTEGER) AS usesAlbumCover,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
             FROM music_pieces mp
             JOIN artists a ON a.artist_id = mp.artist_id
             JOIN users u ON u.user_id = mp.uploader_user_id
+            LEFT JOIN albums al ON al.album_id = mp.album_id
             LEFT JOIN user_favorite_tracks uft ON uft.music_piece_id = mp.music_piece_id AND uft.user_id = :userId
             """;
 
@@ -226,7 +232,31 @@ public interface MusicPieceRepository extends JpaRepository<MusicPieceEntity, St
             @Param("recentSince") long recentSince, @Param("popularSince") long popularSince,
             @Param("sameArtistCap") int sameArtistCap, @Param("limit") int limit);
 
+    // Null for a single
+    static AlbumSummary albumSummary(String albumId, String albumName) {
+        return albumId == null ? null : new AlbumSummary(albumId, albumName);
+    }
+
+    // Pieces in the album (internal id) that `userId` can play on their own, ordered like findArtistPieces
+    default List<MusicPieceOverview> findAlbumPieces(String albumId, String userId, int limit, int offset) {
+        return findAlbumPieceRows(albumId, userId, limit, offset).stream().map(MusicPieceRepository::toOverview).toList();
+    }
+
+    @Query(value = OVERVIEW_COLUMNS + """
+            WHERE mp.album_id = :albumId AND (mp.is_public = 1 OR mp.uploader_user_id = :userId)
+            ORDER BY (SELECT COUNT(*) FROM play_events pe WHERE pe.music_piece_id = mp.music_piece_id) DESC,
+                     mp.created_at DESC, mp.music_piece_id
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<MusicPieceOverviewRow> findAlbumPieceRows(@Param("albumId") String albumId, @Param("userId") String userId,
+                                                   @Param("limit") int limit, @Param("offset") int offset);
+
+    boolean existsByCoverUrl(String coverUrl);
+
     interface MusicPieceOverviewRow extends MusicPieceSearchRow {
+        String getAlbumId();
+        String getAlbumName();
+        Integer getUsesAlbumCover(); // SQLite has no boolean type: 1 or 0
         String getUploaderId();
         String getUploaderUsername();
         String getUploaderPfpUrl();

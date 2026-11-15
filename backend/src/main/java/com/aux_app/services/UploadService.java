@@ -41,11 +41,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.aux_app.entity.AlbumEntity;
 import com.aux_app.entity.ArtistEntity;
 import com.aux_app.entity.MusicPieceEntity;
 import com.aux_app.entity.PlaylistEntity;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
+import com.aux_app.repository.AlbumRepository;
 import com.aux_app.repository.ArtistRepository;
 import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.PlaylistRepository;
@@ -119,6 +121,7 @@ public class UploadService {
     private final MusicPieceRepository musicPieces;
     private final PlaylistRepository playlists;
     private final ArtistRepository artists;
+    private final AlbumRepository albums;
     private final EntityManager entityManager;
     private final TransactionTemplate transactions;
 
@@ -136,6 +139,7 @@ public class UploadService {
             MusicPieceRepository musicPieces,
             PlaylistRepository playlists,
             ArtistRepository artists,
+            AlbumRepository albums,
             EntityManager entityManager,
             TransactionTemplate transactions
     ) {
@@ -157,6 +161,7 @@ public class UploadService {
         this.musicPieces = musicPieces;
         this.playlists = playlists;
         this.artists = artists;
+        this.albums = albums;
         this.entityManager = entityManager;
         this.transactions = transactions;
     }
@@ -209,17 +214,34 @@ public class UploadService {
                 () -> playlists.save(playlist));
     }
 
-    // The piece must already be saved: storeTracks persists it, and save here would merge
+    // The piece must already be saved: storeTracks persists it, and save here would merge.
+    // The new cover is the piece's own, so it stops following its album's cover. The old one may be the album's
+    // (or copied from it), so it's only deleted once nothing else shows it
     public String replaceMusicPieceCover(MusicPieceEntity piece, MultipartFile file) {
-        byte[] webp;
+        byte[] webp = squareCover(file);
+        String oldUrl = piece.getCoverUrl();
+        String newUrl = store("music-piece-cover", webp, null, url -> {
+            piece.setCoverUrl(url);
+            piece.setUsesAlbumCover(false);
+        }, () -> musicPieces.save(piece));
+        deleteImageIfUnused(oldUrl);
+        return newUrl;
+    }
+
+    // `save` persists the album, and anything else that has to change with its cover (AlbumService syncs the pieces
+    // that use it). Returns the new URL and leaves the old object alone: pieces may still show it, so the caller
+    // deletes it with deleteImageIfUnused once they've moved over
+    public String storeAlbumCover(AlbumEntity album, MultipartFile file, Runnable save) {
+        return store("album-cover", squareCover(file), null, album::setCoverUrl, save);
+    }
+
+    private static byte[] squareCover(MultipartFile file) {
         try {
-            webp = toWebp(readUpload(file));
+            return toWebp(readUpload(file));
         } catch (AuxException e) {
             // The image checks report the pfp/banner field name
             throw new AuxException(e.getStatus(), e.getDetails().code(), e.getMessage(), "coverImage");
         }
-        return store("music-piece-cover", webp, piece.getCoverUrl(), piece::setCoverUrl,
-                () -> musicPieces.save(piece));
     }
 
     // mp3FileUrl in music_pieces holds this key; turn it into a playable URL with signedAudioUrl.
@@ -288,6 +310,14 @@ public class UploadService {
     public void deleteImage(String url) {
         if (url != null && url.startsWith(publicBaseUrl + "/")) {
             deleteQuietly(r2, bucket, url.substring(publicBaseUrl.length() + 1));
+        }
+    }
+
+    // For piece and album covers, which can be shared: an album's cover is copied into the pieces that use it, and
+    // they keep it when they leave the album. Call after the change that stopped `url` being used has committed
+    public void deleteImageIfUnused(String url) {
+        if (url != null && !musicPieces.existsByCoverUrl(url) && !albums.existsByCoverUrl(url)) {
+            deleteImage(url);
         }
     }
 

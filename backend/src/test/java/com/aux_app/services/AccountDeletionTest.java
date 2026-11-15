@@ -32,6 +32,10 @@ class AccountDeletionTest {
             exec(db, "INSERT INTO artists (artist_id, artist_name, public_id, created_by_user_id) VALUES ('A', 'A', 'a_A', 'gone')");
             exec(db, "INSERT INTO music_pieces (music_piece_id, uploader_user_id, artist_id, mp3_file_url, is_public, public_id, name) "
                     + "VALUES ('mg', 'gone', 'A', 'x', 1, 'm_mg', 'mg'), ('mk', 'keep', 'A', 'x', 1, 'm_mk', 'mk')");
+            // 'gone' also created an album both pieces are in
+            exec(db, "INSERT INTO albums (album_id, public_id, artist_id, album_name, cover_url, created_by_user_id) "
+                    + "VALUES ('L', 'l_L', 'A', 'L', 'c', 'gone')");
+            exec(db, "UPDATE music_pieces SET album_id = 'L', uses_album_cover = 1, cover_url = 'c'");
             exec(db, "INSERT INTO music_piece_tags (music_piece_id, tag_id) SELECT 'mg', tag_id FROM tags WHERE tag = 'chill'");
             exec(db, "INSERT INTO playlists (playlist_id, owner_id, is_public, playlist_name, public_id) "
                     + "VALUES ('pg', 'gone', 1, 'G', 'p_pg'), ('pk', 'keep', 1, 'K', 'p_pk')");
@@ -62,6 +66,8 @@ class AccountDeletionTest {
             assertEquals("e3:", one(db, "SELECT group_concat(play_event_id || ':' || COALESCE(context_playlist_id, '')) FROM play_events"));
             assertEquals("keep", one(db, "SELECT group_concat(user_id) FROM user_favorite_tracks"));
             assertEquals("A:", one(db, "SELECT group_concat(artist_id || ':' || COALESCE(created_by_user_id, '')) FROM artists"));
+            assertEquals("L:", one(db, "SELECT group_concat(album_id || ':' || COALESCE(created_by_user_id, '')) FROM albums"));
+            assertEquals("L", one(db, "SELECT group_concat(album_id) FROM music_pieces"));
             for (String table : new String[] {"playlist_members", "notifications", "user_saved_playlists", "follows",
                     "user_favorite_artists", "music_piece_tags", "playlist_tags", "otp_codes", "user_play_preferences"}) {
                 assertEquals("0", one(db, "SELECT COUNT(*) FROM " + table), table);

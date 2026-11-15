@@ -1867,7 +1867,7 @@
       "put" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Edit a music piece's details",
-        "description" : "Partial update of a piece the caller uploaded. Every multipart field is optional; a missing or\nblank field leaves that value unchanged.\n- `name`: at most 200 chars, trimmed.\n- `artistId`: id of an existing artist.\n- `isPublic`: `true` or `false`. Making a piece private marks it unavailable on public playlists\n  and on playlists where the caller is no longer a collaborator; it stays in those playlists.\n- `coverImage`: same rules as on upload. Replaces the old cover.\n- `tags`: same rules as on upload. Replaces all tags; send a single blank `tags` value to remove\n  them all.\nThe MP3 can't be replaced; upload a new piece instead. Returns the piece after the update.\n",
+        "description" : "Partial update of a piece the caller uploaded. Every multipart field is optional; a missing or\nblank field leaves that value unchanged.\n- `name`: at most 200 chars, trimmed.\n- `artistId`: id of an existing artist. Moving to another artist without a new `albumId` takes\n  the piece out of its album; it keeps the cover it shows.\n- `albumId`: one of the artist's albums (after any `artistId` change) to move the piece into.\n  A piece using its album's cover switches to the new album's cover.\n- `removeFromAlbum`: `true` makes the piece a single; it keeps the cover it shows, as its own.\n- `useAlbumCover`: `true` shows the album's cover and follows it from now on (the piece's own\n  cover is deleted); `false` keeps the current image as the piece's own.\n- `isPublic`: `true` or `false`. Making a piece private marks it unavailable on public playlists\n  and on playlists where the caller is no longer a collaborator; it stays in those playlists.\n- `coverImage`: same rules as on upload. Replaces the old cover and becomes the piece's own, so\n  the piece stops using its album's cover.\n- `tags`: same rules as on upload. Replaces all tags; send a single blank `tags` value to remove\n  them all.\nThe MP3 can't be replaced; upload a new piece instead. Returns the piece after the update.\n",
         "operationId" : "editMusicPiece",
         "parameters" : [ {
           "name" : "musicPieceId",
@@ -1900,7 +1900,7 @@
             }
           },
           "400" : {
-            "description" : "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "description" : "Bad field, including `albumId` with `removeFromAlbum` or `coverImage` with `useAlbumCover=true` (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), `useAlbumCover=true` for a single (code NOT_IN_ALBUM), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1910,7 +1910,7 @@
             }
           },
           "404" : {
-            "description" : "Music piece not found or not the caller's (code MUSIC_PIECE_NOT_FOUND), or artist not found (code ARTIST_NOT_FOUND)",
+            "description" : "Music piece not found or not the caller's (code MUSIC_PIECE_NOT_FOUND), artist not found (code ARTIST_NOT_FOUND), or album not found (code ALBUM_NOT_FOUND)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -2433,6 +2433,300 @@
           },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/albums/{albumId}" : {
+      "get" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "Get an album",
+        "description" : "Public; a token is optional. `canEdit` is true when the caller created the album or its artist.\nAn album with no piece the caller can play is a 404 unless the caller can edit it, the same\nrule as the artist's album list. List its pieces with `/music-pieces`.\n",
+        "operationId" : "getAlbum",
+        "parameters" : [ {
+          "name" : "albumId",
+          "in" : "path",
+          "description" : "Public id of the album",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "l_4Hq9xT"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AlbumDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Album not found or hidden from the caller (code ALBUM_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      },
+      "put" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "Edit an album",
+        "description" : "Only the album's creator or the artist's creator. Every multipart field is optional; a missing\nor blank field leaves that value unchanged.\n- `albumName`: at most 100 chars, trimmed. Must not match another of the artist's albums\n  (case-insensitive).\n- `coverImage`: same rules as on create. Every piece that uses the album cover switches to the\n  new one, including other people's; pieces with their own cover keep it.\nReturns the album after the update.\n",
+        "operationId" : "editAlbum",
+        "parameters" : [ {
+          "name" : "albumId",
+          "in" : "path",
+          "description" : "Public id of the album",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "l_4Hq9xT"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AlbumDetailsUpdate"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AlbumDetails"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad field, or unreadable or too small cover (codes INVALID_FIELD, INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Caller didn't create the album or its artist (code NOT_ALBUM_EDITOR); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Album not found (code ALBUM_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The artist already has an album with that name (code ALBUM_NAME_TAKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "Delete an album",
+        "description" : "Only the album's creator or the artist's creator. Its pieces aren't deleted: they become singles\nand keep the cover they show, so a piece that used the album cover keeps that image as its own.\n",
+        "operationId" : "deleteAlbum",
+        "parameters" : [ {
+          "name" : "albumId",
+          "in" : "path",
+          "description" : "Public id of the album",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "l_4Hq9xT"
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Album deleted"
+          },
+          "403" : {
+            "description" : "Caller didn't create the album or its artist (code NOT_ALBUM_EDITOR); or Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Album not found (code ALBUM_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
               "Retry-After" : {
                 "description" : "Seconds until the next request is allowed",
@@ -3151,7 +3445,7 @@
       "post" : {
         "tags" : [ "music-piece-controller" ],
         "summary" : "Upload a music piece",
-        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its\n  uploader, and by the other collaborators on private playlists the uploader adds it to.\n- `mp3File` (required): an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the\n  caller's 2GB storage quota.\n- `coverImage` (required): same rules as a playlist cover. Send the original image; the server\n  crops it to a square and stores it as WebP.\n- `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24\n  letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
+        "description" : "Multipart fields:\n- `name` (required): at most 200 chars, trimmed.\n- `artistId` (required): id of an existing artist.\n- `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its\n  uploader, and by the other collaborators on private playlists the uploader adds it to.\n- `mp3File` (required): an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the\n  caller's 2GB storage quota.\n- `albumId`: one of the artist's albums (`GET /api/artists/{artistId}/albums`). Omit for a single.\n- `coverImage`: same rules as a playlist cover. Send the original image; the server crops it to a\n  square and stores it as WebP. Required for a single. With `albumId`, omit it to show the\n  album's cover (`usesAlbumCover` is then true and the piece follows later cover changes), or\n  send it to keep the piece's own cover while it sits in the album.\n- `tags`: up to 5, one value per tag (repeat the field). Lowercased and trimmed; each is 2-24\n  letters, digits, spaces, `&` or `-`. Unknown tags are created. `GET /api/tags` suggests some.\nThe caller is the uploader. Returns the new piece; `isFavorite` is always `false`.\n",
         "operationId" : "createMusicPiece",
         "requestBody" : {
           "content" : {
@@ -3174,7 +3468,7 @@
             }
           },
           "400" : {
-            "description" : "Missing or bad field (code INVALID_FIELD), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "description" : "Missing or bad field, including no cover for a single (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -3184,7 +3478,7 @@
             }
           },
           "404" : {
-            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "description" : "Artist not found (code ARTIST_NOT_FOUND), or album not found (code ALBUM_NOT_FOUND)",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -3935,6 +4229,220 @@
           },
           "429" : {
             "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/artists/{artistId}/albums" : {
+      "get" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "List an artist's albums",
+        "description" : "Public; a token is optional. Sorted by name, not paged. An album with no piece the caller can\nplay (public, or the caller's own private one) is left out unless the caller can edit it, so\nempty albums only show to the person who made them and to the artist's creator.\n`pieceCount` counts the pieces the caller can play. Use it for the artist page's Albums section\nand the upload form's album picker.\n",
+        "operationId" : "getArtistAlbums",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "description" : "Public id of the artist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "a_8f3k2Q"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK; empty if the artist has no albums the caller can see",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AlbumOverview"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      },
+      "post" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "Find or create an album",
+        "description" : "Anyone signed in can add an album to any artist. Multipart fields:\n- `albumName` (required): at most 100 chars, trimmed.\n- `coverImage`: same rules as a music piece cover. Required when the album is new.\nIf the artist already has an album with the same name (case-insensitive), returns that album\nunchanged and ignores `coverImage`, so sending only `albumName` is a lookup that never creates.\nThe caller becomes the album's creator; they and the artist's creator can edit or delete it.\n",
+        "operationId" : "createAlbum",
+        "parameters" : [ {
+          "name" : "artistId",
+          "in" : "path",
+          "description" : "Public id of the artist",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "a_8f3k2Q"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AlbumCreationDetails"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Album found or created; body is the album",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AlbumDetails"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or bad field, including no cover for a new album (code INVALID_FIELD), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Artist not found (code ARTIST_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Someone created the same album at the same moment; retry (code CONFLICT)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "Cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "415" : {
+            "description" : "Cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing or invalid token (code INVALID_TOKEN)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Account has not finished onboarding (code ONBOARDING_INCOMPLETE)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 20 requests per minute per IP, shared by all upload endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
             "headers" : {
               "Retry-After" : {
                 "description" : "Seconds until the next request is allowed",
@@ -5771,6 +6279,168 @@
         }
       }
     },
+    "/api/albums/{albumId}/music-pieces" : {
+      "get" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "List an album's music pieces",
+        "description" : "Public; a token is optional. The album's pieces the caller can play on their own: every public\none, plus the caller's own private ones. Most played first (all plays, all time), newest as the\ntie-break, the same order as an artist's pieces; there are no track numbers. Pages of 50: send\n`nextCursor` back as `cursor` for the next page. For \"Play album\", play them in this order with\n`/stream` and no `playlistId`.\n",
+        "operationId" : "getAlbumMusicPieces",
+        "parameters" : [ {
+          "name" : "albumId",
+          "in" : "path",
+          "description" : "Public id of the album",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "l_4Hq9xT"
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` from the previous page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK; `musicPieces` is empty if the caller can play none",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MusicPiecePage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad cursor (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Album not found (code ALBUM_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      }
+    },
+    "/api/albums/top/{username}" : {
+      "get" : {
+        "tags" : [ "album-controller" ],
+        "summary" : "List a user's most played albums",
+        "description" : "Public; a token is optional. Up to 10 albums the user played most, all time, ties going to the\none played most recently. Only plays of pieces the caller can play on their own count, so the\nlist never reveals private pieces. `pieceCount` and `canEdit` are for the caller, as elsewhere.\nFor the profile's Top albums section.\n",
+        "operationId" : "getTopAlbums",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "description" : "Username of the user whose albums to list",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "justin"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK; `albums` is empty if the user hasn't played any album's pieces",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TopAlbumsResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "User not found (code USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      }
+    },
     "/api/users/me" : {
       "delete" : {
         "tags" : [ "user-controller" ],
@@ -6482,10 +7152,25 @@
             "description" : "New visibility; omit to keep the current value",
             "example" : true
           },
+          "albumId" : {
+            "type" : "string",
+            "description" : "Public id of an album of the piece's artist (after any `artistId` change) to move the piece into. Omit or leave blank to keep the current album",
+            "example" : "l_4Hq9xT"
+          },
+          "removeFromAlbum" : {
+            "type" : "boolean",
+            "description" : "`true` makes the piece a single; it keeps the cover it shows. Can't be sent with `albumId`",
+            "example" : false
+          },
+          "useAlbumCover" : {
+            "type" : "boolean",
+            "description" : "`true` shows the album's cover and follows it from now on; the piece's own cover is deleted. `false` keeps the cover the piece shows now as its own. Omit to keep the current choice. `true` can't be sent with `coverImage`",
+            "example" : true
+          },
           "coverImage" : {
             "type" : "string",
             "format" : "binary",
-            "description" : "New cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Omit to keep the current cover"
+            "description" : "New cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Becomes the piece's own cover, so it stops using its album's. Omit to keep the current cover"
           },
           "tags" : {
             "type" : "array",
@@ -6494,6 +7179,22 @@
             "items" : {
               "type" : "string"
             }
+          }
+        }
+      },
+      "AlbumSummary" : {
+        "type" : "object",
+        "description" : "The short form of an album, shown next to a music piece",
+        "properties" : {
+          "albumId" : {
+            "type" : "string",
+            "description" : "Public id of the album",
+            "example" : "l_4Hq9xT"
+          },
+          "albumName" : {
+            "type" : "string",
+            "description" : "Album name",
+            "example" : "Currents"
           }
         }
       },
@@ -6541,6 +7242,16 @@
             "$ref" : "#/components/schemas/ArtistSummary",
             "description" : "The artist"
           },
+          "album" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/AlbumSummary",
+            "description" : "The album the piece is in; null for a single"
+          },
+          "usesAlbumCover" : {
+            "type" : "boolean",
+            "description" : "Whether the piece shows its album's cover (and follows it when the album's cover changes) instead of its own",
+            "example" : false
+          },
           "uploader" : {
             "$ref" : "#/components/schemas/PlaylistOwner",
             "description" : "The user who uploaded the piece"
@@ -6566,6 +7277,71 @@
             "type" : "boolean",
             "description" : "Whether the caller can play the piece. Only false in a playlist's track list: the piece is private and the playlist is public, or its uploader is no longer the owner or an accepted member. Show it grayed out; it never appears in the play queue",
             "example" : true
+          }
+        }
+      },
+      "AlbumDetailsUpdate" : {
+        "type" : "object",
+        "description" : "Multipart form for editing an album; a missing field leaves that value unchanged",
+        "properties" : {
+          "albumName" : {
+            "type" : "string",
+            "description" : "New name, at most 100 chars. Profanity is masked. Omit or leave blank to keep the current name",
+            "example" : "Currents",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "coverImage" : {
+            "type" : "string",
+            "format" : "binary",
+            "description" : "New cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Omit to keep the current cover"
+          }
+        }
+      },
+      "AlbumDetails" : {
+        "type" : "object",
+        "description" : "An album's page: everything in AlbumOverview, plus who created it and when",
+        "properties" : {
+          "albumId" : {
+            "type" : "string",
+            "description" : "Public id of the album",
+            "example" : "l_4Hq9xT"
+          },
+          "albumName" : {
+            "type" : "string",
+            "description" : "Album name",
+            "example" : "Currents"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover URL",
+            "example" : "https://aux.justinabruinsma.com/album-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The album's artist"
+          },
+          "pieceCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Pieces in the album the caller can play on their own: public ones, plus the caller's private ones",
+            "example" : 12
+          },
+          "canEdit" : {
+            "type" : "boolean",
+            "description" : "Whether the caller can rename, re-cover or delete the album: they created it or its artist. False with no token",
+            "example" : false
+          },
+          "createdBy" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The user who created the album; null once their account is deleted"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the album was created (UTC)",
+            "example" : "2026-11-14T18:02:11Z"
           }
         }
       },
@@ -6790,10 +7566,15 @@
             "description" : "Whether anyone can play the piece; defaults to false. A private piece can only be played by its uploader, and by collaborators on private playlists the uploader adds it to",
             "example" : true
           },
+          "albumId" : {
+            "type" : "string",
+            "description" : "Public id of one of the artist's albums; omit for a single",
+            "example" : "l_4Hq9xT"
+          },
           "coverImage" : {
             "type" : "string",
             "format" : "binary",
-            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes"
+            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes. Required for a single; with `albumId`, omit it to use the album's cover"
           },
           "mp3File" : {
             "type" : "string",
@@ -6809,7 +7590,7 @@
             }
           }
         },
-        "required" : [ "artistId", "coverImage", "mp3File", "name" ]
+        "required" : [ "artistId", "mp3File", "name" ]
       },
       "RegistrationCredentials" : {
         "type" : "object",
@@ -6957,6 +7738,25 @@
           }
         },
         "required" : [ "artistName" ]
+      },
+      "AlbumCreationDetails" : {
+        "type" : "object",
+        "description" : "Multipart form for finding or creating an album",
+        "properties" : {
+          "albumName" : {
+            "type" : "string",
+            "description" : "Album name, 1-100 chars, trimmed. Profanity is masked",
+            "example" : "Currents",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "coverImage" : {
+            "type" : "string",
+            "format" : "binary",
+            "description" : "Cover: JPEG or PNG, at most 5MB and 25 megapixels, at least 256x256. Send the original; the server crops and resizes. Required when the album is created; ignored when it already exists"
+          }
+        },
+        "required" : [ "albumName" ]
       },
       "UserSettings" : {
         "type" : "object",
@@ -7397,6 +8197,16 @@
             "$ref" : "#/components/schemas/ArtistSummary",
             "description" : "The artist"
           },
+          "album" : {
+            "type" : "null",
+            "$ref" : "#/components/schemas/AlbumSummary",
+            "description" : "The album the piece is in; null for a single"
+          },
+          "usesAlbumCover" : {
+            "type" : "boolean",
+            "description" : "Whether the piece shows its album's cover (and follows it when the album's cover changes) instead of its own",
+            "example" : false
+          },
           "uploader" : {
             "$ref" : "#/components/schemas/PlaylistOwner",
             "description" : "The user who uploaded the piece"
@@ -7702,6 +8512,55 @@
             "type" : "boolean",
             "description" : "Whether the caller created the artist and may change its pfp and banner; false with no token",
             "example" : false
+          }
+        }
+      },
+      "AlbumOverview" : {
+        "type" : "object",
+        "description" : "An album as shown on a card",
+        "properties" : {
+          "albumId" : {
+            "type" : "string",
+            "description" : "Public id of the album",
+            "example" : "l_4Hq9xT"
+          },
+          "albumName" : {
+            "type" : "string",
+            "description" : "Album name",
+            "example" : "Currents"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover URL",
+            "example" : "https://aux.justinabruinsma.com/album-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The album's artist"
+          },
+          "pieceCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Pieces in the album the caller can play on their own: public ones, plus the caller's private ones",
+            "example" : 12
+          },
+          "canEdit" : {
+            "type" : "boolean",
+            "description" : "Whether the caller can rename, re-cover or delete the album: they created it or its artist. False with no token",
+            "example" : false
+          }
+        }
+      },
+      "TopAlbumsResponse" : {
+        "type" : "object",
+        "description" : "A user's most played albums",
+        "properties" : {
+          "albums" : {
+            "type" : "array",
+            "description" : "Up to 10 albums, most played first; empty if the user hasn't played any album's pieces",
+            "items" : {
+              "$ref" : "#/components/schemas/AlbumOverview"
+            }
           }
         }
       },

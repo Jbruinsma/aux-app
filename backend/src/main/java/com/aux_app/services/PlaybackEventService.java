@@ -94,6 +94,8 @@ public class PlaybackEventService {
                                 row.getArtistName(),
                                 row.getArtistPfpUrl()
                         ),
+                        MusicPieceRepository.albumSummary(row.getAlbumId(), row.getAlbumName()),
+                        row.getUsesAlbumCover() == 1,
                         new PlaylistOwner(
                                 row.getUploaderId(),
                                 row.getUploaderPfpUrl(),

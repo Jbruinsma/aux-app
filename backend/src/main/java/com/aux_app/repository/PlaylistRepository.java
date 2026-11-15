@@ -90,6 +90,8 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                     row.getPieceName(),
                     row.getPieceCoverUrl(),
                     new ArtistSummary(row.getArtistId(), row.getArtistName(), row.getArtistPfpUrl()),
+                    MusicPieceRepository.albumSummary(row.getAlbumId(), row.getAlbumName()),
+                    Integer.valueOf(1).equals(row.getUsesAlbumCover()),
                     new PlaylistOwner(row.getUploaderId(), row.getUploaderPfpUrl(), row.getUploaderUsername()),
                     TagRepository.split(row.getPieceTags()),
                     Integer.valueOf(1).equals(row.getPieceIsPublic()),
@@ -119,6 +121,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
                    up.username AS uploaderUsername,
                    up.profile_picture_url AS uploaderPfpUrl,
                    CAST(mp.is_public AS INTEGER) AS pieceIsPublic,
+                   al.public_id AS albumId,
+                   al.album_name AS albumName,
+                   CAST(mp.uses_album_cover AS INTEGER) AS usesAlbumCover,
                    (uft.user_id IS NOT NULL) AS isFavorite,
                    -- PlaybackEventService.isPlayable in SQL
                    CASE WHEN mp.is_public = 1 OR mp.uploader_user_id = :userId
@@ -137,6 +142,7 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
             LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.playlist_id AND pt.playlist_position > :afterPosition
             LEFT JOIN music_pieces mp ON mp.music_piece_id = pt.music_piece_id
             LEFT JOIN artists a ON a.artist_id = mp.artist_id
+            LEFT JOIN albums al ON al.album_id = mp.album_id
             LEFT JOIN users up ON up.user_id = mp.uploader_user_id
             LEFT JOIN playlist_members pm ON pm.playlist_id = p.playlist_id AND pm.user_id = :userId
             LEFT JOIN user_favorite_tracks uft ON uft.music_piece_id = mp.music_piece_id AND uft.user_id = :userId
@@ -177,6 +183,9 @@ public interface PlaylistRepository extends JpaRepository<PlaylistEntity, String
         String getUploaderUsername();
         String getUploaderPfpUrl();
         Integer getPieceIsPublic(); // SQLite has no boolean type: 1 or 0
+        String getAlbumId(); // null for a single
+        String getAlbumName();
+        Integer getUsesAlbumCover(); // 1 or 0
         Integer getIsFavorite(); // 1 or 0
         Integer getIsAvailable(); // 1 or 0
         String getCallerStatus(); // caller's playlist_members row; null if they have none
