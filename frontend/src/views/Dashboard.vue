@@ -63,6 +63,11 @@
                       </span>
                     </span>
                   </component>
+                  <router-link
+                    v-if="!recent.preview && item.playlistId && item.playlistOwnerUsername"
+                    class="card-playlist"
+                    :to="{ name: 'Playlist', params: { username: item.playlistOwnerUsername, id: item.playlistId } }"
+                  ><span class="card-from">From </span>{{ item.playlistName || 'a playlist' }}</router-link>
                 </li>
               </ul>
               <span v-if="hinting" :key="hintRun" class="drag-hint" aria-hidden="true" @animationend="hinting = false">
@@ -459,6 +464,10 @@ button.card-main:hover .card-title, a.card-main:hover .card-title, .playing .car
 .uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
 .uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
 .uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-playlist { background: var(--surface-alt); color: var(--link); font: 500 12px/16px var(--font-sans); overflow: hidden; padding: 0 var(--space-4) var(--space-3); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.card-from { color: var(--ink-muted); }
+.card-playlist:hover { text-decoration: underline; }
+.card-playlist:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .card-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 

@@ -294,13 +294,13 @@ Already done with the backend change, listed so the team knows the player change
 **Files:** `src/views/LandingPage.vue`
 **API:** `GET /api/core/top` (public, no token)
 
-- [ ] Replace the hardcoded `topAlbums` with a call to `GET /api/core/top` in `onMounted`, next to the
+- [x] Replace the hardcoded `topAlbums` with a call to `GET /api/core/top` in `onMounted`, next to the
       `/api/core/users` call. Show the first 3.
-- [ ] Load each cover through `resolveCoverURL`, which can't take null, so guard it like `src/stores/music.js` does
+- [x] Load each cover through `resolveCoverURL`, which can't take null, so guard it like `src/stores/music.js` does
       (`piece.coverUrl ? resolveCoverURL(piece.coverUrl) : ''`).
-- [ ] These are songs, not albums: change the lead to something like "The songs getting the most plays on Aux this
+- [x] These are songs, not albums: change the lead to something like "The songs getting the most plays on Aux this
       week." and rename `album` in the template.
-- [ ] Hide the Top section when the list is empty (nothing played that week) or the call fails, the same way the
+- [x] Hide the Top section when the list is empty (nothing played that week) or the call fails, the same way the
       profile picture row hides.
 
 **Done when:** the landing page shows this week's most-played songs from the server, and a fresh database shows no Top
@@ -313,7 +313,7 @@ section instead of a blank one.
 
 - [x] Replace the search workaround in `fetchArtistPieces` with the new endpoint. It's ordered most played first.
 - [x] Load more pages with `nextCursor`, the same way playlist track lists do.
-- [ ] Show the uploader on each row now that the pieces carry `uploader`.
+- [x] Show the uploader on each row now that the pieces carry `uploader` (`TrackRows` `show-uploader`).
 
 **Done when:** the artist page lists songs most played first, with no `/api/core/search` calls in the network tab.
 
@@ -322,9 +322,9 @@ section instead of a blank one.
 **Files:** `src/views/Dashboard.vue`
 **API:** `recents` event on `GET /api/users/me/events`
 
-- [ ] Each recent now carries `playlistOwnerUsername` next to `playlistId`. Link the card's playlist to
+- [x] Each recent now carries `playlistOwnerUsername` next to `playlistId`. Link the card's playlist to
       `/playlist/{playlistOwnerUsername}/{playlistId}`; show no link when `playlistId` is null.
-- [ ] Add `playlistOwnerUsername` to the mock recents in `src/utils/dashboardPreview.js`.
+- [x] Add `playlistOwnerUsername` to the mock recents in `src/utils/dashboardPreview.js`.
 
 **Done when:** a song played from a playlist links to that playlist from Recently played.
 
@@ -400,6 +400,11 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
       false.
 - [x] Show "Friends" on the profile, instead of "Follows you", when you follow each other, and "Follow back" on the
       button when only they follow you.
+- [x] No sample people: your own lists show your real friends, with their pictures, from `GET /api/users/me/friends`
+      (friends follow you and are followed back, so they're on both lists), and a note says only friends show for now.
+      Every row opens a real profile.
+- [x] Other people's Followers and Following stay plain counts until the list endpoints exist, instead of opening
+      people who aren't on Aux.
 - [ ] Turn off `FOLLOWS_MOCKED` in `src/utils/follows.js` once the list endpoints are in the docs.
 
 ### 29. Who can see your follows
@@ -527,6 +532,29 @@ A "Recommended" section under a playlist's songs, so short playlists don't end i
 **Done when:** a short playlist shows 5 recommendations, owners can add them in one click, and listeners can add them
 to their own playlists.
 
+### 38. Albums on the artist page
+
+Group an artist's songs into albums so the page is easier to browse. Songs on an album show its cover; singles keep
+their own.
+
+**Files:** new `src/components/AlbumDialog.vue`, new `src/utils/albums.js`, `src/views/ArtistPage.vue`,
+`src/components/TrackRows.vue`
+**API:** `GET /api/artists/{artistId}/albums`, `POST` the same, `PUT`/`DELETE /api/albums/{albumId}` (not in the docs
+yet: "Albums" in `../backend/BACKEND_REQUESTS.md`), `PUT /api/music-pieces/{musicPieceId}` for single covers
+
+- [x] New album (signed in): a name, a square cover, and songs picked from the artist's list in track order. A song
+      already on another album moves.
+- [x] Each album gets its own section, split from the next by a rule: cover, name, song count, Play and (for its
+      creator) Edit, then its tracks numbered. Everything else is listed under Singles, most played first.
+- [x] Tracks show the album cover unless "Use album cover" is unticked for them, which keeps the song's own.
+- [x] Singles you uploaded get a Change cover button on their row, which opens Edit song.
+- [x] Edit renames, changes the cover or the tracks, or deletes the album (its songs go back to singles).
+- [ ] Turn off `ALBUMS_MOCKED` in `src/utils/albums.js` once the album endpoints are in the docs. Until then albums are
+      kept in this browser and the album cover only shows on the artist page.
+
+**Done when:** albums are saved on the server, everyone sees them, and an album's songs carry its cover in the player
+and on playlists.
+
 ## P2: Later
 
 ### 15. Build the artist page
@@ -555,5 +583,6 @@ Don't start these until the endpoint is in the OpenAPI docs.
 - **Task 31:** a paged list of every artist.
 - **Task 32:** `GET /api/users/{username}/music-pieces`.
 - **Task 33:** `playCount` on song lists.
+- **Task 38:** the album endpoints.
 
 All are in `../backend/BACKEND_REQUESTS.md`.

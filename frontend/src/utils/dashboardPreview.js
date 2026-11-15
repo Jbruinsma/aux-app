@@ -33,6 +33,7 @@ const piece = (id, name, cover, artist) => ({
     uploader: UPLOADER,
   },
   playlistId: null,
+  playlistOwnerUsername: null,
 })
 
 export const PREVIEW_RECENTS = [
