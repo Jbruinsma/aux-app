@@ -43,8 +43,10 @@ public class OpenApiConfig {
             openApi.getComponents().addSecuritySchemes(BEARER, new SecurityScheme()
                     .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
                     .description("Token from /api/auth/login or /api/auth/register"));
+            // Types only sent on the event stream, which no endpoint returns. getInstance(true) writes them as OpenAPI 3.1
+            // like the rest of the spec, so `nullable = true` fields come out as ["string", "null"]
             for (Class<?> type : List.of(AuxServerError.class, RecentListeningResponse.class, TopArtistsResponse.class, LibraryPlaylist.class, MatchesResponse.class)) {
-                ModelConverters.getInstance().readAll(type).forEach(openApi.getComponents()::addSchemas);
+                ModelConverters.getInstance(true).readAll(type).forEach(openApi.getComponents()::addSchemas);
             }
         };
     }

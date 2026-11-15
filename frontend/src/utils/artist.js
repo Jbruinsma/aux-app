@@ -43,7 +43,7 @@ export function fetchArtistPieces(artistId, cursor = null) {
   return fetchAPI(`${artistUrl(artistId)}/music-pieces${query}`, { notifyOnError: false })
 }
 
-// Listing every artist isn't in the API yet (BACKEND_REQUESTS.md §7): GET /api/artists needs `q` and returns at most 20.
+// Listing every artist isn't in the API yet (BACKEND_REQUESTS.md, "Every artist, paged"): GET /api/artists needs `q` and returns at most 20.
 // While this is true the Artists tab only searches and shows favorites; set it to false once the paged list exists
 export const ARTIST_DIRECTORY_MOCKED = true
 

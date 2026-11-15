@@ -22,5 +22,13 @@ export default defineConfig([
 
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
+
+  // Route pages (Dashboard, Login, Settings…) are only loaded by the router, never written as tags in a template, so
+  // a single-word name can't clash with an HTML element, which is what this rule guards against
+  {
+    files: ['src/views/**/*.vue'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
+
   skipFormatting,
 ])

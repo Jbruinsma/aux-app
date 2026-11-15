@@ -4,9 +4,10 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const quiet = { notifyOnError: false }
 const userUrl = (username) => `${API_BASE_URL}/api/users/${encodeURIComponent(username)}`
 
-// The follower and following lists, and who may see them, aren't in the API yet (BACKEND_REQUESTS.md §3 and §4). While
-// this is true the lists show sample people and the visibility setting is kept in this browser; set it to false once
-// GET /api/users/{username}/followers, .../following and the followsVisibility setting exist
+// The follower and following lists, and who may see them, aren't in the API yet (BACKEND_REQUESTS.md, "Follower and
+// following lists" and "Who can see your follows"). While this is true the lists show sample people and the visibility
+// setting is kept in this browser; set it to false once GET /api/users/{username}/followers, .../following and the
+// followsVisibility setting exist
 export const FOLLOWS_MOCKED = true
 
 // Who can see the people a user follows and is followed by. Friends are people who follow each other
