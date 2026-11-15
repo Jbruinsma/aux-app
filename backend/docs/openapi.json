@@ -6338,6 +6338,7 @@
         }
       },
       "CorePlaylist" : {
+        "type" : "object",
         "description" : "The basic identity of a playlist",
         "properties" : {
           "playlistId" : {
@@ -6423,6 +6424,7 @@
         }
       },
       "PlaylistOwner" : {
+        "type" : "object",
         "description" : "A user shown next to content: a playlist's owner or member, a notification's actor, or a music piece's uploader",
         "properties" : {
           "userId" : {
@@ -6496,6 +6498,7 @@
         }
       },
       "ArtistSummary" : {
+        "type" : "object",
         "description" : "The short form of an artist, shown on cards and next to music pieces",
         "properties" : {
           "artistId" : {
@@ -6516,6 +6519,7 @@
         }
       },
       "MusicPieceOverview" : {
+        "type" : "object",
         "description" : "A music piece as shown in a track list",
         "properties" : {
           "musicPieceId" : {
@@ -6534,19 +6538,19 @@
             "example" : "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
           },
           "artistSummary" : {
-            "$ref" : "#/components/schemas/ArtistSummary"
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The artist"
           },
           "uploader" : {
-            "$ref" : "#/components/schemas/PlaylistOwner"
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The user who uploaded the piece"
           },
           "tags" : {
             "type" : "array",
             "description" : "Up to 5 lowercase tags, in name order; empty if none",
             "example" : [ "chill", "lo-fi" ],
             "items" : {
-              "type" : "string",
-              "description" : "Up to 5 lowercase tags, in name order; empty if none",
-              "example" : "[\"chill\",\"lo-fi\"]"
+              "type" : "string"
             }
           },
           "isPublic" : {
@@ -7744,14 +7748,17 @@
         "required" : [ "userId" ]
       },
       "AuxServerError" : {
+        "type" : "object",
         "description" : "Body of every 4xx and 5xx response",
         "properties" : {
           "errorDetails" : {
-            "$ref" : "#/components/schemas/ErrorDetails"
+            "$ref" : "#/components/schemas/ErrorDetails",
+            "description" : "What went wrong"
           }
         }
       },
       "ErrorDetails" : {
+        "type" : "object",
         "description" : "Details of an error response",
         "properties" : {
           "error" : {
@@ -7767,16 +7774,18 @@
             "description" : "Human-readable explanation"
           },
           "parameter" : {
-            "type" : "string",
+            "type" : [ "string", "null" ],
             "description" : "Name of the offending field or parameter; null when none applies"
           }
         }
       },
       "LastPlayback" : {
+        "type" : "object",
         "description" : "The last music piece the caller played",
         "properties" : {
           "musicPiece" : {
-            "$ref" : "#/components/schemas/MusicPieceOverview"
+            "$ref" : "#/components/schemas/MusicPieceOverview",
+            "description" : "The music piece"
           },
           "playlistId" : {
             "type" : "string",
@@ -7796,6 +7805,7 @@
         }
       },
       "RecentListeningResponse" : {
+        "type" : "object",
         "description" : "The caller's most recently played music pieces",
         "properties" : {
           "recents" : {
@@ -7808,6 +7818,7 @@
         }
       },
       "TopArtistsResponse" : {
+        "type" : "object",
         "description" : "The caller's most played artists",
         "properties" : {
           "artists" : {
@@ -7820,6 +7831,7 @@
         }
       },
       "LibraryPlaylist" : {
+        "type" : "object",
         "description" : "A playlist in the caller's library",
         "properties" : {
           "playlistId" : {
@@ -7854,17 +7866,19 @@
             "example" : true
           },
           "access" : {
-            "type" : "string",
+            "type" : [ "string", "null" ],
             "description" : "Caller's access: OWNER, or EDITOR or LISTENER as an accepted member. Null for a playlist they only saved",
             "enum" : [ "OWNER", "EDITOR", "LISTENER" ]
           }
         }
       },
       "CompatibilityMatch" : {
+        "type" : "object",
         "description" : "A listener who shares the caller's taste",
         "properties" : {
           "user" : {
-            "$ref" : "#/components/schemas/PlaylistOwner"
+            "$ref" : "#/components/schemas/PlaylistOwner",
+            "description" : "The matched user"
           },
           "compatibility" : {
             "type" : "integer",
@@ -7884,14 +7898,13 @@
             "description" : "Up to 3 curated tags both listen to, strongest first",
             "example" : [ "r&b", "chill" ],
             "items" : {
-              "type" : "string",
-              "description" : "Up to 3 curated tags both listen to, strongest first",
-              "example" : "[\"r&b\",\"chill\"]"
+              "type" : "string"
             }
           }
         }
       },
       "MatchesResponse" : {
+        "type" : "object",
         "description" : "Listeners who share the caller's taste, best match first",
         "properties" : {
           "matches" : {

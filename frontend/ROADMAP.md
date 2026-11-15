@@ -5,7 +5,7 @@ in place, all boxes ticked, so the team can see what's done. Exact request and r
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-11-13.
+Last updated 2026-11-14.
 
 ______________________________________________________
 
@@ -390,7 +390,7 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 ### 28. Follower and following lists
 
 **Files:** new `src/components/FollowListDialog.vue`, `src/views/PublicProfile.vue`, `src/utils/follows.js`
-**API:** `GET /api/users/{username}/followers`, `.../following` (not in the docs yet: `../backend/BACKEND_REQUESTS.md` §3)
+**API:** `GET /api/users/{username}/followers`, `.../following` (not in the docs yet: "Follower and following lists" in `../backend/BACKEND_REQUESTS.md`)
 
 - [x] Clicking the Followers or Following count opens a dialog with both lists as tabs.
 - [x] Each row links to the person's profile, shows "Friends" when you follow each other, and has a Follow button.
@@ -404,7 +404,7 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 ### 29. Who can see your follows
 
 **Files:** `src/views/Settings.vue`, `src/utils/follows.js`
-**API:** `PUT /api/users/me/follows-visibility`, `followsVisibility` on `GET /api/users/settings` (§4)
+**API:** `PUT /api/users/me/follows-visibility`, `followsVisibility` on `GET /api/users/settings` ("Who can see your follows")
 
 - [x] Settings → Profile → "Who can see your followers": Everyone, Friends or No one, saved as soon as it's picked.
 - [ ] Turn off `FOLLOWS_MOCKED` (the choice is kept in this browser until then).
@@ -412,7 +412,7 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 ### 30. Follow notifications
 
 **Files:** `src/components/NotificationBell.vue`
-**API:** `NEW_FOLLOWER` on `GET /api/notifications` and the `notifications` event (§5)
+**API:** `NEW_FOLLOWER` on `GET /api/notifications` and the `notifications` event ("Follow notifications")
 
 - [x] Show "<user> started following you." with their picture, linked to their profile.
 - [x] Show Follow back, or "You're now friends." when `followingBack` is true or after following back.
@@ -422,7 +422,7 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 
 **Files:** new `src/views/ArtistsPage.vue`, new `src/components/ArtistGrid.vue`, `src/components/AppHeader.vue`,
 `src/router/index.js`, `src/views/UploadMusic.vue`, `src/views/ArtistPage.vue`
-**API:** `GET /api/artists?q=`, `GET /api/artists/favorites/{username}`; listing every artist needs §7
+**API:** `GET /api/artists?q=`, `GET /api/artists/favorites/{username}`; listing every artist needs "Every artist, paged"
 
 - [x] Add Artists to the header nav, right after Music. The artist page highlights it too.
 - [x] Search artists by name, shown as round pictures with an Add music link under each.
@@ -435,7 +435,7 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 ### 32. Uploads on profiles
 
 **Files:** `src/views/PublicProfile.vue`, `src/utils/music.js`
-**API:** `GET /api/music-pieces` (yours), `GET /api/users/{username}/music-pieces` (anyone's, §6)
+**API:** `GET /api/music-pieces` (yours), `GET /api/users/{username}/music-pieces` (anyone's, "Another user's uploads")
 
 - [x] The Uploads count jumps to the Uploads section.
 - [x] Group uploads by artist, the most played artist first and the most played song first inside each; clicking a
@@ -446,7 +446,7 @@ Replaces the Coming soon page at `/explore`. Mock: `mockups/explore.html`.
 ### 33. Stream counts on every song
 
 **Files:** `src/components/TrackRows.vue` (nothing to change)
-**API:** `playCount` on `MusicPieceOverview` in lists (§8)
+**API:** `playCount` on `MusicPieceOverview` in lists ("Play counts on song lists")
 
 - [x] `TrackRows` already shows "N plays" with the play count bar whenever pieces carry `playCount`. The artist page and
       profile uploads use it.

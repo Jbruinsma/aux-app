@@ -110,7 +110,7 @@ export function additionMessage({ addedCount, failedCount }) {
   return `${addedCount ? `${added} ` : ''}${skipped} (already in the playlist, private, or the playlist is full).`
 }
 
-// Another user's uploads aren't in the API yet (BACKEND_REQUESTS.md §6): while this is true only your own profile lists
+// Another user's uploads aren't in the API yet (BACKEND_REQUESTS.md, "Another user's uploads"): while this is true only your own profile lists
 // uploads (from GET /api/music-pieces). Set it to false once GET /api/users/{username}/music-pieces exists
 export const USER_UPLOADS_MOCKED = true
 
