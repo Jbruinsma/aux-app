@@ -5,7 +5,7 @@ its items are left. Git history keeps what's done. Exact request and response sh
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-11-14.
+Last updated 2026-11-15.
 
 ______________________________________________________
 
@@ -91,7 +91,8 @@ the style guide and ask before designing the new screens.
 `removeFromAlbum` and `useAlbumCover` on `PUT /api/music-pieces/{musicPieceId}`
 
 - [ ] Artist page: an Albums section of album cards above the songs. Hide it when the list is empty.
-- [ ] Album page: cover, name, artist, who created it, and its songs most played first, with Play album.
+- [ ] Album page: cover, name, artist, who created it, and its songs in album order (`arrangeAlbum` in
+      `src/utils/albumOrder.js`, with its disc dividers), with Play album.
 - [ ] Album page: Edit (rename, new cover) and Delete for editors (`canEdit`). Say that deleting keeps the songs as
       singles, and that a new cover changes it for every song using it, including other people's.
 - [ ] Show `404 ALBUM_NOT_FOUND` as a not-found state. Albums with no song you can play are hidden this way.
@@ -101,6 +102,28 @@ the style guide and ask before designing the new screens.
 
 **Done when:** a song uploaded into an album shows the album's cover, changing the album's cover updates it, and
 deleting the album leaves the song with the same cover.
+
+### 39. Album track order
+
+Album songs play in their tracklist order, with "Disc 1" / "Disc 2" dividers. For now each album is looked up in
+Apple's public catalog from the viewer's browser; Apple's editions don't always match Spotify's (its "good kid,
+m.A.A.d city" deluxe is one disc).
+
+**Files:** `src/utils/albumOrder.js`, `src/views/ArtistPage.vue`, `src/components/AlbumDialog.vue`
+**API:** `discNumber` and `trackNumber` on `MusicPieceOverview`, `PUT /api/albums/{albumId}/track-order` ("Album track
+order")
+
+- [ ] Once pieces carry `trackNumber`, check albums sort by it, then delete the catalog lookup
+      (`fetchAlbumTracklist` and `ALBUM_ORDER_FROM_CATALOG`) and keep `arrangeAlbum`.
+- [ ] Album Edit dialog: drag the songs into order with `PUT /api/albums/{albumId}/track-order`.
+
+### 40. Songs up to 13 minutes
+
+**Files:** `src/utils/music.js`, `src/utils/youtube.js`, `src/utils/music.test.js`
+**API:** the upload and YouTube import limits ("Songs up to 13 minutes")
+
+- [ ] Once the backend allows it, set `MAX_SECONDS` to 13 minutes and `MAX_MP3_BYTES` to 32MB, and change the "10
+      minutes" and "25MB" messages.
 
 ## P2: Later
 
@@ -118,5 +141,7 @@ Don't start these until the endpoint is in the OpenAPI docs.
 - **Task 31:** a paged list of every artist.
 - **Task 32:** `GET /api/users/{username}/music-pieces`.
 - **Task 33:** `playCount` on song lists.
+- **Task 39:** `discNumber`/`trackNumber` and the track order endpoint.
+- **Task 40:** the 13 minute and 32MB upload limits.
 
 All are in `../backend/BACKEND_REQUESTS.md`.

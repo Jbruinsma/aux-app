@@ -84,7 +84,7 @@
                     <p class="meta">{{ section.album.pieceCount === 1 ? '1 song' : `${section.album.pieceCount} songs` }}</p>
                   </div>
                   <div class="album-actions">
-                    <button type="button" class="btn primary small" :disabled="!section.pieces.length" @click="musicStore.playPieces(section.pieces, 0)">
+                    <button type="button" class="btn primary small" :disabled="!section.pieces.length" @click="musicStore.playPieces(section.order.ordered, 0)">
                       Play<span class="sr-only"> {{ section.album.albumName }}</span>
                     </button>
                     <router-link v-if="loggedIn" :to="{ name: 'Upload', query: { artist: artist.artistId, album: section.album.albumId } }" class="btn secondary small">
@@ -95,14 +95,20 @@
                     </button>
                   </div>
                 </header>
-                <TrackRows
-                  v-if="section.pieces.length"
-                  :pieces="section.pieces"
-                  :label="`${section.album.albumName} by ${artist.artistName}, most played first`"
-                  ranked
-                  show-uploader
-                  @play="(index) => musicStore.playPieces(section.pieces, index)"
-                />
+                <template v-if="section.pieces.length">
+                  <template v-for="group in section.order.groups" :key="group.key">
+                    <h4 v-if="group.label" class="disc-title">{{ group.label }}</h4>
+                    <TrackRows
+                      :pieces="group.pieces"
+                      :numbers="group.numbers"
+                      :label="albumRowsLabel(section, group)"
+                      ranked
+                      show-uploader
+                      linked
+                      @play="(index) => musicStore.playPieces(section.order.ordered, group.start + index)"
+                    />
+                  </template>
+                </template>
                 <p v-else-if="albumPieces[section.album.albumId]?.error" class="meta">We couldn't load this album's songs.</p>
                 <p v-else-if="!albumPieces[section.album.albumId]?.loading" class="meta">No songs on it yet.</p>
                 <button
@@ -124,6 +130,7 @@
                   :label="`${arranged.albums.length ? 'Singles' : 'Songs'} by ${artist.artistName}, most played first`"
                   ranked
                   show-uploader
+                  linked
                   @play="(index) => musicStore.playPieces(arranged.singles, index)"
                 >
                   <template #action="{ piece }">
@@ -170,6 +177,7 @@ import TrackRows from '@/components/TrackRows.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import { fetchArtist, fetchArtistPieces, setArtistFavorite } from '@/utils/artist.js'
 import { arrangeByAlbum, fetchAlbumPieces, fetchArtistAlbums } from '@/utils/albums.js'
+import { arrangeAlbum, fetchAlbumTracklist } from '@/utils/albumOrder.js'
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
@@ -178,7 +186,7 @@ import { useNotificationStore } from '@/stores/notification.js'
 // the artist's creator (canEdit) can change its picture and banner. Songs come from GET /api/artists/{id}/music-pieces,
 // most played first, and play on their own, like My uploads. Add music opens Upload with this artist already picked.
 // Albums (GET /api/artists/{id}/albums) each get their own section with their songs from GET /api/albums/{id}/music-pieces,
-// most played first; songs with no `album` are singles, whose uploader can change their cover here. Signed-in users
+// in tracklist order with a divider per disc (see utils/albumOrder.js), else most played first; songs with no `album` are singles, whose uploader can change their cover here. Signed-in users
 // can make albums and put their own songs on them
 const route = useRoute()
 const userStore = useUserStore()
@@ -237,7 +245,25 @@ const albums = reactive({ items: [] })
 const albumPieces = reactive({})
 const albumDialog = ref(null)
 const editDialog = ref(null)
-const arranged = computed(() => arrangeByAlbum(albums.items, albumPieces, songs.items))
+// albumId → the album's tracklist from the catalog, or null when it has none
+const tracklists = reactive({})
+const arranged = computed(() => {
+  const { albums: sections, singles } = arrangeByAlbum(albums.items, albumPieces, songs.items)
+  return { albums: sections.map((section) => ({ ...section, order: arrangeAlbum(section.pieces, tracklists[section.album.albumId]) })), singles }
+})
+
+function albumRowsLabel(section, group) {
+  const name = group.label ? `${section.album.albumName}, ${group.label}` : section.album.albumName
+  return `${name} by ${artist.value.artistName}, ${section.order.inOrder ? 'in album order' : 'most played first'}`
+}
+
+// Only while the backend sends no track numbers; once it does, arrangeAlbum uses those
+async function loadTracklist(album, pieces) {
+  if (pieces.some((piece) => typeof piece.trackNumber === 'number')) return
+  const current = artist.value
+  const tracks = await fetchAlbumTracklist(current.artistName, album.albumName)
+  if (artist.value === current) tracklists[album.albumId] = tracks
+}
 
 async function loadAlbums() {
   const current = artist.value
@@ -264,6 +290,7 @@ async function loadAlbumPieces(album, cursor = null) {
     if (artist.value !== current || albumPieces[album.albumId] !== entry) return
     entry.items = cursor ? [...entry.items, ...page.musicPieces] : page.musicPieces
     entry.nextCursor = page.nextCursor ?? null
+    if (!cursor && entry.items.length) loadTracklist(album, entry.items)
   } catch (err) {
     if (!err.sessionEnded) entry.error = true
   } finally {
@@ -361,6 +388,8 @@ p.page-state { display: block; }
 h3 { font: 700 20px/28px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
 .album-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .singles-title { margin-bottom: var(--space-3); }
+.disc-title { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); letter-spacing: 0.06em; margin: var(--space-4) 0; text-transform: uppercase; }
+.disc-title:first-of-type { margin-top: 0; }
 .row-edit { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink-muted); cursor: pointer; display: flex; height: 32px; justify-content: center; padding: 0; width: 32px; }
 .row-edit:hover { background: var(--surface); color: var(--link); }
 .row-edit:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
