@@ -11,6 +11,7 @@ public final class PublicId {
     public static final String ARTIST = "a_";
     public static final String MUSIC_PIECE = "m_";
     public static final String NOTIFICATION = "n_";
+    public static final String ALBUM = "l_";
 
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final int LENGTH = 6;

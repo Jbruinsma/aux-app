@@ -25,7 +25,7 @@ public class AccountService {
     // In foreign-key order (foreign_keys is on). playlist_members, notifications, otp_codes and user_play_preferences
     // cascade on their own. The user's pieces leave every playlist they were in, other people's plays and favorites
     // of them go too, and other people's plays from the user's playlists keep the play and lose the playlist.
-    // Artists the user created stay (other people's pieces may use them); only the creator link goes.
+    // Artists and albums the user created stay (other people's pieces may use them); only the creator link goes.
     static final List<String> DELETES = List.of(
             "DELETE FROM playlist_tracks WHERE music_piece_id IN " + PIECES + " OR playlist_id IN " + PLAYLISTS,
             "DELETE FROM user_saved_playlists WHERE user_id = :userId OR playlist_id IN " + PLAYLISTS,
@@ -37,6 +37,7 @@ public class AccountService {
             "UPDATE play_events SET context_playlist_id = NULL WHERE context_playlist_id IN " + PLAYLISTS,
             "DELETE FROM follows WHERE follower_user_id = :userId OR following_user_id = :userId",
             "UPDATE artists SET created_by_user_id = NULL WHERE created_by_user_id = :userId",
+            "UPDATE albums SET created_by_user_id = NULL WHERE created_by_user_id = :userId",
             "DELETE FROM music_pieces WHERE uploader_user_id = :userId",
             "DELETE FROM playlists WHERE owner_id = :userId",
             "DELETE FROM profile_details WHERE user_id = :userId",
@@ -64,10 +65,13 @@ public class AccountService {
 
         // Read before the rows go
         List<String> tracks = strings("SELECT mp3_file_url FROM music_pieces WHERE uploader_user_id = :userId", userId);
-        List<String> images = new ArrayList<>(strings("""
-                SELECT cover_url FROM music_pieces WHERE uploader_user_id = :userId AND cover_url IS NOT NULL
-                UNION ALL SELECT playlist_cover_url FROM playlists WHERE owner_id = :userId AND playlist_cover_url IS NOT NULL
-                """, userId));
+        // Piece covers can be an album's cover, or shared with other pieces that took it from one
+        List<String> pieceCovers = strings(
+                "SELECT DISTINCT cover_url FROM music_pieces WHERE uploader_user_id = :userId AND cover_url IS NOT NULL",
+                userId);
+        List<String> images = new ArrayList<>(strings(
+                "SELECT playlist_cover_url FROM playlists WHERE owner_id = :userId AND playlist_cover_url IS NOT NULL",
+                userId));
         images.add(user.getProfilePictureUrl());
         images.add(user.getBannerUrl());
 
@@ -86,6 +90,7 @@ public class AccountService {
             public void afterCommit() {
                 tracks.forEach(uploads::deleteTrack);
                 images.forEach(uploads::deleteImage);
+                pieceCovers.forEach(uploads::deleteImageIfUnused);
             }
         });
     }

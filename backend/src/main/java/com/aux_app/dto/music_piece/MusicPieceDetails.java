@@ -1,5 +1,6 @@
 package com.aux_app.dto.music_piece;
 
+import com.aux_app.dto.album.AlbumSummary;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.users.PlaylistOwner;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,6 +15,8 @@ public record MusicPieceDetails(
         @Schema(description = "Title", example = "Let It Happen") String name,
         @Schema(description = "Square WebP cover URL", example = "https://aux.justinabruinsma.com/music-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String coverUrl,
         @Schema(description = "The artist") ArtistSummary artistSummary,
+        @Schema(description = "The album the piece is in; null for a single", nullable = true) AlbumSummary album,
+        @Schema(description = "Whether the piece shows its album's cover (and follows it when the album's cover changes) instead of its own", example = "false") boolean usesAlbumCover,
         @Schema(description = "The user who uploaded the piece") PlaylistOwner uploader,
         @Schema(description = "Up to 5 lowercase tags, in name order; empty if none", example = "[\"chill\", \"lo-fi\"]") List<String> tags,
         @Schema(description = "Whether the music piece is public") boolean isPublic,
@@ -24,7 +27,7 @@ public record MusicPieceDetails(
         @Schema(description = "When the piece was uploaded (UTC)", example = "2026-10-03T21:28:57Z") Instant createdAt
 ) {
     public static MusicPieceDetails of(MusicPieceOverview o, Integer durationSeconds, long playCount, Instant createdAt) {
-        return new MusicPieceDetails(o.musicPieceId(), o.name(), o.coverUrl(), o.artistSummary(), o.uploader(), o.tags(),
+        return new MusicPieceDetails(o.musicPieceId(), o.name(), o.coverUrl(), o.artistSummary(), o.album(), o.usesAlbumCover(), o.uploader(), o.tags(),
                 o.isPublic(), o.isFavorite(), o.isAvailable(), durationSeconds, playCount, createdAt);
     }
 }

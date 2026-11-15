@@ -81,7 +81,7 @@ class FriendsServiceTest {
     }
 
     private static MusicPieceOverview overview(String id) {
-        return new MusicPieceOverview(id, id, null, new ArtistSummary("a", "A", null), null, List.of(), true, false, true);
+        return new MusicPieceOverview(id, id, null, new ArtistSummary("a", "A", null), null, false, null, List.of(), true, false, true);
     }
 
     private static UserEntity user() {
