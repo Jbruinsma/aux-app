@@ -6,10 +6,11 @@
         v-if="canPlay(piece)"
         type="button"
         class="play"
-        :aria-label="`Play ${piece.name}${piece.artistSummary?.artistName ? ` by ${piece.artistSummary.artistName}` : ''}`"
-        @click="emit('play', index)"
+        :aria-label="`${isPlaying(piece) ? 'Pause' : 'Play'} ${piece.name}${piece.artistSummary?.artistName ? ` by ${piece.artistSummary.artistName}` : ''}`"
+        @click="onPlayClick(piece, index)"
       >
-        <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
+        <svg v-if="isPlaying(piece)" width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor" /></svg>
+        <svg v-else width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
       </button>
       <span v-else class="play-spacer" aria-hidden="true"></span>
       <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
@@ -52,8 +53,9 @@ import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
 
 // The style guide's track row: optional rank, play button, 40px art, title and artist, and a play count bar when the
-// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button. The `action` slot ({ piece, index })
-// adds a small button at the end of each row
+// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button. The playing piece's button shows
+// pause and pauses it; pressed again it resumes where it was instead of starting over, so `play` is only emitted for
+// the other pieces. The `action` slot ({ piece, index }) adds a small button at the end of each row
 const props = defineProps({
   pieces: { type: Array, required: true },
   label: { type: String, required: true },
@@ -76,6 +78,18 @@ function canPlay(piece) {
 
 function isCurrent(piece) {
   return Boolean(piece.musicPieceId) && musicStore.currentMusicPiece?.uuid === piece.musicPieceId
+}
+
+function isPlaying(piece) {
+  return isCurrent(piece) && musicStore.isPlaying
+}
+
+function onPlayClick(piece, index) {
+  if (!isCurrent(piece)) return emit('play', index)
+  if (musicStore.isPlaying) musicStore.isPlaying = false
+  else if (musicStore.currentMusicPiece?.mp3File) musicStore.isPlaying = true
+  // After a reload the song has no audio yet
+  else musicStore.resume()
 }
 
 function countShare(piece) {
