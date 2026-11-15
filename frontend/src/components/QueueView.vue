@@ -2,18 +2,18 @@
   <section
     ref="rootRef"
     class="queue-view"
-    :class="{ open, glow: Boolean(glowColor), browsing: view !== current, paused: !isPlaying }"
+    :class="{ open, glow: Boolean(glowColor), browsing: view !== current && !lyricsOpen, paused: !isPlaying, 'lyrics-mode': lyricsOpen }"
     :style="{ '--glow': glowColor || 'transparent', '--view': view }"
     role="dialog"
     aria-modal="true"
-    aria-label="Queue"
+    :aria-label="lyricsOpen ? 'Lyrics' : 'Queue'"
     :aria-hidden="open ? 'false' : 'true'"
     :inert="!open"
     @keydown="onKeydown"
   >
     <div class="top">
       <div class="top-left">
-        <button ref="closeRef" type="button" class="icon-btn" aria-label="Close queue" @click="emit('close')">
+        <button ref="closeRef" type="button" class="icon-btn" :aria-label="lyricsOpen ? 'Close lyrics' : 'Close queue'" @click="emit('close')">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
         <button type="button" class="back" :tabindex="view !== current ? 0 : -1" @click="view = current">Back to now playing</button>
@@ -39,7 +39,27 @@
       </div>
     </div>
 
-    <div class="stage" @wheel="onWheel">
+    <div v-if="lyricsOpen" class="lyrics-stage">
+      <div class="now">
+        <img v-if="piece?.cover" class="now-cover" :src="piece.cover" alt="" decoding="async" />
+        <span v-else class="now-cover cover-empty" aria-hidden="true">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+        </span>
+        <p class="now-title"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>{{ piece?.title }}</p>
+        <p v-if="piece?.artist" class="now-artist">{{ piece.artist }}</p>
+      </div>
+      <LyricsPanel
+        class="lyrics-col"
+        variant="stage"
+        :open="open"
+        :piece="piece"
+        :position="progress"
+        :duration="duration"
+        @seek="(seconds) => emit('lyrics-seek', seconds)"
+      />
+    </div>
+
+    <div v-else class="stage" @wheel="onWheel">
       <button type="button" class="nudge prev" :disabled="view <= 0" aria-label="Show earlier songs" @click="browse(-1)">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
       </button>
@@ -114,11 +134,13 @@
 // Desktop queue (above 720px): the playing song's cover large in the middle, songs already played to the left and
 // what's up next to the right, over a background tinted with the cover's color. It replaces the bottom bar while open,
 // so it carries all of the bar's controls. Like MobilePlayer, it only shows state and sends the controls up to
-// BottomPlayer
+// BottomPlayer. With `lyricsOpen` the middle shows the cover on the left and the lyrics (LyricsPanel) on the right
+// instead of the cover row; the lyrics button in the top bar switches between the two
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { resolveCoverURL } from '@/utils/display.js'
 import { useCoverColor } from '@/utils/coverColor.js'
+import LyricsPanel from '@/components/LyricsPanel.vue'
 
 const props = defineProps({
   open: Boolean,
@@ -145,7 +167,7 @@ const props = defineProps({
   volume: { type: Number, default: 1 },
   volumeFill: { type: String, default: '100%' },
 })
-const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics'])
+const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics', 'lyrics-seek'])
 
 const route = useRoute()
 const rootRef = ref(null)
@@ -221,7 +243,7 @@ function onKeydown(e) {
     return
   }
   const onSlider = e.target?.type === 'range'
-  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !onSlider) {
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !onSlider && !props.lyricsOpen) {
     e.preventDefault()
     browse(e.key === 'ArrowLeft' ? -1 : 1)
     return
@@ -241,6 +263,8 @@ function onKeydown(e) {
 .queue-view { --cover: clamp(180px, min(28vw, calc(100dvh - 400px)), 340px); --gap: var(--space-8); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); inset: 0; position: fixed; transform: translateY(100%); transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 150; }
 .queue-view.open { transform: none; transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
 .queue-view.glow { background: radial-gradient(ellipse 55% 70% at 50% 42%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 45%, var(--surface) 100%); }
+/* Lyrics: the glow moves behind the cover on the left */
+.queue-view.glow.lyrics-mode { background: radial-gradient(ellipse 50% 75% at 28% 45%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 50%, var(--surface) 100%); }
 .queue-view :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 
@@ -289,6 +313,12 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .eq i:nth-child(3) { animation-delay: -600ms; }
 .paused .eq i { animation-play-state: paused; }
 @keyframes eq { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+.lyrics-stage { display: grid; flex: 1; gap: calc(var(--space-8) * 2); grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); margin: 0 auto; max-width: 1120px; min-height: 0; padding: 0 var(--space-8); width: 100%; }
+.now { align-self: center; display: flex; flex-direction: column; justify-self: center; max-width: 100%; width: min(360px, calc(100dvh - 420px)); }
+.now-cover { aspect-ratio: 1; border-radius: var(--radius-md); box-shadow: 0 16px 48px rgb(0 0 0 / 0.25); display: block; object-fit: cover; width: 100%; }
+.now-title { color: var(--ink); font: 700 22px/30px var(--font-sans); margin: var(--space-4) 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-artist { font: 500 16px/24px var(--font-sans); margin: 0; opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lyrics-col { min-height: 0; }
 .nudge { align-items: center; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 44px; justify-content: center; padding: 0; position: absolute; top: calc(50% - 22px - 28px); width: 44px; z-index: 1; }
 .nudge:hover:not(:disabled) { background: var(--surface-alt); }
 .nudge.prev { left: var(--space-6); }

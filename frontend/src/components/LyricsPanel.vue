@@ -1,8 +1,15 @@
 <template>
-  <section v-if="open" class="lyrics aux-page" aria-labelledby="lyrics-title" @keydown.esc="emit('close')">
-    <header class="head">
+  <section
+    v-if="open"
+    class="lyrics aux-page"
+    :class="[variant, { glow: variant === 'page' && Boolean(glowColor) }]"
+    :style="variant === 'page' ? { '--glow': glowColor || 'transparent' } : null"
+    aria-label="Lyrics"
+    @keydown.esc="variant === 'page' && emit('close')"
+  >
+    <header v-if="variant === 'page'" class="head">
       <div class="head-text">
-        <h2 id="lyrics-title">Lyrics</h2>
+        <h2>Lyrics</h2>
         <p class="song">{{ piece?.title }}<template v-if="piece?.artist"> · {{ piece.artist }}</template></p>
       </div>
       <button ref="closeBtn" type="button" class="icon-btn" aria-label="Close lyrics" @click="emit('close')">
@@ -67,14 +74,18 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { fetchLyrics, lineAt, readOffset, saveOffset } from '@/utils/lyrics.js'
+import { useCoverColor } from '@/utils/coverColor.js'
 
 // The playing song's lyrics, from LRCLIB (src/utils/lyrics.js), matched by length. Timed lyrics follow the song with
 // the line being sung centered; clicking a line emits `seek` with its time. Scrolling by hand stops the following so
 // later lines can be read, and "Sync to song" brings it back. Earlier and Later nudge the timing for this song when
-// LRCLIB's copy runs ahead or behind
+// LRCLIB's copy runs ahead or behind.
+// `stage` fills the lyrics side of the desktop full-screen view (QueueView), which has its own controls and tinted
+// background. `page` is the phone's full-screen lyrics, with its own header and the cover's color behind it
 const props = defineProps({
   open: Boolean,
-  // The store's currentMusicPiece: { uuid, title, artist }
+  variant: { type: String, default: 'page' },
+  // The store's currentMusicPiece: { uuid, title, artist, cover }
   piece: { type: Object, default: null },
   position: { type: Number, default: 0 },
   duration: { type: Number, default: 0 },
@@ -88,6 +99,8 @@ const state = ref('waiting')
 const following = ref(true)
 const offset = ref(0)
 let request = null
+
+const glowColor = useCoverColor(() => (props.variant === 'page' ? props.piece?.cover || '' : ''))
 
 const lines = computed(() => lyrics.value?.lines ?? null)
 const active = computed(() => (lines.value ? lineAt(lines.value, props.position - offset.value) : -1))
@@ -126,7 +139,7 @@ watch(() => [props.open, props.piece?.uuid, Math.round(props.duration)], ([open]
   const [wasOpen, oldId, oldLength] = previous ?? []
   if (wasOpen && oldId === props.piece?.uuid && oldLength === Math.round(props.duration) && state.value !== 'waiting') return
   load()
-  if (!wasOpen) nextTick(() => closeBtn.value?.focus())
+  if (!wasOpen && props.variant === 'page') nextTick(() => closeBtn.value?.focus())
 }, { immediate: true })
 
 watch(active, () => {
@@ -174,38 +187,47 @@ function clock(seconds) {
 </script>
 
 <style scoped>
-.lyrics { background: var(--surface); border-left: 1px solid var(--line); bottom: 100px; color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); min-height: 0; position: fixed; right: 0; top: calc(var(--header-height) + env(safe-area-inset-top, 0px)); width: min(400px, 100%); z-index: 160; }
-:global(html.player-collapsed) .lyrics { bottom: 40px; }
-.head { align-items: flex-start; display: flex; gap: var(--space-3); justify-content: space-between; padding: var(--space-4) var(--space-4) var(--space-2) var(--space-6); }
+/* Text sits on the cover's tint, where muted gray and purple can't be kept readable, so everything uses ink and
+   steps back with opacity instead */
+.lyrics { background: none; color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); min-height: 0; position: relative; }
+.lyrics.stage { height: 100%; }
+.lyrics.page { background: var(--surface); inset: 0; padding-bottom: env(safe-area-inset-bottom, 0px); position: fixed; transition: --glow 700ms var(--ease); z-index: 210; }
+.lyrics.page.glow { background: radial-gradient(ellipse 95% 48% at 50% 32%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 50%, var(--surface) 100%); }
+.head { align-items: flex-start; display: flex; gap: var(--space-3); justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + var(--space-4)) var(--space-4) var(--space-2) var(--space-6); }
 .head-text { min-width: 0; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
-.song { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.icon-btn { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink-muted); cursor: pointer; display: flex; flex: none; height: 36px; justify-content: center; padding: 0; width: 36px; }
-.icon-btn:hover { background: var(--surface-alt); color: var(--ink); }
+.song { font: 500 14px/20px var(--font-sans); margin: 0; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-btn { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; flex: none; height: 36px; justify-content: center; padding: 0; width: 36px; }
+.icon-btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .icon-btn svg { fill: none; height: 20px; stroke: currentColor; stroke-linecap: round; stroke-width: 2; width: 20px; }
-.timing { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-6) var(--space-3); }
-.timing-label { color: var(--ink-muted); flex: 1; font: 500 12px/16px var(--font-sans); min-width: 0; }
+.timing { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-6) var(--space-3); }
+.stage .timing { padding: 0 0 var(--space-3); }
+.timing-label { flex: 1; font: 500 12px/16px var(--font-sans); min-width: 0; opacity: 0.75; }
 .btn.small { font-size: 14px; padding: 4px 10px; }
-.body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-6); position: relative; scrollbar-width: thin; }
+.btn.text { color: var(--ink); }
+.body { flex: 1; mask-image: linear-gradient(to bottom, transparent 0, #000 var(--space-8), #000 calc(100% - var(--space-8)), transparent 100%); overflow-y: auto; overscroll-behavior: contain; padding: var(--space-8) var(--space-6); scrollbar-width: none; }
+.stage .body { padding: var(--space-8) 0; }
+.body::-webkit-scrollbar { display: none; }
 .body:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-.note { color: var(--ink-muted); display: flex; flex-direction: column; font: 500 14px/20px var(--font-sans); gap: var(--space-3); margin: 0 0 var(--space-4); }
+.note { display: flex; flex-direction: column; font: 500 16px/24px var(--font-sans); gap: var(--space-3); margin: 0 0 var(--space-4); opacity: 0.8; }
 .note p { margin: 0; }
-.note-title { color: var(--ink); font: 600 16px/24px var(--font-sans); }
+.note-title { font: 700 22px/30px var(--font-sans); opacity: 1; }
 .lines { list-style: none; margin: 0; padding: 0 0 40vh; }
-.line { background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink-muted); cursor: pointer; display: block; font: 700 22px/30px var(--font-sans); margin: 0 calc(-1 * var(--space-2)); padding: var(--space-2); text-align: left; transition: color var(--dur-fast) var(--ease); width: calc(100% + var(--space-4)); }
-.line:hover { background: var(--surface-alt); color: var(--ink); }
+.line { background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink); cursor: pointer; display: block; font: 700 26px/34px var(--font-sans); margin: 0 calc(-1 * var(--space-2)); opacity: 0.45; padding: var(--space-2); text-align: left; transition: opacity var(--dur-fast) var(--ease), transform var(--dur-med) var(--ease); transform-origin: left center; width: calc(100% + var(--space-4)); }
+.stage .line { font-size: 32px; line-height: 42px; }
+.line:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); opacity: 0.8; }
 .line:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 0; }
-.line.past { opacity: 0.6; }
-.line.now { color: var(--link); opacity: 1; }
-.line.gap { font-size: 18px; }
-.plain { font: 600 18px/28px var(--font-sans); margin: 0; white-space: pre-line; }
-.resync { align-items: center; align-self: center; bottom: calc(var(--space-8) + 16px); display: flex; gap: var(--space-2); position: absolute; }
+.line.past { opacity: 0.3; }
+.line.now { opacity: 1; transform: scale(1.03); }
+.line.gap { font-size: 20px; }
+.plain { font: 700 22px/32px var(--font-sans); margin: 0; white-space: pre-line; }
+.resync { align-items: center; align-self: center; bottom: calc(var(--space-8) * 1.5); display: flex; gap: var(--space-2); position: absolute; }
 .resync svg { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
-.credit { border-top: 1px solid var(--line); color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; padding: var(--space-2) var(--space-6); }
+.credit { font: 500 12px/16px var(--font-sans); margin: 0; opacity: 0.6; padding: var(--space-2) var(--space-6); }
+.stage .credit { padding: var(--space-2) 0; }
 
-@media (max-width: 720px) {
-  .lyrics { border-left: 0; bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0px); top: 0; width: 100%; z-index: 210; }
-  :global(html.player-collapsed) .lyrics { bottom: 0; }
-  .head { padding-top: calc(env(safe-area-inset-top, 0px) + var(--space-4)); }
+@media (prefers-reduced-motion: reduce) {
+  .line, .lyrics.page { transition: none; }
+  .line.now { transform: none; }
 }
 </style>
