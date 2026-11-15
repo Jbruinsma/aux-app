@@ -24,7 +24,7 @@
       @repeat="musicStore.cycleRepeat()"
       @seek="v => progress = v"
       :lyrics-open="lyricsOpen"
-      @lyrics="lyricsOpen = !lyricsOpen"
+      @lyrics="setMobileLyrics(!lyricsOpen)"
     />
     <QueueView
       v-if="shouldShowPlayer && !isMobile"
@@ -66,7 +66,7 @@
       :position="progress"
       :duration="duration"
       :is-playing="isPlaying"
-      @close="lyricsOpen = false"
+      @close="setMobileLyrics(false)"
       @seek="seekTo"
     />
     <button
@@ -232,6 +232,7 @@ import { nowPlayingReporter } from '@/utils/playback.js'
 import MobilePlayer from '@/components/MobilePlayer.vue'
 import QueueView from '@/components/QueueView.vue'
 import LyricsPanel from '@/components/LyricsPanel.vue'
+import { glide } from '@/utils/glide.js'
 
 const userStore = useUserStore()
 const musicStore = useMusicStore()
@@ -292,6 +293,14 @@ const lyricsOpen = ref(false)
 function openLyrics() {
   lyricsOpen.value = true
   setQueueOpen(true)
+}
+
+// On a phone the cover glides between the player's big cover and the small one at the top of the lyrics
+async function setMobileLyrics(value) {
+  const from = document.querySelector(value ? '.sheet .sheet-cover' : '.lyrics.page .art')?.getBoundingClientRect()
+  lyricsOpen.value = value
+  await nextTick()
+  glide(document.querySelector(value ? '.lyrics.page .art' : '.sheet .sheet-cover'), from)
 }
 
 function closeFullView() {

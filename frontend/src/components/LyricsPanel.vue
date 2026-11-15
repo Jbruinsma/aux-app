@@ -1,71 +1,75 @@
 <template>
-  <section
-    v-if="open"
-    class="lyrics aux-page"
-    :class="[variant, { glow: variant === 'page' && Boolean(glowColor) }]"
-    :style="variant === 'page' ? { '--glow': glowColor || 'transparent' } : null"
-    aria-label="Lyrics"
-    @keydown.esc="variant === 'page' && emit('close')"
-  >
-    <header v-if="variant === 'page'" class="head">
-      <span class="grabber" aria-hidden="true"></span>
-      <div class="head-row">
-        <img v-if="piece?.cover" class="art" :src="piece.cover" alt="" />
-        <span v-else class="art art-empty" aria-hidden="true"></span>
-        <div class="head-text">
-          <h2 class="title"><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></h2>
-          <p v-if="piece?.artist" class="artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
-        </div>
-        <button ref="closeBtn" type="button" class="icon-btn" aria-label="Close lyrics" @click="emit('close')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-        </button>
-      </div>
-    </header>
-
-    <div
-      ref="scroller"
-      class="body"
-      :class="{ centered: !lines && !lyrics?.plain }"
-      tabindex="-1"
-      @wheel.passive="stopFollowing"
-      @touchmove.passive="stopFollowing"
-      @keydown="onKeys"
+  <Transition name="lyrics-page" :css="variant === 'page'">
+    <section
+      v-if="open"
+      class="lyrics aux-page"
+      :class="[variant, { glow: variant === 'page' && Boolean(glowColor) }]"
+      :style="variant === 'page' ? { '--glow': glowColor || 'transparent' } : null"
+      aria-label="Lyrics"
+      @keydown.esc="variant === 'page' && emit('close')"
     >
-      <p v-if="state === 'waiting'" class="note" role="status">Lyrics load once the song does.</p>
-      <p v-else-if="state === 'loading'" class="note" role="status">Finding lyrics…</p>
-      <div v-else-if="state === 'error'" class="note">
-        <p>We couldn't reach the lyrics service.</p>
-        <button type="button" class="btn secondary small" @click="load">Try again</button>
-      </div>
-      <div v-else-if="state === 'missing'" class="note">
-        <p class="note-title">No lyrics found for this song</p>
-        <p>Lyrics are matched by title, artist and length, so a different edit or a misspelled title won't find them.</p>
-      </div>
-      <p v-else-if="lyrics?.instrumental && !lines && !lyrics.plain" class="note note-title">This song is instrumental.</p>
-      <ol v-else-if="lines" class="lines">
-        <li v-for="(line, index) in lines" :key="`${index}-${line.time}`">
-          <button
-            type="button"
-            class="line"
-            :class="{ now: index === active, past: index < active, gap: !line.text }"
-            :aria-current="index === active ? 'true' : null"
-            :aria-label="line.text ? `${line.text}, at ${clock(line.time)}` : `Instrumental break at ${clock(line.time)}`"
-            :data-index="index"
-            @click="jump(line)"
-          >{{ line.text || '♪' }}</button>
-        </li>
-      </ol>
-      <template v-else-if="lyrics?.plain">
-        <p class="note">These lyrics aren't timed, so they don't follow the song.</p>
-        <p class="plain">{{ lyrics.plain }}</p>
-      </template>
-    </div>
+      <header v-if="variant === 'page'" class="head">
+        <span class="grabber" aria-hidden="true"></span>
+        <div class="head-row">
+          <button type="button" class="art-btn" aria-label="Show the album cover" @click="emit('close')">
+            <img v-if="piece?.cover" class="art" :src="piece.cover" alt="" />
+            <span v-else class="art art-empty" aria-hidden="true"></span>
+          </button>
+          <div class="head-text">
+            <h2 class="title"><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></h2>
+            <p v-if="piece?.artist" class="artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
+          </div>
+          <button ref="closeBtn" type="button" class="icon-btn" aria-label="Close lyrics" @click="emit('close')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </button>
+        </div>
+      </header>
 
-    <button v-if="lines && !following" type="button" class="btn primary resync" @click="resync">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
-      Sync
-    </button>
-  </section>
+      <div
+        ref="scroller"
+        class="body"
+        :class="{ centered: !lines && !lyrics?.plain }"
+        tabindex="-1"
+        @wheel.passive="stopFollowing"
+        @touchmove.passive="stopFollowing"
+        @keydown="onKeys"
+      >
+        <p v-if="state === 'waiting'" class="note" role="status">Lyrics load once the song does.</p>
+        <p v-else-if="state === 'loading'" class="note" role="status">Finding lyrics…</p>
+        <div v-else-if="state === 'error'" class="note">
+          <p>We couldn't reach the lyrics service.</p>
+          <button type="button" class="btn secondary small" @click="load">Try again</button>
+        </div>
+        <div v-else-if="state === 'missing'" class="note">
+          <p class="note-title">No lyrics found for this song</p>
+          <p>Lyrics are matched by title, artist and length, so a different edit or a misspelled title won't find them.</p>
+        </div>
+        <p v-else-if="lyrics?.instrumental && !lines && !lyrics.plain" class="note note-title">This song is instrumental.</p>
+        <ol v-else-if="lines" class="lines">
+          <li v-for="(line, index) in lines" :key="`${index}-${line.time}`">
+            <button
+              type="button"
+              class="line"
+              :class="{ now: index === active, past: index < active, gap: !line.text }"
+              :aria-current="index === active ? 'true' : null"
+              :aria-label="line.text ? `${line.text}, at ${clock(line.time)}` : `Instrumental break at ${clock(line.time)}`"
+              :data-index="index"
+              @click="jump(line)"
+            >{{ line.text || '♪' }}</button>
+          </li>
+        </ol>
+        <template v-else-if="lyrics?.plain">
+          <p class="note">These lyrics aren't timed, so they don't follow the song.</p>
+          <p class="plain">{{ lyrics.plain }}</p>
+        </template>
+      </div>
+
+      <button v-if="lines && !following" type="button" class="btn primary resync" @click="resync">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+        Sync
+      </button>
+    </section>
+  </Transition>
 </template>
 
 <script setup>
@@ -182,6 +186,7 @@ function clock(seconds) {
 .head { display: flex; flex: none; flex-direction: column; gap: var(--space-3); padding: calc(env(safe-area-inset-top, 0px) + var(--space-2)) var(--space-4) var(--space-2) var(--space-6); }
 .grabber { align-self: center; background: color-mix(in srgb, var(--ink) 25%, transparent); border-radius: var(--radius-pill); height: 5px; width: 36px; }
 .head-row { align-items: center; display: flex; gap: var(--space-3); }
+.art-btn { background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; flex: none; padding: 0; }
 .art { border-radius: var(--radius-sm); box-shadow: 0 4px 12px rgb(0 0 0 / 0.2); flex: none; height: 56px; object-fit: cover; width: 56px; }
 .art-empty { background: var(--surface-alt); }
 .head-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
@@ -213,8 +218,11 @@ function clock(seconds) {
 .resync { align-items: center; align-self: center; bottom: calc(var(--space-8) * 1.5); display: flex; gap: var(--space-2); position: absolute; }
 .resync svg { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
 
+.lyrics-page-enter-active, .lyrics-page-leave-active { transition: opacity var(--dur-med) var(--ease); }
+.lyrics-page-enter-from, .lyrics-page-leave-to { opacity: 0; }
+
 @media (prefers-reduced-motion: reduce) {
-  .line, .lyrics.page { transition: none; }
+  .line, .lyrics.page, .lyrics-page-enter-active, .lyrics-page-leave-active { transition: none; }
   .line.now { transform: none; }
 }
 </style>

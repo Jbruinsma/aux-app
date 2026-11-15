@@ -130,5 +130,7 @@ it('shows the cover and the lyrics full screen in lyrics mode, and sends a click
   expect(wrapper.emitted('lyrics-seek')).toEqual([[1]])
   await wrapper.get('button[aria-label="Lyrics"]').trigger('click')
   expect(wrapper.emitted('lyrics')).toHaveLength(1)
+  await wrapper.get('.now-cover-btn').trigger('click')
+  expect(wrapper.emitted('lyrics')).toHaveLength(2)
   vi.unstubAllGlobals()
 })

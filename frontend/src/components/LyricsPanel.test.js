@@ -61,4 +61,6 @@ it('shows the cover, title and artist at the top on the phone page', async () =>
   expect(wrapper.get('.head .art').attributes('src')).toBe('https://img/c.webp')
   expect(wrapper.get('.head .title').text()).toBe('Summer Friends')
   expect(wrapper.get('.head .artist').text()).toBe('Chance the Rapper')
+  await wrapper.get('.art-btn').trigger('click')
+  expect(wrapper.emitted('close')).toHaveLength(1)
 })

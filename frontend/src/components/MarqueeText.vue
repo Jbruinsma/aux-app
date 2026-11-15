@@ -7,7 +7,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-// One line of text that, when it's too long to fit and `play` is on, slides slowly to its end and back, like a long
+// One line of text that, when it's too long to fit and `play` is on, drifts slowly to its end and back, like a long
 // "(feat. …)" title on Apple Music. Otherwise it ends in an ellipsis. Still for reduced motion
 const props = defineProps({
   text: { type: String, default: '' },
@@ -17,8 +17,8 @@ const props = defineProps({
 const box = ref(null)
 const inner = ref(null)
 const overflow = ref(0)
-// About 30px a second, never quicker than 4 seconds each way
-const seconds = computed(() => Math.max(4, Math.round(overflow.value / 30)))
+// A slow drift: about 12px a second, never quicker than 8 seconds each way (with a rest at each end)
+const seconds = computed(() => Math.max(8, Math.round(overflow.value / 12)))
 const moving = computed(() => props.play && overflow.value > 0)
 let observer = null
 
@@ -47,8 +47,8 @@ defineExpose({ measure })
 .moving { mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent 100%); }
 .moving .marquee-text { animation: marquee var(--marquee-time) ease-in-out infinite alternate; }
 @keyframes marquee {
-  0%, 15% { transform: translateX(0); }
-  85%, 100% { transform: translateX(calc(-1 * var(--shift))); }
+  0%, 20% { transform: translateX(0); }
+  80%, 100% { transform: translateX(calc(-1 * var(--shift))); }
 }
 
 @media (prefers-reduced-motion: reduce) {

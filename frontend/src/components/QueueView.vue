@@ -27,10 +27,12 @@
 
     <div v-if="lyricsOpen" class="lyrics-stage">
       <div class="now">
-        <img v-if="piece?.cover" class="now-cover" :src="piece.cover" alt="" decoding="async" />
-        <span v-else class="now-cover cover-empty" aria-hidden="true">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
-        </span>
+        <button type="button" class="now-cover-btn" aria-label="Show the album cover" @click="emit('lyrics')">
+          <img v-if="piece?.cover" class="now-cover" :src="piece.cover" alt="" decoding="async" />
+          <span v-else class="now-cover cover-empty" aria-hidden="true">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+          </span>
+        </button>
         <p class="now-title"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></p>
         <p v-if="piece?.artist" class="now-artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
       </div>
@@ -145,6 +147,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { useCoverColor } from '@/utils/coverColor.js'
 import LyricsPanel from '@/components/LyricsPanel.vue'
 import MarqueeText from '@/components/MarqueeText.vue'
+import { calm, glide, rise } from '@/utils/glide.js'
 
 const props = defineProps({
   open: Boolean,
@@ -238,25 +241,13 @@ watch(() => props.open, async (isOpen) => {
 
 // Switching between the cover row and lyrics: the playing cover glides from the middle to the left (or back) while the
 // rest fades in, so the view doesn't snap. Measured before the switch renders, animated after
-const TWEEN = { duration: 450, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
-
 watch(() => props.lyricsOpen, async (toLyrics) => {
   const root = rootRef.value
-  const calm = typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (!props.open || !root || calm) return
+  if (!props.open || !root || calm()) return
   const from = root.querySelector(toLyrics ? '.slot.on .cover' : '.now-cover')?.getBoundingClientRect()
   await nextTick()
-  const cover = root.querySelector(toLyrics ? '.now-cover' : '.slot.on .cover')
-  if (typeof cover?.animate !== 'function') return
-  const to = cover.getBoundingClientRect()
-  if (from?.width && to.width) {
-    const glide = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`
-    cover.animate([{ transform: glide, transformOrigin: 'top left' }, { transform: 'none', transformOrigin: 'top left' }], TWEEN)
-  }
-  const rest = toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .nudge'
-  for (const el of root.querySelectorAll(rest)) {
-    el.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { ...TWEEN, delay: 120, fill: 'backwards' })
-  }
+  glide(root.querySelector(toLyrics ? '.now-cover' : '.slot.on .cover'), from)
+  rise(root.querySelectorAll(toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .nudge'))
 })
 
 // Following a link (the playlist name) leaves the queue
@@ -343,7 +334,9 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 @keyframes eq { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
 .lyrics-stage { display: grid; flex: 1; gap: calc(var(--space-8) * 2); grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); margin: 0 auto; max-width: 1120px; min-height: 0; padding: 0 var(--space-8); width: 100%; }
 .now { align-self: center; display: flex; flex-direction: column; justify-self: center; max-width: 100%; width: min(360px, calc(100dvh - 420px)); }
-.now-cover { aspect-ratio: 1; border-radius: var(--radius-md); box-shadow: 0 16px 48px rgb(0 0 0 / 0.25); display: block; object-fit: cover; width: 100%; }
+.now-cover-btn { background: none; border: 0; border-radius: var(--radius-md); cursor: pointer; display: block; padding: 0; width: 100%; }
+.now-cover-btn:hover .now-cover { transform: scale(1.02); }
+.now-cover { aspect-ratio: 1; border-radius: var(--radius-md); box-shadow: 0 16px 48px rgb(0 0 0 / 0.25); display: block; object-fit: cover; transition: transform var(--dur-med) var(--ease); width: 100%; }
 .now-title { align-items: center; color: var(--ink); display: flex; font: 700 22px/30px var(--font-sans); margin: var(--space-4) 0 0; min-width: 0; }
 .now-artist { font: 500 16px/24px var(--font-sans); margin: 0; min-width: 0; opacity: 0.8; }
 .now-title .eq { flex: none; }
