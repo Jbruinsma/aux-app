@@ -53,4 +53,12 @@ it('says so when LRCLIB has nothing for the song', async () => {
   fetch.mockImplementation(async () => ({ ok: false, status: 404, json: async () => ({}) }))
   await render()
   expect(wrapper.text()).toContain('No lyrics found for this song')
+  expect(wrapper.get('.body').classes()).toContain('centered')
+})
+
+it('shows the cover, title and artist at the top on the phone page', async () => {
+  await render({ piece: { uuid: 'm-head', title: 'Summer Friends', artist: 'Chance the Rapper', cover: 'https://img/c.webp' }, isPlaying: true })
+  expect(wrapper.get('.head .art').attributes('src')).toBe('https://img/c.webp')
+  expect(wrapper.get('.head .title').text()).toBe('Summer Friends')
+  expect(wrapper.get('.head .artist').text()).toBe('Chance the Rapper')
 })

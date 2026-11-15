@@ -8,18 +8,24 @@
     @keydown.esc="variant === 'page' && emit('close')"
   >
     <header v-if="variant === 'page'" class="head">
-      <div class="head-text">
-        <h2>Lyrics</h2>
-        <p class="song">{{ piece?.title }}<template v-if="piece?.artist"> · {{ piece.artist }}</template></p>
+      <span class="grabber" aria-hidden="true"></span>
+      <div class="head-row">
+        <img v-if="piece?.cover" class="art" :src="piece.cover" alt="" />
+        <span v-else class="art art-empty" aria-hidden="true"></span>
+        <div class="head-text">
+          <h2 class="title"><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></h2>
+          <p v-if="piece?.artist" class="artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
+        </div>
+        <button ref="closeBtn" type="button" class="icon-btn" aria-label="Close lyrics" @click="emit('close')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
       </div>
-      <button ref="closeBtn" type="button" class="icon-btn" aria-label="Close lyrics" @click="emit('close')">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-      </button>
     </header>
 
     <div
       ref="scroller"
       class="body"
+      :class="{ centered: !lines && !lyrics?.plain }"
       tabindex="-1"
       @wheel.passive="stopFollowing"
       @touchmove.passive="stopFollowing"
@@ -66,12 +72,14 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { fetchLyrics, lineAt } from '@/utils/lyrics.js'
 import { useCoverColor } from '@/utils/coverColor.js'
+import MarqueeText from '@/components/MarqueeText.vue'
 
 // The playing song's lyrics, from LRCLIB (src/utils/lyrics.js), matched by length. Timed lyrics follow the song with
 // the line being sung centered; clicking a line emits `seek` with its time. Scrolling by hand stops the following so
 // later lines can be read, and "Sync" brings it back.
 // `stage` fills the lyrics side of the desktop full-screen view (QueueView), which has its own controls and tinted
-// background. `page` is the phone's full-screen lyrics, with its own header and the cover's color behind it
+// background. `page` is the phone's full-screen lyrics, Apple Music style: a small cover, title and artist at the top
+// (a long title slides back and forth while playing) and the cover's color behind it
 const props = defineProps({
   open: Boolean,
   variant: { type: String, default: 'page' },
@@ -79,6 +87,7 @@ const props = defineProps({
   piece: { type: Object, default: null },
   position: { type: Number, default: 0 },
   duration: { type: Number, default: 0 },
+  isPlaying: Boolean,
 })
 const emit = defineEmits(['close', 'seek'])
 
@@ -170,23 +179,30 @@ function clock(seconds) {
 .lyrics.stage { height: 100%; }
 .lyrics.page { background: var(--surface); inset: 0; padding-bottom: env(safe-area-inset-bottom, 0px); position: fixed; transition: --glow 700ms var(--ease); z-index: 210; }
 .lyrics.page.glow { background: radial-gradient(ellipse 95% 48% at 50% 32%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 50%, var(--surface) 100%); }
-.head { align-items: flex-start; display: flex; gap: var(--space-3); justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + var(--space-4)) var(--space-4) var(--space-2) var(--space-6); }
-.head-text { min-width: 0; }
-h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
-.song { font: 500 14px/20px var(--font-sans); margin: 0; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.head { display: flex; flex: none; flex-direction: column; gap: var(--space-3); padding: calc(env(safe-area-inset-top, 0px) + var(--space-2)) var(--space-4) var(--space-2) var(--space-6); }
+.grabber { align-self: center; background: color-mix(in srgb, var(--ink) 25%, transparent); border-radius: var(--radius-pill); height: 5px; width: 36px; }
+.head-row { align-items: center; display: flex; gap: var(--space-3); }
+.art { border-radius: var(--radius-sm); box-shadow: 0 4px 12px rgb(0 0 0 / 0.2); flex: none; height: 56px; object-fit: cover; width: 56px; }
+.art-empty { background: var(--surface-alt); }
+.head-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.title { font: 700 17px/24px var(--font-sans); margin: 0; }
+.artist { font: 500 17px/24px var(--font-sans); margin: 0; opacity: 0.75; }
 .icon-btn { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; flex: none; height: 36px; justify-content: center; padding: 0; width: 36px; }
 .icon-btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .icon-btn svg { fill: none; height: 20px; stroke: currentColor; stroke-linecap: round; stroke-width: 2; width: 20px; }
 .btn.small { font-size: 14px; padding: 4px 10px; }
-.body { flex: 1; mask-image: linear-gradient(to bottom, transparent 0, #000 var(--space-8), #000 calc(100% - var(--space-8)), transparent 100%); overflow-y: auto; overscroll-behavior: contain; padding: var(--space-8) var(--space-6); scrollbar-width: none; }
-.stage .body { padding: var(--space-8) 0; }
+.body { flex: 1; min-height: 0; mask-image: linear-gradient(to bottom, transparent 0, #000 var(--space-8), #000 calc(100% - var(--space-8)), transparent 100%); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-8) var(--space-6); scrollbar-width: none; }
+.stage .body { padding: var(--space-8) var(--space-4); }
+/* Nothing to follow (loading, none found, instrumental): the message sits in the middle */
+.body.centered { align-items: center; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.centered .note { align-items: center; margin: 0; max-width: 32ch; }
 .body::-webkit-scrollbar { display: none; }
 .body:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .note { display: flex; flex-direction: column; font: 500 16px/24px var(--font-sans); gap: var(--space-3); margin: 0 0 var(--space-4); opacity: 0.8; }
 .note p { margin: 0; }
 .note-title { font: 700 22px/30px var(--font-sans); opacity: 1; }
 .lines { list-style: none; margin: 0; padding: 0 0 40vh; }
-.line { background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink); cursor: pointer; display: block; font: 700 26px/34px var(--font-sans); margin: 0 calc(-1 * var(--space-2)); opacity: 0.45; padding: var(--space-2); text-align: left; transition: opacity var(--dur-fast) var(--ease), transform var(--dur-med) var(--ease); transform-origin: left center; width: calc(100% + var(--space-4)); }
+.line { background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink); cursor: pointer; display: block; font: 700 26px/34px var(--font-sans); opacity: 0.45; overflow-wrap: anywhere; padding: var(--space-2) var(--space-6) var(--space-2) var(--space-2); text-align: left; transition: opacity var(--dur-fast) var(--ease), transform var(--dur-med) var(--ease); transform-origin: left center; width: 100%; }
 .stage .line { font-size: 32px; line-height: 42px; }
 .line:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); opacity: 0.8; }
 .line:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 0; }
