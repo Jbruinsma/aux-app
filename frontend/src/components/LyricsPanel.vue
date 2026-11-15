@@ -40,7 +40,6 @@
             <svg class="ring-arrow" width="64" height="64" viewBox="0 0 52 52"><path d="M26 6a20 20 0 1 1-20 20" /><path d="M1 30l5-5 5 5" /></svg>
           </span>
           <p class="finding-title">Finding Lyrics</p>
-          <p class="finding-sub">Matching the title, artist and length</p>
         </div>
         <div v-else-if="state === 'error'" class="note">
           <p>We couldn't reach the lyrics service.</p>
@@ -265,7 +264,6 @@ function clock(seconds) {
 .ring-track { fill: none; stroke: color-mix(in srgb, var(--ink) 14%, transparent); stroke-width: 4; }
 .ring-arrow { animation: ring-spin 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; fill: none; stroke: var(--link); stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
 .finding-title { font: 700 18px/26px var(--font-sans); margin: 0; }
-.finding-sub { font: 500 14px/20px var(--font-sans); margin: 0; opacity: 0.75; }
 @keyframes ring-spin { to { transform: rotate(360deg); } }
 .lines { list-style: none; margin: 0; padding: 0 0 40vh; }
 .line { background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink); cursor: pointer; display: block; font: 700 26px/34px var(--font-sans); opacity: 0.45; overflow-wrap: anywhere; padding: var(--space-2) var(--space-6) var(--space-2) var(--space-2); text-align: left; transition: opacity var(--dur-fast) var(--ease), transform var(--dur-med) var(--ease); transform-origin: left center; width: 100%; }
