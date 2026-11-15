@@ -78,19 +78,6 @@ style guide and ask before designing it.
 
 **Done when:** a friend playing a public song shows it as playing now, and it clears when they pause.
 
-### 35. Report now playing from the player
-
-Nothing shows as playing now on the Friends page (task 34) until the player reports it. Don't report from `/stream`:
-the player fetches streams ahead of time.
-
-**Files:** `src/stores/music.js`, `src/utils/playback.js`
-**API:** `PUT /api/users/me/now-playing`
-
-- [ ] Report when a song starts playing, on pause and resume, and after a seek.
-- [ ] Fire and forget: a failed report must never interrupt playback.
-
-**Done when:** playing, pausing and seeking each send one report, and private songs never show to friends.
-
 ### 38. Albums
 
 Anyone signed in can add an album to an artist. The album's creator and the artist's creator can rename it, change its
@@ -115,6 +102,8 @@ the style guide and ask before designing the new screens.
 - [ ] Edit piece dialog: change or remove the album, and switch between the album's cover and an uploaded one.
 - [ ] Link the album name on song rows that carry `album`.
 - [ ] Profile: replace the Top albums placeholder with `GET /api/albums/top/{username}`.
+- [ ] Swap the browser-only albums from `src/utils/albums.js` (`ALBUMS_MOCKED`, built before these endpoints
+      existed) onto the real API, then remove the mock.
 
 **Done when:** a song uploaded into an album shows the album's cover, changing the album's cover updates it, and
 deleting the album leaves the song with the same cover.

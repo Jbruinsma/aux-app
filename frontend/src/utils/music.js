@@ -57,14 +57,20 @@ export function findOrCreateArtist(artistName) {
   return request('POST', `${API_BASE_URL}/api/artists`, { artistName }, { notifyOnError: false })
 }
 
-// Returns the new MusicPieceOverview. The server crops the cover; send the original
-export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage, tags = [] }) {
+// Returns the new MusicPieceOverview. The server crops the cover; send the original. `albumId` (once the API has albums,
+// BACKEND_REQUESTS.md "Albums") puts it on that album, using the album cover unless `useAlbumCover` is false; with the
+// album cover, coverImage can be left out
+export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage, tags = [], albumId = null, useAlbumCover = true }) {
   const form = new FormData()
   form.append('name', name)
   form.append('artistId', artistId)
   form.append('isPublic', isPublic)
   form.append('mp3File', mp3File)
-  form.append('coverImage', coverImage)
+  if (coverImage) form.append('coverImage', coverImage)
+  if (albumId) {
+    form.append('albumId', albumId)
+    form.append('useAlbumCover', useAlbumCover)
+  }
   appendTags(form, tags)
   return request('POST', `${API_BASE_URL}/api/music-pieces/create`, form, { notifyOnError: false })
 }

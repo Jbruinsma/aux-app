@@ -21,7 +21,7 @@ const ARTISTS = {
 
 const UPLOADER = { userId: 'preview-uploader', pfpUrl: '/default_profile_picture.svg', username: 'aux' }
 
-const piece = (id, name, cover, artist, playlist = null) => ({
+const piece = (id, name, cover, artist) => ({
   musicPiece: {
     musicPieceId: `preview-${id}`,
     name,
@@ -32,22 +32,18 @@ const piece = (id, name, cover, artist, playlist = null) => ({
     tags: [],
     uploader: UPLOADER,
   },
-  playlistId: playlist?.playlistId ?? null,
-  playlistOwnerUsername: playlist ? UPLOADER.username : null,
-  playlistName: playlist?.name ?? null,
+  playlistId: null,
+  playlistOwnerUsername: null,
 })
 
-const ROAD_TRIP = { playlistId: 'preview-road-trip', name: 'Road trip' }
-const LATE_NIGHT = { playlistId: 'preview-late-night', name: 'Late night' }
-
 export const PREVIEW_RECENTS = [
-  piece('nights', 'Nights', 'f798a866107715dd6dc1049e498ce21f', 'frank', LATE_NIGHT),
+  piece('nights', 'Nights', 'f798a866107715dd6dc1049e498ce21f', 'frank'),
   piece('humble', 'HUMBLE.', '7ce6b8452fae425557067db6e6a1cad5', 'kendrick'),
   piece('snooze', 'Snooze', '328d68300e654b21831b261e413780e0', 'sza'),
-  piece('let-it-happen', 'Let It Happen', 'de5b9b704cd4ec36f8bf49beb3e17ba2', 'tame', ROAD_TRIP),
+  piece('let-it-happen', 'Let It Happen', 'de5b9b704cd4ec36f8bf49beb3e17ba2', 'tame'),
   piece('runaway', 'Runaway', '742aba8510ba803bea51d304cf2ca786', 'kanye'),
   piece('get-busy', 'Gët Busy', '14e37e05b1acd67c06b0408ef1146a26', 'yeat'),
-  piece('sicko-mode', 'SICKO MODE', '0b08015216f975dc7fb5be3d5dcc4d88', 'travis', ROAD_TRIP),
+  piece('sicko-mode', 'SICKO MODE', '0b08015216f975dc7fb5be3d5dcc4d88', 'travis'),
   piece('passionfruit', 'Passionfruit', '8f0187ad83cdd1f47f1c55420f9df227', 'drake'),
   piece('robbery', 'Robbery', 'f987eca394bfb6b4c2839f3e57476bb2', 'juice'),
   piece('best-part', 'Best Part', '4dff56488d13d0b5e96d93d895c9624b', 'daniel'),

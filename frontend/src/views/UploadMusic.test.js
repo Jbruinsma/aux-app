@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { useNotificationStore } from '@/stores/notification.js'
+import { useUserStore } from '@/stores/user.js'
 import { fetchAPI, request } from '@/utils/api.js'
 import UploadMusic from './UploadMusic.vue'
 import TagPicker from '@/components/TagPicker.vue'
@@ -92,4 +93,109 @@ it('adds the new song to the playlist it came from, and explains a rejected uplo
   expect(request).toHaveBeenLastCalledWith('POST', expect.stringContaining('/api/playlists/p1/pieces'), { musicPieceIds: ['m1'] }, expect.any(Object))
   expect(useNotificationStore().message).toBe('Uploaded “Late Night”. Added 1 song.')
   expect(push).toHaveBeenCalledWith({ name: 'Playlist', params: { username: 'mo', id: 'p1' } })
+})
+
+it("adds the song to an existing album of the artist, sending the album's cover", async () => {
+  useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
+  localStorage.setItem('aux-albums-a1', JSON.stringify([
+    { albumId: 'al1', name: 'Blonde', coverUrl: 'data:image/jpeg;base64,AAA', createdBy: 'u1', tracks: [] },
+  ]))
+  route.query = { artist: 'a1', album: 'al1' }
+  fetchAPI.mockResolvedValue({ artistId: 'a1', artistName: 'Frank Ocean', artistPfpUrl: null })
+  vi.stubGlobal('fetch', vi.fn(async () => ({ blob: async () => new Blob(['img'], { type: 'image/jpeg' }) })))
+  request.mockResolvedValueOnce({ musicPieceId: 'm1', name: 'Nights', coverUrl: '/uploads/c.webp', artistSummary: { artistId: 'a1', artistName: 'Frank Ocean' } })
+  wrapper = mount(UploadMusic, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: true } } })
+  await flushPromises()
+  expect(wrapper.get('#song-album').element.value).toBe('al1')
+  expect(wrapper.get('.drop img').attributes('src')).toBe('data:image/jpeg;base64,AAA')
+  expect(wrapper.text()).toContain('Using the cover of Blonde')
+  Object.defineProperty(wrapper.get('#mp3-input').element, 'files', { value: [new File(['a'], 'Nights.mp3', { type: 'audio/mpeg' })] })
+  await wrapper.get('#mp3-input').trigger('change')
+  await flushPromises()
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  const form = request.mock.calls[0][2]
+  expect(form.get('coverImage').name).toBe('Blonde.jpg')
+  const tracks = JSON.parse(localStorage.getItem('aux-albums-a1'))[0].tracks
+  expect(tracks.map((track) => [track.musicPiece.musicPieceId, track.useAlbumCover])).toEqual([['m1', true]])
+  expect(push).toHaveBeenCalledWith({ name: 'Artist', params: { artistId: 'a1' } })
+  localStorage.clear()
+})
+
+it('stops using the album cover once you choose your own', async () => {
+  localStorage.setItem('aux-albums-a1', JSON.stringify([{ albumId: 'al1', name: 'Blonde', coverUrl: 'data:image/jpeg;base64,AAA', createdBy: 'u1', tracks: [] }]))
+  route.query = { artist: 'a1', album: 'al1' }
+  fetchAPI.mockResolvedValue({ artistId: 'a1', artistName: 'Frank Ocean', artistPfpUrl: null })
+  wrapper = mount(UploadMusic, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: true } } })
+  await flushPromises()
+  Object.defineProperty(wrapper.get('#cover-input').element, 'files', { value: [new File(['c'], 'mine.png', { type: 'image/png' })] })
+  await wrapper.get('#cover-input').trigger('change')
+  await flushPromises()
+  expect(wrapper.get('.drop img').attributes('src')).toBe('blob:cover')
+  expect(wrapper.get('.check input[type="checkbox"]').element.checked).toBe(false)
+  localStorage.clear()
+})
+
+it('makes a new album around the uploaded song, with its cover, and singles not already on an album', async () => {
+  vi.useRealTimers()
+  useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
+  HTMLDialogElement.prototype.showModal = vi.fn()
+  HTMLDialogElement.prototype.close = vi.fn(function close() { this.dispatchEvent(new Event('close')) })
+  const single = { musicPieceId: 's1', name: 'Ivy', coverUrl: null, artistSummary: { artistId: 'a1', artistName: 'Frank Ocean' } }
+  const taken = { musicPieceId: 's2', name: 'Nights', coverUrl: null, artistSummary: { artistId: 'a1', artistName: 'Frank Ocean' } }
+  localStorage.setItem('aux-albums-a1', JSON.stringify([{ albumId: 'al1', name: 'Blonde', coverUrl: 'data:image/jpeg;base64,AAA', createdBy: 'u1', tracks: [{ musicPiece: taken, useAlbumCover: true }] }]))
+  route.query = { artist: 'a1' }
+  fetchAPI.mockImplementation(async (url) => (url.includes('/music-pieces')
+    ? { musicPieces: [single, taken], nextCursor: null }
+    : { artistId: 'a1', artistName: 'Frank Ocean', artistPfpUrl: null }))
+  request.mockResolvedValueOnce({ musicPieceId: 'm9', name: 'Pink Matter', coverUrl: '/uploads/c.webp', artistSummary: { artistId: 'a1', artistName: 'Frank Ocean' } })
+  wrapper = mount(UploadMusic, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: true } } })
+  await flushPromises()
+  const pick = async (selector, file) => {
+    Object.defineProperty(wrapper.get(selector).element, 'files', { value: [file], configurable: true })
+    await wrapper.get(selector).trigger('change')
+    await flushPromises()
+  }
+  await pick('#mp3-input', new File(['a'], 'Pink Matter.mp3', { type: 'audio/mpeg' }))
+  await pick('#cover-input', new File(['c'], 'pink.png', { type: 'image/png' }))
+
+  await wrapper.get('#song-album').setValue('new')
+  await flushPromises()
+  const dialog = wrapper.get('.album-dialog')
+  expect(dialog.get('.upload-track').text()).toContain('Pink Matter')
+  expect(dialog.get('.cover-pick img').attributes('src')).toBe('blob:cover')
+  const rows = dialog.findAll('.song:not(.upload-track)')
+  expect(rows[1].text()).toContain('Already on Blonde')
+  expect(rows[1].get('input').element.disabled).toBe(true)
+  await rows[0].get('input').setValue(true)
+  await dialog.get('#album-name').setValue('Channel Orange')
+  await dialog.get('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.get('.draft-name').text()).toBe('Channel Orange')
+  expect(wrapper.get('#song-album').element.value).toBe('new')
+
+  await wrapper.get('form.upload-card').trigger('submit')
+  await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('aux-albums-a1'))).toHaveLength(2))
+  await flushPromises()
+  expect(request.mock.calls[0][2].get('coverImage').name).toBe('pink.png')
+  const made = JSON.parse(localStorage.getItem('aux-albums-a1'))[1]
+  expect(made.name).toBe('Channel Orange')
+  expect(made.tracks.map((track) => track.musicPiece.musicPieceId)).toEqual(['m9', 's1'])
+  expect(useNotificationStore().message).toBe('Uploaded “Pink Matter” and made the album Channel Orange.')
+  expect(push).toHaveBeenCalledWith({ name: 'Artist', params: { artistId: 'a1' } })
+  localStorage.clear()
+})
+
+it('goes back to None when the new album dialog is closed without making one', async () => {
+  HTMLDialogElement.prototype.showModal = vi.fn()
+  HTMLDialogElement.prototype.close = vi.fn(function close() { this.dispatchEvent(new Event('close')) })
+  route.query = { artist: 'a1' }
+  fetchAPI.mockResolvedValue({ artistId: 'a1', artistName: 'Frank Ocean', artistPfpUrl: null })
+  wrapper = mount(UploadMusic, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: true } } })
+  await flushPromises()
+  await wrapper.get('#song-album').setValue('new')
+  await flushPromises()
+  await wrapper.findAll('.album-dialog button').find((button) => button.text() === 'Cancel').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('#song-album').element.value).toBe('')
 })

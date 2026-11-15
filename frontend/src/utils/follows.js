@@ -5,9 +5,9 @@ const quiet = { notifyOnError: false }
 const userUrl = (username) => `${API_BASE_URL}/api/users/${encodeURIComponent(username)}`
 
 // The follower and following lists, and who may see them, aren't in the API yet (BACKEND_REQUESTS.md, "Follower and
-// following lists" and "Who can see your follows"). While this is true the lists show sample people and the visibility
-// setting is kept in this browser; set it to false once GET /api/users/{username}/followers, .../following and the
-// followsVisibility setting exist
+// following lists" and "Who can see your follows"). While this is true your own lists show your friends (GET
+// /api/users/me/friends), other people's can't be opened, and the visibility setting is kept in this browser; set it
+// to false once GET /api/users/{username}/followers, .../following and the followsVisibility setting exist
 export const FOLLOWS_MOCKED = true
 
 // Who can see the people a user follows and is followed by. Friends are people who follow each other
@@ -26,18 +26,29 @@ export function isFriend(user) {
   return Boolean(user?.isFollowing && user?.followsMe)
 }
 
-const SAMPLE_PEOPLE = [
-  { userId: 'sample-1', username: 'justin', pfpUrl: null, isFollowing: true, followsMe: true },
-  { userId: 'sample-2', username: 'arjay', pfpUrl: null, isFollowing: false, followsMe: true },
-  { userId: 'sample-3', username: 'sam', pfpUrl: null, isFollowing: true, followsMe: false },
-  { userId: 'sample-4', username: 'nia', pfpUrl: null, isFollowing: true, followsMe: true },
-]
+const FRIENDS_PAGE = 50
 
-// { users: [FollowUser], nextCursor }, newest follow first, 50 per page. FollowUser: { userId, username, pfpUrl,
-// isFollowing (the caller follows them), followsMe (they follow the caller) }. 403 FOLLOWS_HIDDEN when the user's
-// followsVisibility doesn't include the caller; 404 USER_NOT_FOUND
-export function fetchFollowList(username, which, cursor = null) {
-  if (FOLLOWS_MOCKED) return Promise.resolve({ users: SAMPLE_PEOPLE, nextCursor: null })
+// GET /api/users/me/friends (offset paging, `totalResults`) as a follow-list page. Friends follow the caller and are
+// followed back, so they belong on both of the caller's lists
+async function fetchFriendsPage(cursor) {
+  const offset = Number(cursor) || 0
+  const page = await fetchAPI(`${API_BASE_URL}/api/users/me/friends?${new URLSearchParams({ limit: FRIENDS_PAGE, offset })}`, quiet)
+  const friends = page?.friends ?? []
+  const users = friends.map(({ userId, username, pfpUrl }) => ({ userId, username, pfpUrl: pfpUrl ?? null, isFollowing: true, followsMe: true }))
+  const next = offset + friends.length
+  return { users, nextCursor: friends.length && next < (page?.totalResults ?? 0) ? String(next) : null }
+}
+
+// { users: [FollowUser], nextCursor, partial?, unavailable? }, newest follow first, 50 per page. FollowUser:
+// { userId, username, pfpUrl, isFollowing (the caller follows them), followsMe (they follow the caller) }. 403
+// FOLLOWS_HIDDEN when the user's followsVisibility doesn't include the caller; 404 USER_NOT_FOUND.
+// While FOLLOWS_MOCKED only real people are shown: the caller's own lists hold their friends (`partial`), and anyone
+// else's lists can't be loaded yet (`unavailable`)
+export function fetchFollowList(username, which, cursor = null, { own = false } = {}) {
+  if (FOLLOWS_MOCKED) {
+    if (!own) return Promise.resolve({ users: [], nextCursor: null, unavailable: true })
+    return fetchFriendsPage(cursor).then((page) => ({ ...page, partial: true }))
+  }
   const query = cursor ? `?${new URLSearchParams({ cursor })}` : ''
   return fetchAPI(`${userUrl(username)}/${which === 'following' ? 'following' : 'followers'}${query}`, quiet)
 }

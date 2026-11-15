@@ -23,8 +23,8 @@ export function changeUsername(username) {
   return request('PUT', `${API_BASE_URL}/api/users/me/username`, { username })
 }
 
-// Returns nothing (204). Needs the current password: 403 WRONG_PASSWORD (not a 401, so the session stays),
-// 429 RATE_LIMITED. The session token stops working once the account is gone
+// Returns nothing (204). The session token stops working once the account is gone. 403 WRONG_PASSWORD (a 403, so it
+// doesn't log the user out), 429 RATE_LIMITED
 export function deleteAccount(currentPassword) {
   return request('DELETE', `${API_BASE_URL}/api/users/me`, { currentPassword }, { notifyOnError: false })
 }

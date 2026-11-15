@@ -513,7 +513,7 @@
           @cancel="deleting && $event.preventDefault()"
           @close="onDeleteDialogClose"
         >
-          <form class="confirm-body" novalidate @submit.prevent="confirmDelete">
+          <div class="confirm-body">
             <h2 id="delete-title">Are you sure you want to delete your account?</h2>
             <p id="delete-text" class="confirm-text">
               Your profile, playlists, uploaded songs and listening history will be wiped. You can't undo this.
@@ -532,7 +532,7 @@
             <p class="hint">
               {{ deleteReady ? 'You can delete your account now.' : `Take a moment to read this. Delete unlocks in ${DELETE_WAIT - deleteElapsed}s.` }}
             </p>
-            <div class="delete-password">
+            <form class="delete-password" @submit.prevent="confirmDelete">
               <label class="form-label" for="delete-password">Current Password</label>
               <input
                 id="delete-password"
@@ -540,24 +540,23 @@
                 class="input"
                 type="password"
                 autocomplete="current-password"
-                required
-                :disabled="deleting"
+                :maxlength="PASSWORD_MAX"
                 :aria-invalid="deletePasswordError ? 'true' : 'false'"
                 aria-describedby="delete-password-error"
                 @input="deletePasswordError = ''"
               />
               <p v-if="deletePasswordError" id="delete-password-error" class="error">{{ deletePasswordError }}</p>
-            </div>
+            </form>
             <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
             <div class="confirm-actions">
               <button type="button" class="btn secondary" autofocus :disabled="deleting" @click="deleteDialog.close()">
                 Keep my account
               </button>
-              <button type="submit" class="btn primary" :disabled="!canDelete">
+              <button type="button" class="btn primary" :disabled="!canDelete" @click="confirmDelete">
                 {{ deleting ? 'Deleting…' : 'Delete account' }}
               </button>
             </div>
-          </form>
+          </div>
         </dialog>
       </div>
 
@@ -1246,7 +1245,7 @@ const deletePasswordError = ref('')
 let deleteTimer = null
 
 const deleteReady = computed(() => deleteElapsed.value >= DELETE_WAIT)
-const canDelete = computed(() => deleteReady.value && !!deletePassword.value && !deleting.value)
+const canDelete = computed(() => deleteReady.value && !deleting.value && deletePassword.value.length >= PASSWORD_MIN)
 
 function openDeleteDialog() {
   deleteError.value = ''
@@ -1264,6 +1263,7 @@ function openDeleteDialog() {
 
 function onDeleteDialogClose() {
   clearInterval(deleteTimer)
+  deletePassword.value = ''
   document.documentElement.classList.remove('scroll-locked')
 }
 
@@ -1272,7 +1272,6 @@ onBeforeUnmount(onDeleteDialogClose)
 async function confirmDelete() {
   if (!canDelete.value) return
   deleteError.value = ''
-  deletePasswordError.value = ''
   deleting.value = true
   try {
     await deleteAccount(deletePassword.value)
@@ -1282,9 +1281,8 @@ async function confirmDelete() {
     await router.replace({ name: 'Home' })
   } catch (err) {
     if (err.sessionEnded) return
-    // The server checks the length too (400 INVALID_FIELD); a password that short can't be theirs either
-    if (err.code === 'WRONG_PASSWORD' || err.code === 'INVALID_FIELD') deletePasswordError.value = "That isn't your current password. Try again."
-    else if (err.status === 429) deleteError.value = 'Too many tries. Wait a minute, then try again.'
+    if (err.code === 'WRONG_PASSWORD') deletePasswordError.value = "That isn't your current password. Try again."
+    else if (err.code === 'RATE_LIMITED' || err.status === 429) deleteError.value = "You've tried too many times. Wait a minute, then try again."
     else deleteError.value = "We couldn't delete your account. Check that the server is running, then try again."
   } finally {
     deleting.value = false
@@ -1347,9 +1345,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .confirm-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
 .confirm h2 { margin: 0; }
 .confirm-text { margin: 0; }
-.delete-password { display: flex; flex-direction: column; gap: var(--space-1); }
-.delete-password .form-label { margin: 0; padding-top: 0; text-align: left; }
 .confirm-actions { display: flex; gap: var(--space-3); margin-top: var(--space-2); }
+.delete-password { display: flex; flex-direction: column; gap: var(--space-2); }
 .countdown { background: var(--surface-alt); border-radius: var(--radius-pill); height: 8px; overflow: hidden; }
 .countdown-fill { animation: countdown 6s linear forwards; background: var(--primary); height: 100%; transform: scaleX(var(--progress)); transform-origin: left; }
 @keyframes countdown { from { transform: scaleX(0); } to { transform: scaleX(1); } }

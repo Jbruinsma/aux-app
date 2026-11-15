@@ -1,15 +1,16 @@
 <template>
-  <ol class="rows" :class="{ ranked, counted: hasCounts }" :aria-label="label">
+  <ol class="rows" :class="{ ranked, counted: hasCounts, 'with-action': Boolean($slots.action) }" :aria-label="label">
     <li v-for="(piece, index) in pieces" :key="piece.musicPieceId ?? `${index}-${piece.name}`" class="tr" :class="{ on: isCurrent(piece) }">
       <span v-if="ranked" class="rk">{{ start + index }}</span>
       <button
         v-if="canPlay(piece)"
         type="button"
         class="play"
-        :aria-label="`Play ${piece.name}${piece.artistSummary?.artistName ? ` by ${piece.artistSummary.artistName}` : ''}`"
-        @click="emit('play', index)"
+        :aria-label="`${isPlaying(piece) ? 'Pause' : 'Play'} ${piece.name}${piece.artistSummary?.artistName ? ` by ${piece.artistSummary.artistName}` : ''}`"
+        @click="onPlayClick(piece, index)"
       >
-        <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
+        <svg v-if="isPlaying(piece)" width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor" /></svg>
+        <svg v-else width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
       </button>
       <span v-else class="play-spacer" aria-hidden="true"></span>
       <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
@@ -18,26 +19,30 @@
       </span>
       <span class="text">
         <span class="ti">{{ piece.name }}</span>
-        <router-link
-          v-if="byline === 'uploader' && piece.uploader?.username"
-          class="ar uploader-link"
-          :to="{ name: 'Profile', params: { username: piece.uploader.username } }"
-        >
-          <img v-if="piece.uploader.pfpUrl" class="uploader-pfp" :src="resolveCoverURL(piece.uploader.pfpUrl)" alt="" loading="lazy" />
-          <span v-else class="uploader-pfp uploader-initial" aria-hidden="true">{{ piece.uploader.username.charAt(0).toUpperCase() }}</span>
-          <span class="uploader-name"><span class="sr-only">Uploaded by </span>{{ piece.uploader.username }}</span>
-        </router-link>
-        <router-link
-          v-else-if="byline === 'artist' && linkArtists && piece.artistSummary?.artistName && piece.artistSummary.artistId"
-          class="ar artist-link"
-          :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
-        >{{ piece.artistSummary.artistName }}</router-link>
-        <span v-else-if="byline === 'artist' && piece.artistSummary?.artistName" class="ar">{{ piece.artistSummary.artistName }}</span>
+        <span class="sub">
+          <router-link
+            v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
+            class="ar artist-link"
+            :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
+          >{{ piece.artistSummary.artistName }}</router-link>
+          <span v-else-if="piece.artistSummary?.artistName" class="ar">{{ piece.artistSummary.artistName }}</span>
+          <router-link
+            v-if="showUploader && piece.uploader?.username"
+            class="up"
+            :to="{ name: 'Profile', params: { username: piece.uploader.username } }"
+            :title="`Uploaded by ${piece.uploader.username}`"
+          >
+            <img v-if="piece.uploader.pfpUrl" class="up-pfp" :src="resolveCoverURL(piece.uploader.pfpUrl)" alt="" loading="lazy" />
+            <span v-else class="up-pfp up-initial" aria-hidden="true">{{ piece.uploader.username.charAt(0).toUpperCase() }}</span>
+            <span class="up-name"><span class="sr-only">Uploaded by </span>{{ piece.uploader.username }}</span>
+          </router-link>
+        </span>
       </span>
       <span v-if="hasCounts" class="cnt">
         <span class="ctrk"><span class="fill" :style="{ width: `${countShare(piece)}%` }"></span></span>
         <span class="ct">{{ piece.playCount === 1 ? '1 play' : `${piece.playCount} plays` }}</span>
       </span>
+      <span v-if="$slots.action" class="act"><slot name="action" :piece="piece" :index="index" /></span>
     </li>
   </ol>
 </template>
@@ -48,17 +53,17 @@ import { useMusicStore } from '@/stores/music.js'
 import { resolveCoverURL } from '@/utils/display.js'
 
 // The style guide's track row: optional rank, play button, 40px art, title and artist, and a play count bar when the
-// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button. The line under the title is the
-// artist by default, or the uploader (`byline="uploader"`) where every row has the same artist, like an artist's page
+// pieces carry `playCount`. A piece without a `musicPieceId` gets no play button. The playing piece's button shows
+// pause and pauses it; pressed again it resumes where it was instead of starting over, so `play` is only emitted for
+// the other pieces. The `action` slot ({ piece, index }) adds a small button at the end of each row
 const props = defineProps({
   pieces: { type: Array, required: true },
   label: { type: String, required: true },
   ranked: Boolean,
-  // Link the artist to their page; turn off where the list is already one artist's
-  linkArtists: { type: Boolean, default: true },
-  byline: { type: String, default: 'artist', validator: (value) => ['artist', 'uploader'].includes(value) },
   // Rank of the first row, for a list split across columns
   start: { type: Number, default: 1 },
+  // Adds who uploaded each piece after the artist
+  showUploader: Boolean,
 })
 const emit = defineEmits(['play'])
 
@@ -75,17 +80,31 @@ function isCurrent(piece) {
   return Boolean(piece.musicPieceId) && musicStore.currentMusicPiece?.uuid === piece.musicPieceId
 }
 
+function isPlaying(piece) {
+  return isCurrent(piece) && musicStore.isPlaying
+}
+
+function onPlayClick(piece, index) {
+  if (!isCurrent(piece)) return emit('play', index)
+  if (musicStore.isPlaying) musicStore.isPlaying = false
+  else if (musicStore.currentMusicPiece?.mp3File) musicStore.isPlaying = true
+  // After a reload the song has no audio yet
+  else musicStore.resume()
+}
+
 function countShare(piece) {
   return Math.round(((piece.playCount ?? 0) / maxCount.value) * 100)
 }
 </script>
 
 <style scoped>
-.rows { list-style: none; margin: 0; padding: 0; }
-.tr { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: var(--space-3); grid-template-columns: 32px 40px minmax(0, 1fr); padding: var(--space-2) var(--space-3); }
-.ranked .tr { grid-template-columns: 20px 32px 40px minmax(0, 1fr); }
-.counted .tr { grid-template-columns: 32px 40px minmax(0, 1fr) minmax(90px, 200px); }
-.ranked.counted .tr { grid-template-columns: 20px 32px 40px minmax(0, 1fr) minmax(90px, 200px); }
+.rows { --cols: 32px 40px minmax(0, 1fr); list-style: none; margin: 0; padding: 0; }
+.rows.ranked { --cols: 20px 32px 40px minmax(0, 1fr); }
+.rows.counted { --cols: 32px 40px minmax(0, 1fr) minmax(90px, 200px); }
+.rows.ranked.counted { --cols: 20px 32px 40px minmax(0, 1fr) minmax(90px, 200px); }
+.tr { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: var(--space-3); grid-template-columns: var(--cols); padding: var(--space-2) var(--space-3); }
+.with-action .tr { grid-template-columns: var(--cols) 36px; }
+.act { display: flex; justify-content: flex-end; }
 .tr:first-child { border-top: 1px solid var(--line); }
 .tr:hover { background: var(--surface-alt); }
 .tr.on { background: var(--purple-soft); }
@@ -94,31 +113,33 @@ function countShare(piece) {
 .play { align-items: center; background: none; border: 1px solid var(--line-strong); border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 32px; justify-content: center; padding: 0; width: 32px; }
 .play:hover { border-color: var(--primary); color: var(--link); }
 .on .play { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-.play:focus-visible, .artist-link:focus-visible, .uploader-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.play:focus-visible, .artist-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .play-spacer { height: 32px; width: 32px; }
 .art { border-radius: var(--radius-sm); display: block; height: 40px; object-fit: cover; width: 40px; }
 .art-empty { align-items: center; background: var(--surface-alt); color: var(--ink-muted); display: flex; justify-content: center; }
 .text { display: flex; flex-direction: column; min-width: 0; }
 .ti { font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .on .ti { color: var(--link); }
-.ar { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { align-items: center; display: flex; gap: var(--space-2); min-width: 0; }
+.ar { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.up { align-items: center; color: var(--ink-muted); display: inline-flex; flex: none; font: 500 14px/20px var(--font-sans); gap: var(--space-1); max-width: 50%; text-decoration: none; }
+.ar + .up::before { color: var(--ink-muted); content: '·'; margin-right: var(--space-1); }
+.up:hover .up-name { color: var(--link); text-decoration: underline; }
+.up:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.up-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
+.up-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
+.up-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-only { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 .artist-link { text-decoration: none; }
 .artist-link:hover { color: var(--link); text-decoration: underline; }
-.uploader-link { align-items: center; display: flex; gap: 6px; text-decoration: none; }
-.uploader-link:hover .uploader-name { color: var(--link); text-decoration: underline; }
-.uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
-.uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
-.uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cnt { display: flex; flex-direction: column; gap: 2px; }
 .ctrk { background: var(--surface-alt); border-radius: var(--radius-pill); height: 6px; overflow: hidden; }
 .on .ctrk { background: var(--surface); }
 .fill { background: var(--purple); border-radius: var(--radius-pill); display: block; height: 100%; }
 
-.sr-only { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
-
 @media (max-width: 720px) {
-  .counted .tr { grid-template-columns: 32px 40px minmax(0, 1fr); }
-  .ranked.counted .tr { grid-template-columns: 20px 32px 40px minmax(0, 1fr); }
+  .rows.counted { --cols: 32px 40px minmax(0, 1fr); }
+  .rows.ranked.counted { --cols: 20px 32px 40px minmax(0, 1fr); }
   .cnt { display: none; }
 }
 </style>

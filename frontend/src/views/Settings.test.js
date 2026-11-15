@@ -42,7 +42,7 @@ async function openDelete() {
   return dialog
 }
 
-const submit = () => wrapper.get('dialog.confirm button[type="submit"]')
+const submit = () => wrapper.get('dialog.confirm .confirm-actions .btn.primary')
 
 it('needs the countdown and the current password before deleting', async () => {
   wrapper = mount(Settings, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
@@ -92,6 +92,6 @@ it('asks the user to wait when rate limited', async () => {
   await wrapper.get('#delete-password').setValue('hunter22!')
   await wrapper.get('dialog.confirm form').trigger('submit')
   await flushPromises()
-  expect(wrapper.get('dialog.confirm [role="alert"]').text()).toBe('Too many tries. Wait a minute, then try again.')
+  expect(wrapper.get('dialog.confirm [role="alert"]').text()).toBe("You've tried too many times. Wait a minute, then try again.")
   expect(useUserStore().loggedIn).toBe(true)
 })

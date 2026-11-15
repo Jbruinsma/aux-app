@@ -2,41 +2,52 @@
   <section
     ref="rootRef"
     class="queue-view"
-    :class="{ open, glow: Boolean(glowColor), browsing: view !== current, paused: !isPlaying }"
+    :class="{ open, glow: Boolean(glowColor), browsing: view !== current && !lyricsOpen, paused: !isPlaying, 'lyrics-mode': lyricsOpen }"
     :style="{ '--glow': glowColor || 'transparent', '--view': view }"
     role="dialog"
     aria-modal="true"
-    aria-label="Queue"
+    :aria-label="lyricsOpen ? 'Lyrics' : 'Queue'"
     :aria-hidden="open ? 'false' : 'true'"
     :inert="!open"
     @keydown="onKeydown"
   >
     <div class="top">
       <div class="top-left">
-        <button ref="closeRef" type="button" class="icon-btn" aria-label="Close queue" @click="emit('close')">
+        <button ref="closeRef" type="button" class="icon-btn" :aria-label="lyricsOpen ? 'Close lyrics' : 'Close queue'" @click="emit('close')">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
         <button type="button" class="back" :tabindex="view !== current ? 0 : -1" @click="view = current">Back to now playing</button>
       </div>
       <p class="label">
         <template v-if="playlistLink">Playing from <router-link :to="playlistLink.to">{{ playlistLink.name || 'playlist' }}</router-link></template>
-        <template v-else>Now playing</template>
+        <template v-else>Now Playing</template>
       </p>
-      <div class="modes">
-        <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
-        </button>
-        <button type="button" class="icon-btn toggle" :class="{ active: repeatMode !== 'OFF' }" :disabled="!canPlay" :aria-label="repeatLabel" :title="repeatLabel" @click="emit('repeat')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
-            <path v-if="repeatMode === 'PIECE'" d="M11 10h1v4" />
-            <path v-else-if="repeatMode === 'OFF'" d="m3 3 18 18" />
-          </svg>
-        </button>
-      </div>
+      <span></span>
     </div>
 
-    <div class="stage" @wheel="onWheel">
+    <div v-if="lyricsOpen" class="lyrics-stage">
+      <div class="now">
+        <button type="button" class="now-cover-btn" aria-label="Show the album cover" @click="emit('lyrics')">
+          <img v-if="piece?.cover" class="now-cover" :src="piece.cover" alt="" decoding="async" />
+          <span v-else class="now-cover cover-empty" aria-hidden="true">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+          </span>
+        </button>
+        <p class="now-title"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></p>
+        <p v-if="piece?.artist" class="now-artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
+      </div>
+      <LyricsPanel
+        class="lyrics-col"
+        variant="stage"
+        :open="open"
+        :piece="piece"
+        :position="progress"
+        :duration="duration"
+        @seek="(seconds) => emit('lyrics-seek', seconds)"
+      />
+    </div>
+
+    <div v-else class="stage" @wheel="onWheel">
       <button type="button" class="nudge prev" :disabled="view <= 0" aria-label="Show earlier songs" @click="browse(-1)">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
       </button>
@@ -98,9 +109,26 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" /></svg>
           </button>
         </div>
-        <div class="volume">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></svg>
-          <input class="slider" type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" @input="e => emit('volume', parseFloat(e.target.value))" />
+        <div class="right">
+          <div class="modes">
+            <button type="button" class="icon-btn toggle" :class="{ active: lyricsOpen }" :disabled="!piece?.uuid" aria-label="Lyrics" title="Lyrics" :aria-pressed="lyricsOpen ? 'true' : 'false'" @click="emit('lyrics')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
+            </button>
+            <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
+            </button>
+            <button type="button" class="icon-btn toggle" :class="{ active: repeatMode !== 'OFF' }" :disabled="!canPlay" :aria-label="repeatLabel" :title="repeatLabel" @click="emit('repeat')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                <path v-if="repeatMode === 'PIECE'" d="M11 10h1v4" />
+                <path v-else-if="repeatMode === 'OFF'" d="m3 3 18 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="volume">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></svg>
+            <input class="slider" type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" @input="e => emit('volume', parseFloat(e.target.value))" />
+          </div>
         </div>
       </div>
     </div>
@@ -111,11 +139,16 @@
 // Desktop queue (above 720px): the playing song's cover large in the middle, songs already played to the left and
 // what's up next to the right, over a background tinted with the cover's color. It replaces the bottom bar while open,
 // so it carries all of the bar's controls. Like MobilePlayer, it only shows state and sends the controls up to
-// BottomPlayer
+// BottomPlayer. With `lyricsOpen` the middle shows the cover on the left and the lyrics (LyricsPanel) on the right
+// instead of the cover row; the lyrics button in the top bar switches between the two
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { resolveCoverURL } from '@/utils/display.js'
 import { useCoverColor } from '@/utils/coverColor.js'
+import LyricsPanel from '@/components/LyricsPanel.vue'
+import MarqueeText from '@/components/MarqueeText.vue'
+import { calm, glide, rise } from '@/utils/glide.js'
+import { albumCoverUrl } from '@/utils/albums.js'
 
 const props = defineProps({
   open: Boolean,
@@ -131,6 +164,7 @@ const props = defineProps({
   canSkip: Boolean,
   canShuffle: Boolean,
   shuffleOn: Boolean,
+  lyricsOpen: Boolean,
   repeatMode: { type: String, default: 'OFF' },
   repeatLabel: { type: String, default: '' },
   progress: { type: Number, default: 0 },
@@ -141,7 +175,7 @@ const props = defineProps({
   volume: { type: Number, default: 1 },
   volumeFill: { type: String, default: '100%' },
 })
-const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume'])
+const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics', 'lyrics-seek'])
 
 const route = useRoute()
 const rootRef = ref(null)
@@ -161,7 +195,7 @@ const slots = computed(() => {
         title: p.name,
         subtitle,
         label: subtitle ? `${p.name} by ${subtitle}` : p.name,
-        cover: p.coverUrl ? resolveCoverURL(p.coverUrl) : '',
+        cover: albumCoverUrl(p) ? resolveCoverURL(albumCoverUrl(p)) : '',
       }
     })
   }
@@ -206,6 +240,17 @@ watch(() => props.open, async (isOpen) => {
   closeRef.value?.focus({ preventScroll: true })
 })
 
+// Switching between the cover row and lyrics: the playing cover glides from the middle to the left (or back) while the
+// rest fades in, so the view doesn't snap. Measured before the switch renders, animated after
+watch(() => props.lyricsOpen, async (toLyrics) => {
+  const root = rootRef.value
+  if (!props.open || !root || calm()) return
+  const from = root.querySelector(toLyrics ? '.slot.on .cover' : '.now-cover')?.getBoundingClientRect()
+  await nextTick()
+  glide(root.querySelector(toLyrics ? '.now-cover' : '.slot.on .cover'), from)
+  rise(root.querySelectorAll(toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .nudge'))
+})
+
 // Following a link (the playlist name) leaves the queue
 watch(() => route?.fullPath, () => { if (props.open) emit('close') })
 
@@ -217,7 +262,7 @@ function onKeydown(e) {
     return
   }
   const onSlider = e.target?.type === 'range'
-  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !onSlider) {
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !onSlider && !props.lyricsOpen) {
     e.preventDefault()
     browse(e.key === 'ArrowLeft' ? -1 : 1)
     return
@@ -234,9 +279,11 @@ function onKeydown(e) {
 
 <style scoped>
 /* The cover's color radiates from behind the middle cover and fades into surface. The style guide's one gradient */
-.queue-view { --cover: clamp(180px, min(28vw, calc(100dvh - 400px)), 340px); --gap: var(--space-8); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); inset: 0; position: fixed; transform: translateY(100%); transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 150; }
-.queue-view.open { transform: none; transition: --glow 700ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
-.queue-view.glow { background: radial-gradient(ellipse 55% 70% at 50% 42%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 45%, var(--surface) 100%); }
+.queue-view { --cover: clamp(180px, min(28vw, calc(100dvh - 400px)), 340px); --gap: var(--space-8); background: var(--surface); color: var(--ink); display: flex; flex-direction: column; font-family: var(--font-sans); inset: 0; position: fixed; transform: translateY(100%); transition: --glow 700ms var(--ease), --glow-x 450ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s linear var(--dur-med); visibility: hidden; z-index: 150; }
+.queue-view.open { transform: none; transition: --glow 700ms var(--ease), --glow-x 450ms var(--ease), transform var(--dur-med) var(--ease), visibility 0s; visibility: visible; }
+.queue-view.glow { background: radial-gradient(ellipse 55% 70% at var(--glow-x) 42%, color-mix(in srgb, var(--glow) var(--glow-in), var(--surface)) 0%, color-mix(in srgb, var(--glow) var(--glow-mid), var(--surface)) 45%, var(--surface) 100%); }
+/* Lyrics: the glow slides over behind the cover on the left */
+.queue-view.lyrics-mode { --glow-x: 30%; }
 .queue-view :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 
@@ -256,7 +303,8 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .label { color: var(--ink-muted); font: 600 14px/20px var(--font-sans); margin: 0; text-align: center; }
 .label a { color: var(--link); text-decoration: none; }
 .label a:hover { text-decoration: underline; }
-.modes { align-items: center; display: flex; gap: var(--space-2); justify-self: end; }
+.right { align-items: center; display: flex; gap: var(--space-6); justify-self: end; }
+.modes { align-items: center; display: flex; gap: var(--space-2); }
 
 .stage { flex: 1; min-height: 0; overflow: hidden; position: relative; }
 .track { left: 50%; list-style: none; margin: 0; padding: 0; position: absolute; top: 50%; transform: translateX(calc(var(--view) * -1 * (var(--cover) + var(--gap)) - var(--cover) / 2)); transition: transform var(--dur-med) var(--ease); }
@@ -285,6 +333,15 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .eq i:nth-child(3) { animation-delay: -600ms; }
 .paused .eq i { animation-play-state: paused; }
 @keyframes eq { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+.lyrics-stage { display: grid; flex: 1; gap: calc(var(--space-8) * 2); grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); margin: 0 auto; max-width: 1120px; min-height: 0; padding: 0 var(--space-8); width: 100%; }
+.now { align-self: center; display: flex; flex-direction: column; justify-self: center; max-width: 100%; width: min(360px, calc(100dvh - 420px)); }
+.now-cover-btn { background: none; border: 0; border-radius: var(--radius-md); cursor: pointer; display: block; padding: 0; width: 100%; }
+.now-cover-btn:hover .now-cover { transform: scale(1.02); }
+.now-cover { aspect-ratio: 1; border-radius: var(--radius-md); box-shadow: 0 16px 48px rgb(0 0 0 / 0.25); display: block; object-fit: cover; transition: transform var(--dur-med) var(--ease); width: 100%; }
+.now-title { align-items: center; color: var(--ink); display: flex; font: 700 22px/30px var(--font-sans); margin: var(--space-4) 0 0; min-width: 0; }
+.now-artist { font: 500 16px/24px var(--font-sans); margin: 0; min-width: 0; opacity: 0.8; }
+.now-title .eq { flex: none; }
+.lyrics-col { min-height: 0; }
 .nudge { align-items: center; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 44px; justify-content: center; padding: 0; position: absolute; top: calc(50% - 22px - 28px); width: 44px; z-index: 1; }
 .nudge:hover:not(:disabled) { background: var(--surface-alt); }
 .nudge.prev { left: var(--space-6); }
@@ -296,7 +353,7 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .time:last-child { text-align: right; }
 .controls { align-items: center; display: grid; grid-template-columns: 1fr auto 1fr; margin-top: var(--space-2); }
 .transport { align-items: center; display: flex; gap: var(--space-6); }
-.volume { align-items: center; color: var(--ink-muted); display: flex; gap: var(--space-2); justify-self: end; }
+.volume { align-items: center; color: var(--ink-muted); display: flex; gap: var(--space-2); }
 .volume .slider { flex: none; width: 100px; }
 .slider { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; flex: 1; height: 16px; margin: 0; }
 .slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--purple) var(--fill, 0%), var(--line) var(--fill, 0%)); border-radius: var(--radius-pill); height: 4px; }

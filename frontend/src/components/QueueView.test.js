@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import QueueView from '@/components/QueueView.vue'
@@ -116,4 +116,21 @@ it('is inert while closed', async () => {
   expect(wrapper.get('.queue-view').attributes('inert')).toBeDefined()
   await wrapper.setProps({ open: true })
   expect(wrapper.get('.queue-view').attributes('inert')).toBeUndefined()
+})
+
+it('shows the cover and the lyrics full screen in lyrics mode, and sends a clicked line to seek', async () => {
+  Element.prototype.scrollTo = vi.fn()
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ duration: 200, syncedLyrics: '[00:01.00] Hello\n[00:04.00] World', plainLyrics: 'x' }) })))
+  await render({ lyricsOpen: true, progress: 4.5, duration: 200 })
+  expect(wrapper.attributes('aria-label')).toBe('Lyrics')
+  expect(wrapper.find('.track').exists()).toBe(false)
+  expect(wrapper.get('.now-title').text()).toBe('Song 3')
+  expect(wrapper.get('.line.now').text()).toBe('World')
+  await wrapper.findAll('.line')[0].trigger('click')
+  expect(wrapper.emitted('lyrics-seek')).toEqual([[1]])
+  await wrapper.get('button[aria-label="Lyrics"]').trigger('click')
+  expect(wrapper.emitted('lyrics')).toHaveLength(1)
+  await wrapper.get('.now-cover-btn').trigger('click')
+  expect(wrapper.emitted('lyrics')).toHaveLength(2)
+  vi.unstubAllGlobals()
 })

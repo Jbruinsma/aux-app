@@ -216,7 +216,7 @@ import { API_BASE_URL } from '@/utils/variables.js'
 import { COUNTRIES } from '@/utils/countries.js'
 import { compatibilityLevel, nameSeparator } from '@/utils/matches.js'
 import { fetchFavoriteArtists } from '@/utils/artist.js'
-import { isFriend, setFollowing } from '@/utils/follows.js'
+import { FOLLOWS_MOCKED, isFriend, setFollowing } from '@/utils/follows.js'
 import { USER_UPLOADS_MOCKED, fetchUploads, fetchUserUploads, groupByArtist } from '@/utils/music.js'
 import { useMusicStore } from '@/stores/music.js'
 
@@ -239,13 +239,14 @@ const sharedNames = computed(() => {
 })
 
 // Counts come formatted by the server ("1.2K"). Followers and Following open their lists, unless the user's
-// followsVisibility leaves the caller out (`canViewFollows`, not sent yet, so treated as true until it is)
+// followsVisibility leaves the caller out (`canViewFollows`, not sent yet, so treated as true until it is). Until the
+// list endpoints exist (FOLLOWS_MOCKED) only your own lists open: they show your friends
 const stats = computed(() => [
   { id: 'uploads', label: 'Uploads', value: profile.value.uploadsCount ?? '0' },
   { id: 'followers', label: 'Followers', value: profile.value.followersCount ?? '0' },
   { id: 'following', label: 'Following', value: profile.value.followingCount ?? '0' },
 ])
-const canSeeFollows = computed(() => profile.value.isMe || profile.value.canViewFollows !== false)
+const canSeeFollows = computed(() => profile.value.isMe || (!FOLLOWS_MOCKED && profile.value.canViewFollows !== false))
 const followState = computed(() => ({ isFollowing: profile.value?.isFollowing, followsMe: profile.value?.followingMe }))
 const followDialog = ref(null)
 

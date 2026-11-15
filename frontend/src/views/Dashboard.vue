@@ -63,15 +63,11 @@
                       </span>
                     </span>
                   </component>
-                  <component
-                    :is="recent.preview ? 'span' : 'router-link'"
-                    v-if="item.playlistId && item.playlistOwnerUsername"
+                  <router-link
+                    v-if="!recent.preview && item.playlistId && item.playlistOwnerUsername"
                     class="card-playlist"
-                    :to="recent.preview ? null : { name: 'Playlist', params: { username: item.playlistOwnerUsername, id: item.playlistId } }"
-                  >
-                    <svg class="card-playlist-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h13M3 12h13M3 18h8M17 18V9l4-1" /></svg>
-                    <span class="card-playlist-name"><span class="sr-only">Played from </span>{{ item.playlistName || 'a playlist' }}</span>
-                  </component>
+                    :to="{ name: 'Playlist', params: { username: item.playlistOwnerUsername, id: item.playlistId } }"
+                  ><span class="card-from">From </span>{{ item.playlistName || 'a playlist' }}</router-link>
                 </li>
               </ul>
               <span v-if="hinting" :key="hintRun" class="drag-hint" aria-hidden="true" @animationend="hinting = false">
@@ -471,13 +467,10 @@ button.card-main:hover .card-title, a.card-main:hover .card-title, .playing .car
 .uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 16px; object-fit: cover; width: 16px; }
 .uploader-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 10px/1 var(--font-sans); place-items: center; }
 .uploader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-playlist { align-items: center; background: var(--surface-alt); color: var(--ink-muted); display: flex; font: 500 12px/16px var(--font-sans); gap: var(--space-1); min-width: 0; padding: 0 var(--space-4) var(--space-3); text-decoration: none; }
-.playing .card-playlist { background: var(--purple-soft); }
-a.card-playlist:hover { color: var(--link); }
-a.card-playlist:hover .card-playlist-name { text-decoration: underline; }
-a.card-playlist:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-.card-playlist-icon { fill: none; flex: none; height: 14px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 14px; }
-.card-playlist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-playlist { background: var(--surface-alt); color: var(--link); font: 500 12px/16px var(--font-sans); overflow: hidden; padding: 0 var(--space-4) var(--space-3); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.card-from { color: var(--ink-muted); }
+.card-playlist:hover { text-decoration: underline; }
+.card-playlist:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .card-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 
