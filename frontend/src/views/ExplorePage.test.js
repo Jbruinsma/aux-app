@@ -51,19 +51,27 @@ async function render() {
 
 const section = (heading) => wrapper.find(`section[aria-labelledby="${heading}"]`)
 
-it.each(['MUSIC', 'PLAYLISTS'])('shows tags on %s search results', async (category) => {
+it('shows linked tags on song results, and none on playlist tiles', async () => {
   vi.useFakeTimers()
-  route.query = { category }
-  const item = category === 'MUSIC' ? { ...piece(1), tags: ['chill', 'r&b'] }
-    : { playlistId: 'p1', playlistName: 'Mix', ownerUsername: 'pal', tags: ['chill', 'r&b'] }
-  backend({ '/api/tags': [], '/api/core/top': [], '/api/core/search': { results: [item], totalResults: 1 } })
+  route.query = { category: 'MUSIC' }
+  backend({ '/api/tags': [], '/api/core/top': [], '/api/core/search': { results: [{ ...piece(1), tags: ['chill', 'r&b'] }], totalResults: 1 } })
   await render()
   await wrapper.get('#explore-search').setValue('mix')
   await vi.advanceTimersByTimeAsync(400)
   await flushPromises()
-  const selector = category === 'MUSIC' ? '.piece-tags' : '.playlist-tags'
-  expect(wrapper.get(selector).text()).toContain('r&b')
-  expect(wrapper.get(selector).text()).toContain('chill')
+  const tags = wrapper.get('.piece-tags').findAll('a.tag')
+  expect(tags.map(t => t.text())).toEqual(['chill', 'r&b'])
+  expect(JSON.parse(tags[1].attributes('data-to'))).toEqual({ name: 'ExploreTag', params: { tag: 'r&b' } })
+  wrapper.unmount()
+
+  route.query = { category: 'PLAYLISTS' }
+  backend({ '/api/tags': [], '/api/core/top': [], '/api/core/search': { results: [{ playlistId: 'p1', playlistName: 'Mix', ownerUsername: 'pal', tags: ['chill'] }], totalResults: 1 } })
+  await render()
+  await wrapper.get('#explore-search').setValue('mix')
+  await vi.advanceTimersByTimeAsync(400)
+  await flushPromises()
+  expect(wrapper.text()).toContain('Mix')
+  expect(wrapper.find('a.tag[data-to*="chill"]').exists()).toBe(false)
 })
 
 it('shows genre tiles that link to their tag page, and this week\'s top songs ranked across two lists', async () => {

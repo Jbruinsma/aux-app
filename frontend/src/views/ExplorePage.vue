@@ -76,7 +76,7 @@
               <li v-for="piece in search.results" :key="piece.musicPieceId" class="song">
                 <img v-if="piece.coverUrl" class="song-art" :src="resolveCoverURL(piece.coverUrl)" alt="" />
                 <span v-else class="song-art" aria-hidden="true"></span>
-                <span class="song-text">
+                <div class="song-text">
                   <span class="song-title">{{ piece.name }}</span>
                   <router-link
                     v-if="piece.artistSummary?.artistName && piece.artistSummary.artistId"
@@ -84,8 +84,8 @@
                     :to="{ name: 'Artist', params: { artistId: piece.artistSummary.artistId } }"
                   >{{ piece.artistSummary.artistName }}</router-link>
                   <span v-else-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
-                  <span v-if="piece.tags?.length" class="piece-tags" aria-label="Song tags"><span v-for="tag in piece.tags" :key="tag" class="piece-tag">{{ tag }}</span></span>
-                </span>
+                  <TagList v-if="piece.tags?.length" class="piece-tags" :tags="piece.tags" label="Song tags" />
+                </div>
               </li>
             </ul>
 
@@ -232,6 +232,7 @@ import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import PlaylistGrid from '@/components/PlaylistGrid.vue'
 import SongCards from '@/components/SongCards.vue'
+import TagList from '@/components/TagList.vue'
 import TrackRows from '@/components/TrackRows.vue'
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
@@ -394,8 +395,7 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
 </script>
 
 <style scoped>
-.piece-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
-.piece-tag { background: var(--purple-soft); border-radius: var(--radius-pill); font: 600 12px/16px var(--font-sans); padding: var(--space-1) var(--space-2); }
+.piece-tags { margin-top: var(--space-1); }
 h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 h2 { font: 700 20px/28px var(--font-sans); margin: 0; }
 .meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; }

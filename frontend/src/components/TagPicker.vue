@@ -13,7 +13,7 @@
       @keydown.enter.prevent="!$event.isComposing && add(query)" />
     <p :id="`${inputId}-hint`" class="hint">{{ modelValue.length ? `${modelValue.length} / 5 tags. Press Enter to add your own.` : 'Add tags to help people find this. Press Enter to add your own.' }}</p>
     <p :id="`${inputId}-error`" class="error" :role="problem || error ? 'alert' : undefined">{{ problem || error }}</p>
-    <p v-if="loading" class="hint" role="status">Loading suggestions…</p>
+    <p v-if="loading && !available.length" class="hint" role="status">Loading suggestions…</p>
     <p v-else-if="suggestionError" class="hint">Suggestions couldn't load. You can still type your own tags.</p>
     <ul v-else-if="available.length && modelValue.length < 5" class="suggestions" aria-label="Suggested tags">
       <li v-for="tag in available" :key="tag"><button type="button" :disabled="disabled" @click="add(tag)">{{ tag }}</button></li>
@@ -42,7 +42,7 @@ watch(query, (value) => {
   clearTimeout(timer)
   const id = ++requestId
   problem.value = ''
-  suggestions.value = []
+  // The current suggestions stay until the next ones arrive, so the list doesn't flicker while typing
   loading.value = true
   const load = async () => {
     try {
@@ -63,6 +63,7 @@ watch(query, (value) => {
 function add(value) {
   if (props.disabled || props.modelValue.length >= 5) return
   const tag = normalizeTag(value)
+  if (!tag) return
   problem.value = tagProblem(tag)
   if (problem.value) return
   if (!props.modelValue.includes(tag)) emit('update:modelValue', [...props.modelValue, tag])

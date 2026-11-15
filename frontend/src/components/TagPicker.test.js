@@ -57,3 +57,24 @@ it('ignores stale suggestions and displays server rejection under the input', as
   await wrapper.setProps({ error: 'Tag contains prohibited wording' })
   expect(wrapper.get('[role="alert"]').text()).toBe('Tag contains prohibited wording')
 })
+
+it('keeps the current suggestions while new ones load, so the list does not flicker', async () => {
+  await render()
+  let finish
+  fetchAPI.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+  await wrapper.get('input').setValue('c')
+  expect(wrapper.findAll('.suggestions button').map(b => b.text())).toEqual(['chill', 'r&b'])
+  expect(wrapper.text()).not.toContain('Loading suggestions')
+  await vi.advanceTimersByTimeAsync(250)
+  finish(['chill'])
+  await flushPromises()
+  expect(wrapper.findAll('.suggestions button').map(b => b.text())).toEqual(['chill'])
+})
+
+it('does nothing on Enter in an empty box', async () => {
+  await render()
+  await wrapper.get('input').setValue('   ')
+  await wrapper.get('input').trigger('keydown', { key: 'Enter' })
+  expect(wrapper.props('modelValue')).toEqual([])
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+})

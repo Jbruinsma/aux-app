@@ -68,6 +68,8 @@
               {{ isPublic ? 'Anyone on Aux can find and play it.' : 'Only you and the people you invite can see it.' }}
             </p>
 
+            <TagPicker ref="tagPicker" v-model="tags" :error="tagsError" :disabled="creating" @update:model-value="tagsError = ''" />
+
             <p v-if="error" class="error" role="alert">{{ error }}</p>
 
             <div class="actions">
@@ -99,7 +101,6 @@
             <p class="lead">Optional. Listeners can play the playlist; editors can also add songs and change its name and cover. Invites go out once the playlist is created.</p>
 
             <PeoplePicker :exclude="excludedPeople" @pick="addPerson" />
-            <TagPicker v-model="tags" :error="tagsError" :disabled="creating" @update:model-value="tagsError = ''" />
 
             <ul v-if="people.length" class="chosen" aria-label="People to invite">
               <li v-for="person in people" :key="person.userId" class="chosen-row">
@@ -177,6 +178,7 @@ const creating = ref(false)
 const error = ref('')
 const tags = ref([])
 const tagsError = ref('')
+const tagPicker = ref(null)
 const people = ref([])
 const excludedPeople = computed(() => [userStore.userData?.userId, ...people.value.map((person) => person.userId)])
 
@@ -275,7 +277,12 @@ async function createPlaylist() {
     await router.push({ name: 'Playlist', params: { username: playlist.playlistOwner.username, id: playlist.playlistId } })
   } catch (err) {
     if (err.sessionEnded) return
-    if (isTagsError(err)) tagsError.value = tagsErrorMessage(err)
+    // Tags are on the first step; go back there so the error shows under them
+    if (isTagsError(err)) {
+      await toNameStep()
+      tagsError.value = tagsErrorMessage(err)
+      tagPicker.value?.focus()
+    }
     else if (PHOTO_ERRORS[err.code]) {
       await toCoverStep()
       error.value = PHOTO_ERRORS[err.code]
