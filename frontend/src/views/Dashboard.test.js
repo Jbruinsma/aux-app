@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 async function render() {
-  wrapper = mount(Dashboard, { global: { stubs: { AppHeader: true, AppFooter: true, CreateDialog: true, RouterLink: { template: '<a><slot /></a>' } } } })
+  wrapper = mount(Dashboard, { global: { stubs: { AppHeader: true, AppFooter: true, CreateDialog: true, RouterLink: { name: 'RouterLink', props: ['to'], template: '<a><slot /></a>' } } } })
   await flushPromises()
 }
 
@@ -49,6 +49,18 @@ it('offers Add tags for untagged uploads and opens the edit picker', async () =>
   await flushPromises()
   expect(dialog.get('#edit-title').element.value).toBe('Song 1')
   expect(dialog.get('.tag-picker .hint').text()).toContain('Add tags to help people find this')
+})
+
+it('plays an upload from its cover and opens its page from its title', async () => {
+  useEventsStore().uploads = { uploadedMusicPieces: [piece(1), piece(2)] }
+  await render()
+  const playPieces = vi.spyOn(useMusicStore(), 'playPieces').mockReturnValue(true)
+  const card = wrapper.findAll('section[aria-labelledby="uploads-heading"] li.card')[1]
+  await card.get('button.card-art-btn').trigger('click')
+  expect(playPieces).toHaveBeenCalledWith([piece(1), piece(2)], 1)
+  const link = card.findComponent({ name: 'RouterLink' })
+  expect(link.props('to')).toEqual({ name: 'Piece', params: { musicPieceId: 'm2' } })
+  expect(link.text()).toContain('Song 2')
 })
 
 it('makes no REST calls for its rows, which load from the event stream and update live', async () => {

@@ -159,7 +159,7 @@
                 aria-label="My Uploads songs"
               >
                 <li v-for="(piece, index) in uploads.items" :key="piece.musicPieceId" class="card" :class="{ playing: isPlayingUpload(piece) }">
-                  <button type="button" class="card-main" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
+                  <button type="button" class="card-main card-art-btn" :aria-label="playLabel(piece)" @click="musicStore.playPieces(uploads.items, index)">
                     <span class="card-art-wrap">
                       <img v-if="piece.coverUrl" class="card-art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
                       <span v-else class="card-art card-art-empty" aria-hidden="true">
@@ -167,11 +167,13 @@
                       </span>
                       <span class="card-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" /></svg></span>
                     </span>
+                  </button>
+                  <router-link class="card-main" :to="{ name: 'Piece', params: { musicPieceId: piece.musicPieceId } }">
                     <span class="card-body">
                       <span class="card-title">{{ piece.name }}</span>
                       <span v-if="piece.artistSummary?.artistName" class="card-meta">{{ piece.artistSummary.artistName }}</span>
                     </span>
-                  </button>
+                  </router-link>
                   <button type="button" class="card-edit" :aria-label="`Edit ${piece.name}`" title="Edit song" @click="editDialog.open(piece)">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" />
@@ -447,6 +449,7 @@ button.card-main, a.card-main { cursor: pointer; text-decoration: none; }
 button.card-main:focus-visible, a.card-main:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .scroller.dragging .card-main { cursor: grabbing; }
 .card-art-wrap { display: block; position: relative; }
+.card-art-btn { flex: none; }
 .card-play { align-items: center; background: var(--primary); border-radius: var(--radius-pill); bottom: var(--space-3); display: flex; height: 40px; justify-content: center; opacity: 0; position: absolute; right: var(--space-3); transition: opacity var(--dur-fast) var(--ease); width: 40px; }
 .card-play svg { fill: var(--on-primary); height: 18px; width: 18px; }
 .card-main:hover .card-play, .card-main:focus-visible .card-play, .playing .card-play { opacity: 1; }

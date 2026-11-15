@@ -40,6 +40,7 @@ import com.aux_app.repository.UserRepository;
 //   PlaybackEventService.recordPlay                 caller                      -> RECENTS, TOP_ARTISTS
 //                                                   everyone online             -> MATCHES, batched (the player's taste changed)
 //   ArtistController.(un)favoriteArtist             everyone online             -> MATCHES, batched
+//   MusicPieceController.(un)favoriteMusicPiece     everyone online             -> MATCHES, batched
 //   UserController.follow/unfollow                  caller                      -> MATCHES (followed users drop out)
 //   MusicPieceController.createMusicPiece           caller                      -> UPLOADS
 //   PlaylistService.createPlaylist                  owner                       -> LIBRARY

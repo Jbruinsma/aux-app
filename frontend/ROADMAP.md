@@ -17,18 +17,6 @@ ______________________________________________________
 
 - [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
 
-### 25. Build the music piece page
-
-**Files:** new view and route, `src/views/Dashboard.vue` (My uploads)
-**API:** `GET /api/music-pieces/{musicPieceId}` (public, token optional)
-
-- [ ] Add a details page with the cover, title, artist, uploader, tags, length, play count and upload date.
-- [ ] Add a Play button that plays the piece on its own with `playPieces([musicPiece])`.
-- [ ] Open the page when an upload is clicked.
-- [ ] Show a not-found state on `404 MUSIC_PIECE_NOT_FOUND`.
-
-**Done when:** clicking an upload opens its page, and Play starts it.
-
 ### 28. Follower and following lists
 
 **Files:** new `src/components/FollowListDialog.vue`, `src/views/PublicProfile.vue`, `src/utils/follows.js`
