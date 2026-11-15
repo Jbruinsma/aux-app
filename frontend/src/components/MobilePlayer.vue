@@ -205,6 +205,8 @@ watch(() => route?.fullPath, () => { if (open.value) setOpen(false) })
 // A narrow window that gets wider unmounts this; don't leave the page locked
 onBeforeUnmount(() => document.body.classList.remove('player-sheet-open'))
 
+defineExpose({ setOpen, isOpen: () => open.value })
+
 async function setMenu(value, refocus = true) {
   menuOpen.value = value
   await nextTick()

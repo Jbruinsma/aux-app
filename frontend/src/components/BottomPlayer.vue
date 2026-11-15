@@ -1,6 +1,7 @@
 <template>
   <div>
     <MobilePlayer
+      ref="mobilePlayer"
       v-if="isMobile && shouldShowPlayer"
       :piece="currentMusicPiece"
       :uploader="uploader"
@@ -274,8 +275,13 @@ watchEffect(() => {
 })
 // The queue is desktop only; the mobile player has its own full-screen view. It also closes if the song goes away
 watch([isMobile, canOpenQueue], ([mobile, canOpen]) => { if (queueOpen.value && (mobile || !canOpen)) setQueueOpen(false) })
-// Lyrics left open on a phone come back full screen on desktop
-watch(isMobile, (mobile) => { if (!mobile && lyricsOpen.value && !queueOpen.value) setQueueOpen(true) })
+// Lyrics left open across a resize stay full screen: in the queue view on desktop, over the open player on a phone
+watch(isMobile, async (mobile) => {
+  if (!lyricsOpen.value) return
+  if (!mobile && !queueOpen.value) return setQueueOpen(true)
+  await nextTick()
+  if (mobile) mobilePlayer.value?.setOpen(true)
+})
 onBeforeUnmount(() => {
   nowPlaying.cancel()
   if (queueOpen.value) document.body.classList.remove('player-sheet-open')
@@ -295,12 +301,18 @@ function openLyrics() {
   setQueueOpen(true)
 }
 
-// On a phone the cover glides between the player's big cover and the small one at the top of the lyrics
+// On a phone the cover glides between the player's big cover and the small one at the top of the lyrics. Closing
+// lyrics always lands on the full player with the cover in front, even when they were opened without it (lyrics left
+// open on desktop, then the window narrowed): then the player slides up instead
+const mobilePlayer = ref(null)
+
 async function setMobileLyrics(value) {
+  const sheetOpen = mobilePlayer.value?.isOpen() ?? false
   const from = document.querySelector(value ? '.sheet .sheet-cover' : '.lyrics.page .art')?.getBoundingClientRect()
+  if (!value && !sheetOpen) mobilePlayer.value?.setOpen(true)
   lyricsOpen.value = value
   await nextTick()
-  glide(document.querySelector(value ? '.lyrics.page .art' : '.sheet .sheet-cover'), from)
+  if (sheetOpen) glide(document.querySelector(value ? '.lyrics.page .art' : '.sheet .sheet-cover'), from)
 }
 
 function closeFullView() {

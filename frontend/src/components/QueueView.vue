@@ -148,6 +148,7 @@ import { useCoverColor } from '@/utils/coverColor.js'
 import LyricsPanel from '@/components/LyricsPanel.vue'
 import MarqueeText from '@/components/MarqueeText.vue'
 import { calm, glide, rise } from '@/utils/glide.js'
+import { albumCoverUrl } from '@/utils/albums.js'
 
 const props = defineProps({
   open: Boolean,
@@ -194,7 +195,7 @@ const slots = computed(() => {
         title: p.name,
         subtitle,
         label: subtitle ? `${p.name} by ${subtitle}` : p.name,
-        cover: p.coverUrl ? resolveCoverURL(p.coverUrl) : '',
+        cover: albumCoverUrl(p) ? resolveCoverURL(albumCoverUrl(p)) : '',
       }
     })
   }

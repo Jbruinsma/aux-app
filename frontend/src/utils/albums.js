@@ -79,6 +79,17 @@ export function trackCover(album, track) {
   return track.useAlbumCover ? album.coverUrl : track.musicPiece.coverUrl
 }
 
+// The cover a piece shows anywhere (player, queue): its album's when it's on one and uses it. Once the API has albums
+// the server sends that cover as the piece's coverUrl, so this only looks albums up while ALBUMS_MOCKED
+export function albumCoverUrl(piece) {
+  if (!ALBUMS_MOCKED || !piece?.artistSummary?.artistId) return piece?.coverUrl ?? null
+  for (const album of readStored(piece.artistSummary.artistId)) {
+    const track = album.tracks.find((item) => item.musicPiece.musicPieceId === piece.musicPieceId)
+    if (track) return trackCover(album, { ...track, musicPiece: piece })
+  }
+  return piece.coverUrl ?? null
+}
+
 // Splits the artist's loaded songs into albums and singles. An album's own track list wins over the loaded copy only
 // for songs that aren't loaded yet (they're past the first page), so loaded songs stay current
 export function arrangeByAlbum(albums, pieces) {
