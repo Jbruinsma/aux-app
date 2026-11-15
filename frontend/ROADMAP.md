@@ -265,13 +265,13 @@ each), comparing the signed-in caller with the profile owner.
 **Files:** `src/views/PublicProfile.vue`
 **API:** `GET /api/users/profile/{username}`
 
-- [ ] Show the style guide's Compatibility score component: the five-segment meter, the level word, and "You both
+- [x] Show the style guide's Compatibility score component: the five-segment meter, the level word, and "You both
       listen to …" from `sharedArtists` (or `sharedTags` when there are no shared artists). Use `compatibilityLevel`
       from `src/utils/matches.js`.
-- [ ] Hide the component when `compatibility` is null: signed out, the caller's own profile, or either user has no
+- [x] Hide the component when `compatibility` is null: signed out, the caller's own profile, or either user has no
       plays or favorite artists yet.
-- [ ] `0` is a real score: they share nothing. Show Low and leave out the "You both listen to" line.
-- [ ] The score isn't live; it changes when the profile loads again.
+- [x] `0` is a real score: they share nothing. Show Low and leave out the "You both listen to" line.
+- [x] The score isn't live; it changes when the profile loads again.
 
 **Done when:** another user's profile shows the meter with the same level and score as the matches list, and your own
 profile shows none.
