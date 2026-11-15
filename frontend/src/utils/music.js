@@ -57,33 +57,34 @@ export function findOrCreateArtist(artistName) {
   return request('POST', `${API_BASE_URL}/api/artists`, { artistName }, { notifyOnError: false })
 }
 
-// Returns the new MusicPieceOverview. The server crops the cover; send the original. `albumId` (once the API has albums,
-// BACKEND_REQUESTS.md "Albums") puts it on that album, using the album cover unless `useAlbumCover` is false; with the
-// album cover, coverImage can be left out
-export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage, tags = [], albumId = null, useAlbumCover = true }) {
+// Returns the new MusicPieceOverview. The server crops the cover; send the original. `albumId` puts it on one of the
+// artist's albums: leave the cover out to use the album's (and follow it). A single needs a cover of its own
+export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage, tags = [], albumId = null }) {
   const form = new FormData()
   form.append('name', name)
   form.append('artistId', artistId)
   form.append('isPublic', isPublic)
   form.append('mp3File', mp3File)
   if (coverImage) form.append('coverImage', coverImage)
-  if (albumId) {
-    form.append('albumId', albumId)
-    form.append('useAlbumCover', useAlbumCover)
-  }
+  if (albumId) form.append('albumId', albumId)
   appendTags(form, tags)
   return request('POST', `${API_BASE_URL}/api/music-pieces/create`, form, { notifyOnError: false })
 }
 
 // Partial update of the caller's own piece: only the fields given are sent; the rest stay as they are. Returns the
-// updated MusicPieceOverview. The server crops the cover; send the original
-export function updateMusicPiece(musicPieceId, { name, artistId, isPublic, coverImage, tags } = {}) {
+// updated MusicPieceOverview. The server crops the cover; send the original. `albumId` moves it onto one of its
+// artist's albums and `removeFromAlbum: true` makes it a single (not both); `useAlbumCover` true follows the album's
+// cover (not with `coverImage`), false keeps the image it shows as its own
+export function updateMusicPiece(musicPieceId, { name, artistId, isPublic, coverImage, tags, albumId, removeFromAlbum, useAlbumCover } = {}) {
   const form = new FormData()
   if (name !== undefined) form.append('name', name)
   if (artistId !== undefined) form.append('artistId', artistId)
   if (isPublic !== undefined) form.append('isPublic', isPublic)
   if (coverImage !== undefined) form.append('coverImage', coverImage)
   if (tags !== undefined) appendTags(form, tags, true)
+  if (albumId !== undefined) form.append('albumId', albumId)
+  if (removeFromAlbum !== undefined) form.append('removeFromAlbum', removeFromAlbum)
+  if (useAlbumCover !== undefined) form.append('useAlbumCover', useAlbumCover)
   return request('PUT', `${API_BASE_URL}/api/music-pieces/${encodeURIComponent(musicPieceId)}`, form, { notifyOnError: false })
 }
 
