@@ -16,7 +16,7 @@
         <button ref="closeRef" type="button" class="icon-btn" :aria-label="lyricsOpen ? 'Close lyrics' : 'Close queue'" @click="emit('close')">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
-        <button type="button" class="back" :tabindex="view !== current ? 0 : -1" @click="view = current">Back to now playing</button>
+        <button type="button" class="back" :tabindex="view !== current ? 0 : -1" @click="view = current">Back To Song</button>
       </div>
       <p class="label">
         <template v-if="playlistLink">Playing from <router-link :to="playlistLink.to">{{ playlistLink.name || 'playlist' }}</router-link></template>
@@ -126,7 +126,9 @@
             </button>
           </div>
           <div class="volume">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></svg>
+            <button type="button" class="icon-btn" :aria-label="muted ? 'Unmute' : 'Mute'" :title="muted ? 'Unmute' : 'Mute'" :aria-pressed="muted ? 'true' : 'false'" @click="emit('mute')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><template v-if="muted"><path d="m22 9-6 6" /><path d="m16 9 6 6" /></template><template v-else><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></template></svg>
+            </button>
             <input class="slider" type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" @input="e => emit('volume', parseFloat(e.target.value))" />
           </div>
         </div>
@@ -172,9 +174,10 @@ const props = defineProps({
   currentTimeLabel: { type: String, default: '0:00' },
   durationLabel: { type: String, default: '0:00' },
   volume: { type: Number, default: 1 },
+  muted: Boolean,
   volumeFill: { type: String, default: '100%' },
 })
-const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics', 'lyrics-seek'])
+const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics', 'lyrics-seek', 'mute'])
 
 const route = useRoute()
 const rootRef = ref(null)

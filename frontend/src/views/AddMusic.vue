@@ -72,13 +72,17 @@
           :title="`No songs match “${searchText.trim()}”`"
           text="Check the spelling or try a shorter search."
         />
+        <EmptyState
+          v-else-if="!addable.length"
+          :title="source === 'uploads' ? 'All your uploads are already in this playlist' : 'Every match is already in this playlist'"
+          :text="source === 'uploads' ? 'Upload another song to add it here.' : 'Try another search.'"
+        />
         <ul v-else class="songs">
-          <li v-for="piece in list.items" :key="piece.musicPieceId" class="song" :class="{ chosen: selected.has(piece.musicPieceId) }">
-            <label class="song-main" :class="{ disabled: inPlaylist.has(piece.musicPieceId) }">
+          <li v-for="piece in addable" :key="piece.musicPieceId" class="song" :class="{ chosen: selected.has(piece.musicPieceId) }">
+            <label class="song-main">
               <input
                 type="checkbox"
                 :checked="selected.has(piece.musicPieceId)"
-                :disabled="inPlaylist.has(piece.musicPieceId)"
                 @change="toggle(piece)"
               />
               <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
@@ -87,7 +91,6 @@
                 <span class="song-title">{{ piece.name }}</span>
                 <span v-if="piece.artistSummary?.artistName" class="song-artist">{{ piece.artistSummary.artistName }}</span>
               </span>
-              <span v-if="inPlaylist.has(piece.musicPieceId)" class="tag">In playlist</span>
             </label>
           </li>
         </ul>
@@ -106,7 +109,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { resolveCoverURL } from '@/utils/display.js'
-import { fetchPlaylist } from '@/utils/playlist.js'
+import { fetchPlaylist, fetchPlaylistPieces } from '@/utils/playlist.js'
 import { addPiecesToPlaylist, additionMessage, fetchUploads, searchMusic } from '@/utils/music.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
@@ -127,8 +130,10 @@ const playlist = ref(null)
 const source = ref('uploads')
 const searchText = ref('')
 const list = reactive({ items: [], loading: false, error: '' })
-// Songs already in the playlist, from its first page of tracks. Others already in it come back as skipped
+// Songs already in the playlist (every page of it) aren't offered at all. Anything that slips through, like a song added
+// from another tab, comes back as skipped
 const inPlaylist = ref(new Set())
+const addable = computed(() => list.items.filter((piece) => !inPlaylist.value.has(piece.musicPieceId)))
 const selected = ref(new Map())
 const adding = ref(false)
 let searchTimer = null
@@ -151,9 +156,26 @@ async function load() {
     inPlaylist.value = new Set(result.musicPieces.map((piece) => piece.musicPieceId))
     status.value = 'ready'
     loadSource()
+    loadRestOfPlaylist(result.nextCursor)
   } catch (err) {
     if (err.sessionEnded) return
     status.value = err.code === 'PLAYLIST_NOT_FOUND' || err.code === 'PLAYLIST_INVITE_PENDING' ? 'forbidden' : 'error'
+  }
+}
+
+// The first page came with the playlist; the rest are read in the background. If one fails the list just offers a
+// few songs that are already in it, which the server then skips
+async function loadRestOfPlaylist(cursor) {
+  const known = new Set(inPlaylist.value)
+  while (cursor) {
+    try {
+      const page = await fetchPlaylistPieces(id, cursor)
+      for (const piece of page.musicPieces) known.add(piece.musicPieceId)
+      inPlaylist.value = new Set(known)
+      cursor = page.nextCursor
+    } catch {
+      return
+    }
   }
 }
 
@@ -242,13 +264,11 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0 0 var(--space-6); }
 .song:hover { background: var(--surface-alt); }
 .song.chosen { background: var(--purple-soft); }
 .song-main { align-items: center; cursor: pointer; display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-2); }
-.song-main.disabled { cursor: default; opacity: 0.6; }
 .song-main input { accent-color: var(--primary); flex: none; height: 18px; margin: 0; width: 18px; }
 .art { aspect-ratio: 1; background: var(--surface-alt); border-radius: var(--radius-sm); flex: none; object-fit: cover; width: 40px; }
 .song-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .song-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-artist { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tag { color: var(--ink-muted); flex: none; font: 600 12px/16px var(--font-sans); }
 
 .action-bar { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: space-between; margin-bottom: var(--space-4); max-width: 800px; }
 </style>

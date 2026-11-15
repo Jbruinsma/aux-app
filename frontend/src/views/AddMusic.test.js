@@ -35,19 +35,31 @@ it('turns away listeners and people outside the playlist', async () => {
   expect(wrapper.text()).toContain("Only the playlist's owner and editors can add music.")
 })
 
-it('adds the chosen uploads, marks songs already in the playlist, and reports the result', async () => {
-  fetchAPI.mockResolvedValueOnce(playlist('EDITOR')).mockResolvedValueOnce({ uploadedMusicPieces: [1, 2, 3].map(piece) })
+it("adds the chosen uploads, leaves out songs already in the playlist on any page, and reports the result", async () => {
+  fetchAPI.mockReset()
+  fetchAPI.mockImplementation(async (url) => {
+    if (url.includes('/api/playlists/mo/p1')) return { ...playlist('EDITOR'), nextCursor: 'c2' }
+    if (url.includes('/api/playlists/p1/pieces')) return { musicPieces: [piece(4)], nextCursor: null }
+    return { uploadedMusicPieces: [1, 2, 3, 4].map(piece) }
+  })
   request.mockResolvedValueOnce({ addedCount: 1, failedCount: 1, totalPieces: 2 })
   await render()
+  expect(wrapper.findAll('.song-title').map((title) => title.text())).toEqual(['Song 2', 'Song 3'])
   const boxes = wrapper.findAll('input[type="checkbox"]')
-  expect(boxes[0].element.disabled).toBe(true)
-  expect(wrapper.findAll('.song')[0].text()).toContain('In playlist')
+  await boxes[0].setValue(true)
   await boxes[1].setValue(true)
-  await boxes[2].setValue(true)
   expect(wrapper.text()).toContain('2 songs chosen.')
   await wrapper.findAll('button').find((b) => b.text() === 'Add 2 songs').trigger('click')
   await flushPromises()
   expect(request).toHaveBeenCalledWith('POST', expect.stringContaining('/api/playlists/p1/pieces'), { musicPieceIds: ['m2', 'm3'] }, expect.any(Object))
   expect(useNotificationStore().message).toBe("Added 1 song. 1 song couldn't be added (already in the playlist, private, or the playlist is full).")
   expect(push).toHaveBeenCalledWith({ name: 'Playlist', params: { username: 'mo', id: 'p1' } })
+})
+
+it('says so when every upload is already in the playlist', async () => {
+  fetchAPI.mockReset()
+  fetchAPI.mockResolvedValueOnce(playlist('OWNER')).mockResolvedValueOnce({ uploadedMusicPieces: [piece(1)] })
+  await render()
+  expect(wrapper.findAll('.song')).toHaveLength(0)
+  expect(wrapper.text()).toContain('All your uploads are already in this playlist')
 })

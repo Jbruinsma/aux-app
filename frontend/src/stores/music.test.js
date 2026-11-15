@@ -255,12 +255,24 @@ describe('resuming after login', () => {
     await music.playPlaylist('p1', { shuffle: true })
     music.volume = 0.35
     await nextTick()
-    expect(JSON.parse(localStorage.getItem('aux-player-settings-u1'))).toEqual({ volume: 0.35 })
+    expect(JSON.parse(localStorage.getItem('aux-player-settings-u1'))).toEqual({ volume: 0.35, audibleVolume: 0.35 })
+
+    // The volume icon mutes, then brings back the level from before, also after a reload while muted
+    music.toggleMute()
+    await nextTick()
+    expect(music.volume).toBe(0)
+    expect(JSON.parse(localStorage.getItem('aux-player-settings-u1'))).toEqual({ volume: 0, audibleVolume: 0.35 })
+    music.toggleMute()
+    expect(music.volume).toBe(0.35)
+    music.toggleMute()
+    await nextTick()
 
     setActivePinia(createPinia())
     useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
     const calls = backend({ first: { musicPieces: [piece(9)], nextCursor: null } })
     const fresh = useMusicStore()
+    expect(fresh.volume).toBe(0)
+    fresh.toggleMute()
     expect(fresh.volume).toBe(0.35)
     expect(fresh.shuffleOn).toBe(false)
     await fresh.restoreLastPlayback({ musicPiece: piece(9), playlistId: 'p1', playPreferences: { shuffleEnabled: true, repeatPreference: 'PIECE' } })
