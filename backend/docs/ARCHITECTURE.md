@@ -159,6 +159,7 @@ Repositories are left out to keep lines readable: every controller and service r
 | `PlaylistService` | Abstract base: visibility, tracks, saves, queue paging, seeded shuffle |
 | `PlaylistMembersService` | Extends `PlaylistService`: invites, permissions, leaving |
 | `UploadService` | Re-encodes images to WebP, strips MP3s to audio frames, R2 storage, signed audio URLs |
+| `YoutubeImportService` | Testers and admins only, behind `AUX_YOUTUBE_IMPORT_ENABLED`: turns a YouTube link into an MP3 with yt-dlp in the background (in-memory jobs); `/create` takes the `importId` in place of a file. Accepts only YouTube video URLs, and yt-dlp only gets a URL rebuilt from the video id |
 | `EmailService` | Sends mail through Resend |
 | `TagService` | Tag rules and setting a piece's or playlist's tags |
 | `AlbumService` | Album rules: who can edit, which album and cover a piece ends up with, keeping shared covers in sync |

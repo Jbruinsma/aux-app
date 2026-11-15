@@ -25,6 +25,7 @@ import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.RecommendationService;
 import com.aux_app.services.TagService;
 import com.aux_app.services.UploadService;
+import com.aux_app.services.YoutubeImportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,7 +41,7 @@ class MusicPieceFavoriteTest {
     private final MusicPieceController controller = new MusicPieceController(mock(UploadService.class),
             mock(ArtistRepository.class), mock(AlbumRepository.class), mock(AlbumService.class), pieces,
             mock(PlayEventRepository.class), favorites, mock(PlaybackEventService.class), mock(TagService.class),
-            mock(RecommendationService.class), events);
+            mock(RecommendationService.class), events, mock(YoutubeImportService.class));
 
     private final UserEntity fan = new UserEntity("fan", "f@x", "x", OnboardingStep.DONE);
     private final MusicPieceEntity open = piece("open", "up", true);

@@ -20,7 +20,7 @@ it.each([
   ['not an MP3', mp3(1000, 'cover.png', 'image/png'), 60, "That file isn't an MP3. Choose an MP3 file."],
   ['over 25MB', mp3(26 * 1024 * 1024), 60, 'That file is too big. MP3s can be up to 25MB.'],
   ['unreadable', mp3(), null, "We couldn't read that MP3. It may be damaged; try another file."],
-  ['under 5 seconds', mp3(), 4, 'That song is too short. Songs need to be at least 5 seconds long.'],
+  ['under 30 seconds', mp3(), 29, 'That song is too short. Songs need to be at least 30 seconds long.'],
   ['over 10 minutes', mp3(), 601, 'That song is too long. Songs can be up to 10 minutes long.'],
 ])('rejects an upload that is %s before sending it', async (_, file, seconds, message) => {
   fakeAudio(seconds)

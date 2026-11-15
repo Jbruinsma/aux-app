@@ -241,3 +241,110 @@ it('goes back to None when the new album dialog is closed without making one', a
   await flushPromises()
   expect(wrapper.get('#song-album').element.value).toBe('')
 })
+
+// YouTube import: GET /api/imports/youtube says whether the tabs show; polls answer from `polls` in order
+const VIDEO = 'https://youtu.be/dQw4w9WgXcQ?si=share'
+const pending = (status) => ({ importId: 'i1', status, videoId: 'dQw4w9WgXcQ', title: null, durationSeconds: null, thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', error: null, expiresAt: null })
+const ready = { ...pending('READY'), title: 'Never Gonna Give You Up', durationSeconds: 213, expiresAt: '2026-11-15T06:00:00Z' }
+
+function youtubeBackend({ available = true, polls = [] } = {}) {
+  fetchAPI.mockImplementation(async (url) => {
+    if (url.endsWith('/api/imports/youtube')) return { available }
+    if (url.includes('/api/imports/youtube/')) return polls.shift()
+    if (url.endsWith('/api/artists/a1/albums')) return []
+    return { artistId: 'a1', artistName: 'Rick Astley', artistPfpUrl: null }
+  })
+  request.mockImplementation(async (method, url) => {
+    if (method === 'POST' && url.endsWith('/api/imports/youtube')) return pending('QUEUED')
+    if (method === 'DELETE') return null
+    return { musicPieceId: 'm1', name: 'Never Gonna Give You Up' }
+  })
+}
+
+async function mountWithArtist() {
+  route.query = { artist: 'a1' }
+  wrapper = mount(UploadMusic, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: true } } })
+  await flushPromises()
+}
+
+async function getAudio() {
+  await wrapper.findAll('[role="tab"]')[1].trigger('click')
+  await wrapper.get('#youtube-url').setValue(VIDEO)
+  await wrapper.findAll('button').find((b) => b.text() === 'Get audio').trigger('click')
+  await flushPromises()
+}
+
+it('only shows the YouTube tab to callers the server allows', async () => {
+  youtubeBackend({ available: false })
+  await mountWithArtist()
+  expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+  expect(wrapper.text()).toContain('MP3 file')
+})
+
+it('imports a YouTube video, fills in its title, and uploads with the importId instead of a file', async () => {
+  youtubeBackend({ polls: [pending('DOWNLOADING'), ready] })
+  await mountWithArtist()
+  await getAudio()
+  expect(request).toHaveBeenCalledWith('POST', expect.stringMatching(/\/api\/imports\/youtube$/), { url: VIDEO }, expect.any(Object))
+  expect(wrapper.text()).toContain('Waiting for a free slot…')
+  expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+
+  await vi.advanceTimersByTimeAsync(2000)
+  await flushPromises()
+  expect(wrapper.text()).toContain('Getting the audio…')
+  await vi.advanceTimersByTimeAsync(2000)
+  await flushPromises()
+  expect(fetchAPI).toHaveBeenCalledWith(expect.stringMatching(/\/api\/imports\/youtube\/i1$/), expect.any(Object))
+  expect(wrapper.text()).toContain('3:33 · Ready to upload')
+  expect(wrapper.get('#song-title').element.value).toBe('Never Gonna Give You Up')
+
+  Object.defineProperty(wrapper.get('#cover-input').element, 'files', { value: [new File(['c'], 'c.png', { type: 'image/png' })] })
+  await wrapper.get('#cover-input').trigger('change')
+  await flushPromises()
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  const create = request.mock.calls.find(([, url]) => url.includes('/api/music-pieces/create'))
+  expect(fields(create[2])).toEqual({ name: 'Never Gonna Give You Up', artistId: 'a1', isPublic: 'false', importId: 'i1', coverImage: 'file' })
+  // Used up by the upload, so leaving the page doesn't try to discard it
+  wrapper.unmount()
+  wrapper = null
+  expect(request.mock.calls.some(([method]) => method === 'DELETE')).toBe(false)
+})
+
+it("explains a failed import and keeps the link so it can be fixed", async () => {
+  youtubeBackend({ polls: [{ ...pending('FAILED'), error: { code: 'AUDIO_TOO_LONG', message: 'Track must be at most 10 minutes' } }] })
+  await mountWithArtist()
+  await getAudio()
+  await vi.advanceTimersByTimeAsync(2000)
+  await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toBe('That video is too long. Songs can be up to 10 minutes long.')
+  expect(wrapper.get('#youtube-url').element.value).toBe(VIDEO)
+})
+
+it("shows the server's reason when an import can't start", async () => {
+  youtubeBackend()
+  request.mockImplementation(async () => {
+    throw Object.assign(new Error('bad'), { code: 'INVALID_YOUTUBE_URL' })
+  })
+  await mountWithArtist()
+  await getAudio()
+  expect(wrapper.get('[role="alert"]').text()).toContain("That isn't a link to a YouTube video")
+})
+
+it('cancels a running import when you cancel it or leave the page', async () => {
+  youtubeBackend({ polls: [pending('DOWNLOADING'), pending('DOWNLOADING')] })
+  await mountWithArtist()
+  await getAudio()
+  await wrapper.findAll('button').find((b) => b.text() === 'Cancel').trigger('click')
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringMatching(/\/api\/imports\/youtube\/i1$/), undefined, expect.any(Object))
+  // No more polling once it's cancelled
+  const polls = () => fetchAPI.mock.calls.filter(([url]) => url.includes('/api/imports/youtube/')).length
+  await vi.advanceTimersByTimeAsync(6000)
+  expect(polls()).toBe(0)
+
+  await getAudio()
+  request.mockClear()
+  wrapper.unmount()
+  wrapper = null
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringMatching(/\/api\/imports\/youtube\/i1$/), undefined, expect.any(Object))
+})
