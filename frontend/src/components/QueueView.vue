@@ -16,7 +16,7 @@
         <button ref="closeRef" type="button" class="icon-btn" :aria-label="lyricsOpen ? 'Close lyrics' : 'Close queue'" @click="emit('close')">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
-        <button type="button" class="back" :tabindex="view !== current ? 0 : -1" @click="view = current">Back to now playing</button>
+        <button type="button" class="back" :tabindex="view !== current ? 0 : -1" @click="view = current">Back To Song</button>
       </div>
       <p class="label">
         <template v-if="playlistLink">Playing from <router-link :to="playlistLink.to">{{ playlistLink.name || 'playlist' }}</router-link></template>
@@ -34,7 +34,10 @@
           </span>
         </button>
         <p class="now-title"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></p>
-        <p v-if="piece?.artist" class="now-artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
+        <p v-if="piece?.artist" class="now-artist">
+          <router-link v-if="piece.artistId" class="now-artist-link" :to="{ name: 'Artist', params: { artistId: piece.artistId } }"><MarqueeText :text="piece.artist" :play="isPlaying" /></router-link>
+          <MarqueeText v-else :text="piece.artist" :play="isPlaying" />
+        </p>
       </div>
       <LyricsPanel
         class="lyrics-col"
@@ -67,9 +70,16 @@
             </span>
             <span class="cap">
               <span class="cap-title"><span v-if="slot.index === current" class="eq" aria-hidden="true"><i></i><i></i><i></i></span>{{ slot.title }}</span>
-              <span v-if="slot.subtitle" class="cap-artist">{{ slot.subtitle }}</span>
             </span>
           </button>
+          <!-- Outside the slot's button, so the artist (or uploader) name can be its own link -->
+          <router-link
+            v-if="slot.subtitle && slot.to"
+            class="cap-artist cap-link"
+            :class="{ on: slot.index === current, past: slot.index < current }"
+            :to="slot.to"
+          >{{ slot.subtitle }}</router-link>
+          <span v-else-if="slot.subtitle" class="cap-artist" :class="{ on: slot.index === current, past: slot.index < current }">{{ slot.subtitle }}</span>
         </li>
       </ol>
       <button type="button" class="nudge next" :disabled="view >= slots.length - 1" aria-label="Show later songs" @click="browse(1)">
@@ -126,7 +136,9 @@
             </button>
           </div>
           <div class="volume">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></svg>
+            <button type="button" class="icon-btn" :aria-label="muted ? 'Unmute' : 'Mute'" :title="muted ? 'Unmute' : 'Mute'" :aria-pressed="muted ? 'true' : 'false'" @click="emit('mute')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" /><template v-if="muted"><path d="m22 9-6 6" /><path d="m16 9 6 6" /></template><template v-else><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></template></svg>
+            </button>
             <input class="slider" type="range" min="0" max="1" step="0.01" :value="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" @input="e => emit('volume', parseFloat(e.target.value))" />
           </div>
         </div>
@@ -172,9 +184,10 @@ const props = defineProps({
   currentTimeLabel: { type: String, default: '0:00' },
   durationLabel: { type: String, default: '0:00' },
   volume: { type: Number, default: 1 },
+  muted: Boolean,
   volumeFill: { type: String, default: '100%' },
 })
-const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics', 'lyrics-seek'])
+const emit = defineEmits(['close', 'play-at', 'toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'volume', 'lyrics', 'lyrics-seek', 'mute'])
 
 const route = useRoute()
 const rootRef = ref(null)
@@ -182,6 +195,12 @@ const closeRef = ref(null)
 
 // Covers are only rendered this many places either side of the one in view
 const WINDOW = 7
+
+// The name under a cover opens the artist's page, or the uploader's profile when that's the name shown
+function nameLink(artistName, artistId, uploaderName) {
+  if (artistName) return artistId ? { name: 'Artist', params: { artistId } } : null
+  return uploaderName ? { name: 'Profile', params: { username: uploaderName } } : null
+}
 
 const slots = computed(() => {
   if (props.queue.length && props.index !== null) {
@@ -193,6 +212,7 @@ const slots = computed(() => {
         index: i,
         title: p.name,
         subtitle,
+        to: nameLink(artist, p.artistSummary?.artistId, p.uploader?.username),
         label: subtitle ? `${p.name} by ${subtitle}` : p.name,
         cover: p.coverUrl ? resolveCoverURL(p.coverUrl) : '',
       }
@@ -200,7 +220,8 @@ const slots = computed(() => {
   }
   if (!props.piece?.uuid) return []
   const subtitle = props.piece.artist || props.piece.uploader?.username || ''
-  return [{ key: props.piece.uuid, index: 0, title: props.piece.title, subtitle, label: subtitle ? `${props.piece.title} by ${subtitle}` : props.piece.title, cover: props.piece.cover }]
+  const to = nameLink(props.piece.artist, props.piece.artistId, props.piece.uploader?.username)
+  return [{ key: props.piece.uuid, index: 0, title: props.piece.title, subtitle, to, label: subtitle ? `${props.piece.title} by ${subtitle}` : props.piece.title, cover: props.piece.cover }]
 })
 
 const current = computed(() => (props.queue.length && props.index !== null ? props.index : 0))
@@ -247,7 +268,7 @@ watch(() => props.lyricsOpen, async (toLyrics) => {
   const from = root.querySelector(toLyrics ? '.slot.on .cover' : '.now-cover')?.getBoundingClientRect()
   await nextTick()
   glide(root.querySelector(toLyrics ? '.now-cover' : '.slot.on .cover'), from)
-  rise(root.querySelectorAll(toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .nudge'))
+  rise(root.querySelectorAll(toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .cap-artist, .nudge'))
 })
 
 // Following a link (the playlist name) leaves the queue
@@ -320,12 +341,18 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .slot.on .cap { margin-top: var(--space-4); padding: 0; }
 .slot.past .cap { opacity: 0.7; }
 .cap-title { display: block; font: 600 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cap-artist { color: var(--ink-muted); display: block; font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cap-artist { color: var(--ink-muted); display: block; font: 500 14px/20px var(--font-sans); margin: 0 auto; max-width: calc(100% - var(--space-6) * 2); overflow: hidden; text-align: center; text-overflow: ellipsis; transition: opacity var(--dur-fast) var(--ease); white-space: nowrap; width: fit-content; }
+.cap-artist.past { opacity: 0.7; }
+.cap-link { text-decoration: none; }
+.cap-link:hover { color: var(--link); text-decoration: underline; }
+.now-artist-link { color: inherit; display: block; text-decoration: none; }
+.now-artist-link:hover { text-decoration: underline; }
 .slot.on .cap-title { color: var(--link); font: 700 20px/28px var(--font-sans); }
-.slot.on .cap-artist { font: 500 16px/24px var(--font-sans); }
+.cap-artist.on { font: 500 16px/24px var(--font-sans); max-width: 100%; }
 /* Muted gray and purple text can't be kept readable on an unknown tint, so text over the glow uses ink. The
    equalizer bars still mark the playing song */
 .glow .cap-artist, .glow .label, .glow .slot.on .cap-title { color: var(--ink); }
+.glow .cap-link:hover { color: var(--ink); }
 .eq { align-items: flex-end; display: inline-flex; gap: 2px; height: 14px; margin-right: var(--space-2); }
 .eq i { animation: eq 900ms var(--ease) infinite alternate; background: currentColor; border-radius: 1px; display: block; height: 100%; transform-origin: bottom; width: 3px; }
 .eq i:nth-child(2) { animation-delay: -300ms; }

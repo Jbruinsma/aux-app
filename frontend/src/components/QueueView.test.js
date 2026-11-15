@@ -11,6 +11,8 @@ function makeRouter() {
     routes: [
       { path: '/', component: Stub },
       { path: '/playlist/:username/:id', name: 'Playlist', component: Stub },
+      { path: '/artist/:artistId', name: 'Artist', component: Stub },
+      { path: '/:username', name: 'Profile', component: Stub },
     ],
   })
 }
@@ -133,4 +135,21 @@ it('shows the cover and the lyrics full screen in lyrics mode, and sends a click
   await wrapper.get('.now-cover-btn').trigger('click')
   expect(wrapper.emitted('lyrics')).toHaveLength(2)
   vi.unstubAllGlobals()
+})
+
+it("links each name under a cover to the artist's page, or the uploader's profile when there's no artist", async () => {
+  const withArtist = queue.map((p, i) => (i === 2 ? { ...p, artistSummary: { artistId: 'a3', artistName: 'Artist 3' } } : p))
+  const router = await render({ queue: withArtist })
+  const names = wrapper.findAll('a.cap-artist')
+  const current = names.find((name) => name.classes().includes('on'))
+  expect(current.text()).toBe('Artist 3')
+  expect(current.attributes('href')).toBe('/artist/a3')
+  // An artist with no page isn't a link; only an uploader's own name links to their profile
+  expect(names.some((name) => name.text() === 'Artist 2')).toBe(false)
+  await wrapper.setProps({ queue: withArtist.map((p, i) => (i === 1 ? { ...p, artistSummary: null } : p)) })
+  expect(wrapper.findAll('a.cap-artist').find((name) => name.text() === 'up').attributes('href')).toBe('/up')
+  await current.trigger('click')
+  await flushPromises()
+  expect(router.currentRoute.value.fullPath).toBe('/artist/a3')
+  expect(wrapper.emitted('close')).toHaveLength(1)
 })

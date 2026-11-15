@@ -52,6 +52,8 @@ export const useMusicStore = defineStore('music', () => {
   // OFF stops at the end of the queue, PLAYLIST starts it again, PIECE repeats the current song
   const repeatMode = ref('OFF')
   const volume = ref(DEFAULT_VOLUME)
+  // The last level above 0, so unmuting goes back to it. Kept with the volume, so it survives a reload while muted
+  const audibleVolume = ref(DEFAULT_VOLUME)
   const position = ref(0)
   // Where to seek once the next audio source has loaded (after refreshing an expired URL)
   const seekOnLoad = ref(null)
@@ -382,6 +384,7 @@ export const useMusicStore = defineStore('music', () => {
       const key = settingsKey()
       const settings = key ? JSON.parse(localStorage.getItem(key) ?? 'null') : null
       if (typeof settings?.volume === 'number') volume.value = Math.min(1, Math.max(0, settings.volume))
+      if (typeof settings?.audibleVolume === 'number' && settings.audibleVolume > 0) audibleVolume.value = Math.min(1, settings.audibleVolume)
     } catch {
       // Bad or blocked storage: keep the default
     }
@@ -391,7 +394,7 @@ export const useMusicStore = defineStore('music', () => {
     const key = settingsKey()
     if (!key) return
     try {
-      localStorage.setItem(key, JSON.stringify({ volume: Number(volume.value) }))
+      localStorage.setItem(key, JSON.stringify({ volume: Number(volume.value), audibleVolume: audibleVolume.value }))
     } catch {
       // Storage can be blocked; the volume still holds until the page reloads
     }
@@ -445,7 +448,15 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   watch([() => currentMusicPiece.value.uuid, isPlaying, shuffleOn], () => saveLastPlayback())
-  watch(volume, saveSettings)
+  watch(volume, (level) => {
+    if (Number(level) > 0) audibleVolume.value = Number(level)
+    saveSettings()
+  })
+
+  // The volume icon: mutes, or brings back the level it was at before
+  function toggleMute() {
+    volume.value = Number(volume.value) > 0 ? 0 : audibleVolume.value || DEFAULT_VOLUME
+  }
   watch(accountId, applySettings, { immediate: true })
   if (typeof window !== 'undefined') window.addEventListener('pagehide', () => saveLastPlayback())
 
@@ -582,6 +593,7 @@ export const useMusicStore = defineStore('music', () => {
     shuffleOn,
     repeatMode,
     volume,
+    toggleMute,
     position,
     seekOnLoad,
     duration,

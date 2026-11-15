@@ -47,6 +47,8 @@
       :current-time-label="formattedCurrentTime"
       :duration-label="formattedDuration"
       :volume="Number(volume)"
+      :muted="muted"
+      @mute="musicStore.toggleMute()"
       :volume-fill="volumeFill"
       @close="closeFullView"
       @play-at="playQueueAt"
@@ -200,10 +202,13 @@
           </svg>
         </button>
         <div class="volume">
-          <svg class="volume-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" />
-            <path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" />
-          </svg>
+          <button type="button" class="icon-btn" :aria-label="muted ? 'Unmute' : 'Mute'" :title="muted ? 'Unmute' : 'Mute'" :aria-pressed="muted ? 'true' : 'false'" @click="musicStore.toggleMute()">
+            <svg class="volume-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z" />
+              <template v-if="muted"><path d="m22 9-6 6" /><path d="m16 9 6 6" /></template>
+              <template v-else><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 18.4a9 9 0 0 0 0-12.8" /></template>
+            </svg>
+          </button>
           <input class="slider" type="range" min="0" max="1" step="0.01" v-model="volume" aria-label="Volume" :style="{ '--fill': volumeFill }" />
         </div>
       </div>
@@ -389,6 +394,7 @@ watch(volume, v => {
 
 const progressFill = computed(() => (duration.value ? `${Math.min(100, (progress.value / duration.value) * 100)}%` : '0%'))
 const volumeFill = computed(() => `${volume.value * 100}%`)
+const muted = computed(() => Number(volume.value) === 0)
 
 const formattedDuration = computed(() => {
   const m = Math.floor(duration.value / 60)

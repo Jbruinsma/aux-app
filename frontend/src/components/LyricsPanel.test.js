@@ -85,3 +85,11 @@ it('leaves the controls to the full-screen player on desktop', async () => {
   await render({ variant: 'stage' })
   expect(wrapper.find('.controls').exists()).toBe(false)
 })
+
+it('shows the turning ring with "Finding Lyrics" while LRCLIB answers', async () => {
+  fetch.mockImplementation(() => new Promise(() => {}))
+  await render()
+  expect(wrapper.get('.finding[role="status"]').text()).toContain('Finding Lyrics')
+  expect(wrapper.find('.ring-arrow').exists()).toBe(true)
+  expect(wrapper.get('.body').classes()).toContain('centered')
+})

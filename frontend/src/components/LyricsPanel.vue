@@ -34,8 +34,13 @@
         @touchmove.passive="stopFollowing"
         @keydown="onKeys"
       >
-        <p v-if="state === 'waiting'" class="note" role="status">Lyrics load once the song does.</p>
-        <p v-else-if="state === 'loading'" class="note" role="status">Finding lyrics…</p>
+        <div v-if="state === 'waiting' || state === 'loading'" class="finding" role="status">
+          <span class="ring" aria-hidden="true">
+            <svg width="64" height="64" viewBox="0 0 52 52"><circle class="ring-track" cx="26" cy="26" r="20" /></svg>
+            <svg class="ring-arrow" width="64" height="64" viewBox="0 0 52 52"><path d="M26 6a20 20 0 1 1-20 20" /><path d="M1 30l5-5 5 5" /></svg>
+          </span>
+          <p class="finding-title">Finding Lyrics</p>
+        </div>
         <div v-else-if="state === 'error'" class="note">
           <p>We couldn't reach the lyrics service.</p>
           <button type="button" class="btn secondary small" @click="load">Try again</button>
@@ -252,6 +257,14 @@ function clock(seconds) {
 .note { display: flex; flex-direction: column; font: 500 16px/24px var(--font-sans); gap: var(--space-3); margin: 0 0 var(--space-4); opacity: 0.8; }
 .note p { margin: 0; }
 .note-title { font: 700 22px/30px var(--font-sans); opacity: 1; }
+/* Loading: a purple arrow eases round a faint ring (mockups/lyrics-loading.html, option B) */
+.finding { align-items: center; display: flex; flex-direction: column; }
+.ring { height: 64px; margin-bottom: var(--space-6); position: relative; width: 64px; }
+.ring svg { inset: 0; position: absolute; }
+.ring-track { fill: none; stroke: color-mix(in srgb, var(--ink) 14%, transparent); stroke-width: 4; }
+.ring-arrow { animation: ring-spin 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; fill: none; stroke: var(--link); stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
+.finding-title { font: 700 18px/26px var(--font-sans); margin: 0; }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
 .lines { list-style: none; margin: 0; padding: 0 0 40vh; }
 .line { background: none; border: 0; border-radius: var(--radius-sm); color: var(--ink); cursor: pointer; display: block; font: 700 26px/34px var(--font-sans); opacity: 0.45; overflow-wrap: anywhere; padding: var(--space-2) var(--space-6) var(--space-2) var(--space-2); text-align: left; transition: opacity var(--dur-fast) var(--ease), transform var(--dur-med) var(--ease); transform-origin: left center; width: 100%; }
 .stage .line { font-size: 32px; line-height: 42px; }
@@ -293,5 +306,6 @@ function clock(seconds) {
 @media (prefers-reduced-motion: reduce) {
   .line, .lyrics.page, .lyrics-page-enter-active, .lyrics-page-leave-active, .controls-clip, .fold svg { transition: none; }
   .line.now { transform: none; }
+  .ring-arrow { animation-duration: 3s; }
 }
 </style>
