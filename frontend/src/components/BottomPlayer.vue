@@ -67,7 +67,13 @@
       :position="progress"
       :duration="duration"
       :is-playing="isPlaying"
+      :can-play="canPlay"
+      :can-skip="canSkip"
       @close="setMobileLyrics(false)"
+      @scrub="v => progress = v"
+      @toggle-play="togglePlay"
+      @prev="prevTrack"
+      @next="nextTrack"
       @seek="seekTo"
     />
     <button

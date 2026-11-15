@@ -64,3 +64,24 @@ it('shows the cover, title and artist at the top on the phone page', async () =>
   await wrapper.get('.art-btn').trigger('click')
   expect(wrapper.emitted('close')).toHaveLength(1)
 })
+
+it('has play and pause, skip and seek on the phone page, folded away with the chevron', async () => {
+  await render({ variant: 'page', isPlaying: true, canPlay: true, canSkip: true })
+  const pause = wrapper.get('.controls .play')
+  expect(pause.attributes('aria-label')).toBe('Pause')
+  await pause.trigger('click')
+  expect(wrapper.emitted('toggle-play')).toHaveLength(1)
+  await wrapper.get('.controls button[aria-label="Next"]').trigger('click')
+  expect(wrapper.emitted('next')).toHaveLength(1)
+  await wrapper.get('.controls .slider').setValue('42')
+  expect(wrapper.emitted('scrub')).toEqual([[42]])
+
+  await wrapper.get('.fold').trigger('click')
+  expect(wrapper.get('.controls').classes()).toContain('folded')
+  expect(wrapper.get('.fold').attributes('aria-label')).toBe('Show controls')
+})
+
+it('leaves the controls to the full-screen player on desktop', async () => {
+  await render({ variant: 'stage' })
+  expect(wrapper.find('.controls').exists()).toBe(false)
+})

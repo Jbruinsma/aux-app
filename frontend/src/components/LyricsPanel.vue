@@ -64,10 +64,51 @@
         </template>
       </div>
 
-      <button v-if="lines && !following" type="button" class="btn primary resync" @click="resync">
+      <button v-if="lines && !following && variant !== 'page'" type="button" class="btn primary resync" @click="resync">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
         Sync
       </button>
+
+      <!-- Phone: the player's controls under the lyrics, folded away with the chevron to give the lyrics more room -->
+      <div v-if="variant === 'page'" class="controls" :class="{ folded }">
+        <button v-if="lines && !following" type="button" class="btn primary resync" @click="resync">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+          Sync
+        </button>
+        <button type="button" class="fold" :aria-expanded="folded ? 'false' : 'true'" :aria-label="folded ? 'Show controls' : 'Hide controls'" @click="folded = !folded">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+        <div class="controls-clip">
+          <div class="controls-body" :inert="folded">
+            <input
+              class="slider"
+              type="range"
+              min="0"
+              :max="Math.floor(duration)"
+              step="any"
+              :value="position"
+              :disabled="!canPlay"
+              aria-label="Seek"
+              :aria-valuetext="`${clock(position)} of ${clock(duration)}`"
+              :style="{ '--fill': `${duration ? Math.min(100, (position / duration) * 100) : 0}%` }"
+              @input="(e) => emit('scrub', parseFloat(e.target.value))"
+            />
+            <div class="times"><span>{{ clock(position) }}</span><span>{{ clock(duration) }}</span></div>
+            <div class="transport">
+              <button type="button" class="ctrl" :disabled="!canSkip" aria-label="Previous" @click="emit('prev')">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM19 5.5v13a.5.5 0 0 1-.77.42L9 12.42a.5.5 0 0 1 0-.84l9.23-6.5a.5.5 0 0 1 .77.42z" /></svg>
+              </button>
+              <button type="button" class="play" :disabled="!canPlay" :aria-label="isPlaying ? 'Pause' : 'Play'" @click="emit('toggle-play')">
+                <svg v-if="!isPlaying" width="24" height="24" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor" /></svg>
+                <svg v-else width="24" height="24" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor" /></svg>
+              </button>
+              <button type="button" class="ctrl" :disabled="!canSkip" aria-label="Next" @click="emit('next')">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </Transition>
 </template>
@@ -92,14 +133,19 @@ const props = defineProps({
   position: { type: Number, default: 0 },
   duration: { type: Number, default: 0 },
   isPlaying: Boolean,
+  // Phone controls
+  canPlay: Boolean,
+  canSkip: Boolean,
 })
-const emit = defineEmits(['close', 'seek'])
+// `seek` is a clicked line (it also starts playback); `scrub` is the slider
+const emit = defineEmits(['close', 'seek', 'scrub', 'toggle-play', 'prev', 'next'])
 
 const scroller = ref(null)
 const closeBtn = ref(null)
 const lyrics = ref(null)
 const state = ref('waiting')
 const following = ref(true)
+const folded = ref(false)
 let request = null
 
 const glowColor = useCoverColor(() => (props.variant === 'page' ? props.piece?.cover || '' : ''))
@@ -218,11 +264,33 @@ function clock(seconds) {
 .resync { align-items: center; align-self: center; bottom: calc(var(--space-8) * 1.5); display: flex; gap: var(--space-2); position: absolute; }
 .resync svg { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
 
+/* Phone controls, laid out like the player's. Folding slides them down out of the way, leaving the chevron */
+.controls { flex: none; padding: 0 var(--space-6) var(--space-4); position: relative; }
+.controls .resync { bottom: calc(100% + var(--space-3)); left: 50%; transform: translateX(-50%); }
+.fold { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: flex; height: 28px; justify-content: center; margin: 0 auto; opacity: 0.7; padding: 0; width: 44px; }
+.fold svg { fill: none; height: 22px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; transition: transform var(--dur-med) var(--ease); width: 22px; }
+.folded .fold svg { transform: rotate(180deg); }
+.controls-clip { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--dur-med) var(--ease), opacity var(--dur-med) var(--ease); }
+.folded .controls-clip { grid-template-rows: 0fr; opacity: 0; }
+.controls-body { min-height: 0; overflow: hidden; }
+.slider { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; display: block; height: 24px; margin: 0; width: 100%; }
+.slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--purple) var(--fill, 0%), var(--line) var(--fill, 0%)); border-radius: var(--radius-pill); height: 4px; }
+.slider::-moz-range-track { background: var(--line); border-radius: var(--radius-pill); height: 4px; }
+.slider::-moz-range-progress { background: var(--purple); border-radius: var(--radius-pill); height: 4px; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; background: var(--purple); border: 0; border-radius: var(--radius-pill); height: 16px; margin-top: -6px; width: 16px; }
+.slider::-moz-range-thumb { background: var(--purple); border: 0; border-radius: var(--radius-pill); height: 16px; width: 16px; }
+.times { display: flex; font: 600 12px/16px var(--font-sans); font-variant-numeric: tabular-nums; justify-content: space-between; opacity: 0.75; }
+.transport { align-items: center; display: flex; gap: var(--space-8); justify-content: center; padding: var(--space-3) 0 var(--space-1); }
+.ctrl { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink); cursor: pointer; display: inline-flex; height: 48px; justify-content: center; padding: 0; width: 48px; }
+.play { align-items: center; background: var(--primary); border: 0; border-radius: var(--radius-pill); color: var(--on-primary); cursor: pointer; display: inline-flex; height: 64px; justify-content: center; padding: 0; transition: background var(--dur-fast) var(--ease); width: 64px; }
+.play:active { background: var(--purple-hover); }
+.controls button:disabled, .controls input:disabled { cursor: not-allowed; opacity: 0.4; }
+
 .lyrics-page-enter-active, .lyrics-page-leave-active { transition: opacity var(--dur-med) var(--ease); }
 .lyrics-page-enter-from, .lyrics-page-leave-to { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .line, .lyrics.page, .lyrics-page-enter-active, .lyrics-page-leave-active { transition: none; }
+  .line, .lyrics.page, .lyrics-page-enter-active, .lyrics-page-leave-active, .controls-clip, .fold svg { transition: none; }
   .line.now { transform: none; }
 }
 </style>
