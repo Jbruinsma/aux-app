@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
-import { albumCoverUrl } from '@/utils/albums.js'
 import {
   IGNORED_PLAY_ERRORS,
   REPEAT_MODES,
@@ -83,10 +82,9 @@ export const useMusicStore = defineStore('music', () => {
     return true
   }
 
-  // A song on an album shows the album cover in the player
+  // A song using its album's cover already carries it as coverUrl
   function coverOf(piece) {
-    const cover = albumCoverUrl(piece)
-    return cover ? resolveCoverURL(cover) : ''
+    return piece.coverUrl ? resolveCoverURL(piece.coverUrl) : ''
   }
 
   function toCurrent(piece, stream) {

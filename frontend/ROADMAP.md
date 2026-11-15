@@ -91,19 +91,13 @@ the style guide and ask before designing the new screens.
 `removeFromAlbum` and `useAlbumCover` on `PUT /api/music-pieces/{musicPieceId}`
 
 - [ ] Artist page: an Albums section of album cards above the songs. Hide it when the list is empty.
-- [ ] Artist page: a New album action for anyone signed in, asking for a name and a required cover. Creating a name
-      that already exists returns the existing album; open it rather than showing an error.
 - [ ] Album page: cover, name, artist, who created it, and its songs most played first, with Play album.
 - [ ] Album page: Edit (rename, new cover) and Delete for editors (`canEdit`). Say that deleting keeps the songs as
       singles, and that a new cover changes it for every song using it, including other people's.
 - [ ] Show `404 ALBUM_NOT_FOUND` as a not-found state. Albums with no song you can play are hidden this way.
-- [ ] Upload form: an optional album picker for the chosen artist, cleared when the artist changes. With an album
-      picked, offer "Use album cover" (default) or "Upload my own"; the cover is only required for a single.
 - [ ] Edit piece dialog: change or remove the album, and switch between the album's cover and an uploaded one.
 - [ ] Link the album name on song rows that carry `album`.
 - [ ] Profile: replace the Top albums placeholder with `GET /api/albums/top/{username}`.
-- [ ] Swap the browser-only albums from `src/utils/albums.js` (`ALBUMS_MOCKED`, built before these endpoints
-      existed) onto the real API, then remove the mock.
 
 **Done when:** a song uploaded into an album shows the album's cover, changing the album's cover updates it, and
 deleting the album leaves the song with the same cover.

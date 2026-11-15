@@ -7,11 +7,11 @@
     @close="onClose"
   >
     <form v-if="artist" class="card" @submit.prevent="save">
-      <h2 id="album-dialog-title">{{ editing ? `Edit ${editing.name}` : `New album for ${artist.artistName}` }}</h2>
+      <h2 id="album-dialog-title">{{ editing ? `Edit ${editing.albumName}` : `New album for ${artist.artistName}` }}</h2>
       <p class="lead">
         {{ draft
-          ? `“${draft.songName}” is its first track. Add any of ${artist.artistName}'s singles too; each shows the album cover unless you keep its own.`
-          : 'Pick its songs. Each one shows the album cover unless you keep its own.' }}
+          ? `“${draft.songName}” goes on it. Add any of your other songs by ${artist.artistName} too; each shows the album cover unless you keep its own.`
+          : `Pick which of your songs by ${artist.artistName} are on it. Each shows the album cover unless you keep its own.` }}
       </p>
 
       <div class="top">
@@ -35,18 +35,23 @@
             <label class="label" for="album-name">Album name</label>
             <input id="album-name" v-model="name" class="input" type="text" :maxlength="ALBUM_NAME_MAX" required autocomplete="off" />
           </div>
-          <p id="album-cover-hint" class="hint">Cover: a JPEG or PNG, at least 256 × 256 pixels and up to 5MB. It's cropped to a square.</p>
+          <p id="album-cover-hint" class="hint">
+            Cover: a JPEG or PNG, at least 256 × 256 pixels and up to 5MB. It's cropped to a square.
+            <template v-if="editing"> A new cover changes it for every song using it, including other people's.</template>
+          </p>
         </div>
       </div>
 
       <fieldset class="songs">
-        <legend class="label">Songs <span class="count">{{ tracks.length + (draft ? 1 : 0) }} picked</span></legend>
-        <p v-if="!songs.length && !draft" class="hint">{{ artist.artistName }} has no songs yet.</p>
-        <ul v-if="songs.length || draft" class="song-list">
+        <legend class="label">Your songs <span class="count">{{ pickedCount + (draft ? 1 : 0) }} picked</span></legend>
+        <p class="hint">Only the person who uploaded a song can put it on an album. Anyone can add theirs from Upload.</p>
+        <p v-if="mineStatus === 'loading'" class="hint">Loading your songs…</p>
+        <p v-else-if="mineStatus === 'error'" class="hint">We couldn't load your songs, so none can be picked right now.</p>
+        <p v-else-if="!mine.length && !draft" class="hint">You haven't uploaded any songs by {{ artist.artistName }}.</p>
+        <ul v-if="mine.length || draft" class="song-list">
           <li v-if="draft" class="song picked upload-track">
             <span class="song-main">
               <input type="checkbox" checked disabled :aria-label="`${draft.songName}, the song you're uploading`" />
-              <span class="num" aria-hidden="true">1</span>
               <img v-if="coverShown" class="art" :src="coverShown" alt="" />
               <span v-else class="art art-empty" aria-hidden="true"></span>
               <span class="song-text">
@@ -55,19 +60,18 @@
               </span>
             </span>
           </li>
-          <li v-for="piece in songs" :key="piece.musicPieceId" class="song" :class="{ picked: trackFor(piece), taken: otherAlbum(piece) }">
+          <li v-for="piece in mine" :key="piece.musicPieceId" class="song" :class="{ picked: picks[piece.musicPieceId] }">
             <label class="song-main">
-              <input type="checkbox" :checked="Boolean(trackFor(piece))" :disabled="Boolean(otherAlbum(piece))" @change="toggle(piece)" />
-              <span class="num" aria-hidden="true">{{ trackFor(piece) ? tracks.indexOf(trackFor(piece)) + 1 + (draft ? 1 : 0) : '' }}</span>
+              <input type="checkbox" :checked="Boolean(picks[piece.musicPieceId])" @change="toggle(piece)" />
               <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
               <span v-else class="art art-empty" aria-hidden="true"></span>
               <span class="song-text">
                 <span class="song-name">{{ piece.name }}</span>
-                <span v-if="otherAlbum(piece)" class="song-note">Already on {{ otherAlbum(piece) }}</span>
+                <span v-if="otherAlbum(piece)" class="song-note">On {{ otherAlbum(piece) }}. Picking it moves it here.</span>
               </span>
             </label>
-            <label v-if="trackFor(piece)" class="own-cover">
-              <input v-model="trackFor(piece).useAlbumCover" type="checkbox" />
+            <label v-if="picks[piece.musicPieceId]" class="own-cover">
+              <input v-model="picks[piece.musicPieceId].useAlbumCover" type="checkbox" />
               Use album cover
             </label>
           </li>
@@ -77,7 +81,7 @@
       <p v-if="error" class="error" role="alert">{{ error }}</p>
 
       <div v-if="confirmingDelete" class="confirm" role="alertdialog" aria-labelledby="album-delete-q">
-        <p id="album-delete-q">Delete {{ editing.name }}? Its songs go back to being singles.</p>
+        <p id="album-delete-q">Delete {{ editing.albumName }}? Its songs become singles and keep the cover they show.</p>
         <div class="confirm-actions">
           <button type="button" class="btn secondary" :disabled="saving" @click="confirmingDelete = false">Keep it</button>
           <button type="button" class="btn primary" :disabled="saving" @click="remove">{{ saving ? 'Deleting…' : 'Delete album' }}</button>
@@ -98,24 +102,23 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import { PHOTO_ERRORS, photoProblem } from '@/utils/photo.js'
-import { ALBUM_NAME_MAX, createAlbum, deleteAlbum, updateAlbum } from '@/utils/albums.js'
-import { useUserStore } from '@/stores/user.js'
+import { fetchUploads, updateMusicPiece } from '@/utils/music.js'
+import { ALBUM_NAME_MAX, deleteAlbum, findOrCreateAlbum, setPieceAlbum, updateAlbum } from '@/utils/albums.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
-// Makes or edits one of an artist's albums. The artist page calls `open(album | null)`, passing the artist, every
-// loaded song by them and their albums; it emits `saved` with the Album and `deleted` with its albumId. A song is on
-// at most one album, so songs already on another can't be picked.
-// Upload opens it with `open(null, { draft: { songName, coverFile, name, tracks } })` for a new album around the song
-// being uploaded: the cover starts as the song's, and saving emits `draft` ({ name, coverImage, tracks }) instead of
-// making the album, since the song doesn't exist yet. Closing without saving emits `cancel`
+// Makes or edits one of an artist's albums. The artist page calls `open(album | null)` with an AlbumOverview, passing
+// the artist and their albums; it emits `saved` with the album and `deleted` with its albumId. Only a song's uploader
+// can put it on an album, so the songs offered are the caller's own uploads by this artist (GET /api/music-pieces).
+// A new album with the name of one the artist already has is that album: the server returns it and ignores the cover.
+// Upload opens it with `open(null, { draft: { songName, coverFile, albumName, tracks } })` for a new album around the
+// song being uploaded: the cover starts as the song's, and saving emits `draft` ({ albumName, coverImage, tracks })
+// instead of making the album, since the song doesn't exist yet. Closing without saving emits `cancel`
 const props = defineProps({
   artist: { type: Object, default: null },
-  songs: { type: Array, required: true },
   albums: { type: Array, required: true },
 })
 const emit = defineEmits(['saved', 'deleted', 'draft', 'cancel'])
 
-const userStore = useUserStore()
 const notification = useNotificationStore()
 const dialogEl = ref(null)
 const coverInput = ref(null)
@@ -123,15 +126,19 @@ const editing = ref(null)
 const name = ref('')
 const coverFile = ref(null)
 const coverPreview = ref('')
-// [{ musicPiece, useAlbumCover }] in track order: the order they were picked
-const tracks = ref([])
+// The caller's uploads by this artist, and which are picked: { [musicPieceId]: { useAlbumCover } }
+const mine = ref([])
+const mineStatus = ref('ready')
+const picks = ref({})
 const error = ref('')
 const saving = ref(false)
 const confirmingDelete = ref(false)
 const draft = ref(null)
 let finished = false
+let openRun = 0
 
-const coverShown = computed(() => coverPreview.value || editing.value?.coverUrl || '')
+const coverShown = computed(() => coverPreview.value || (editing.value?.coverUrl ? resolveCoverURL(editing.value.coverUrl) : ''))
+const pickedCount = computed(() => Object.keys(picks.value).length)
 const submitLabel = computed(() => {
   if (saving.value) return 'Saving…'
   if (draft.value) return 'Use this album'
@@ -141,18 +148,40 @@ const submitLabel = computed(() => {
 function open(album = null, options = {}) {
   editing.value = album
   draft.value = options.draft ?? null
-  name.value = album?.name ?? draft.value?.name ?? ''
+  name.value = album?.albumName ?? draft.value?.albumName ?? ''
   clearCover()
   if (draft.value?.coverFile) {
     coverFile.value = draft.value.coverFile
     coverPreview.value = URL.createObjectURL(draft.value.coverFile)
   }
-  tracks.value = (album?.tracks ?? draft.value?.tracks ?? []).map((track) => ({ ...track }))
+  picks.value = Object.fromEntries((draft.value?.tracks ?? []).map((track) => [track.musicPiece.musicPieceId, { useAlbumCover: track.useAlbumCover }]))
+  mine.value = []
   finished = false
   error.value = ''
   confirmingDelete.value = false
   dialogEl.value.showModal()
   document.documentElement.classList.add('scroll-locked')
+  loadMine()
+}
+
+async function loadMine() {
+  const run = ++openRun
+  const artistId = props.artist?.artistId
+  mineStatus.value = 'loading'
+  try {
+    const pieces = (await fetchUploads())?.uploadedMusicPieces ?? []
+    if (run !== openRun) return
+    mine.value = pieces.filter((piece) => piece.artistSummary?.artistId === artistId)
+    // Editing: the songs already on the album start picked, with the cover choice they have
+    if (editing.value) {
+      picks.value = Object.fromEntries(mine.value
+        .filter((piece) => piece.album?.albumId === editing.value.albumId)
+        .map((piece) => [piece.musicPieceId, { useAlbumCover: piece.usesAlbumCover }]))
+    }
+    mineStatus.value = 'ready'
+  } catch (err) {
+    if (run === openRun && !err.sessionEnded) mineStatus.value = 'error'
+  }
 }
 
 function close() {
@@ -187,26 +216,38 @@ async function onPickCover(file) {
   coverPreview.value = URL.createObjectURL(file)
 }
 
-function trackFor(piece) {
-  return tracks.value.find((track) => track.musicPiece.musicPieceId === piece.musicPieceId)
-}
-
 function toggle(piece) {
-  const track = trackFor(piece)
-  tracks.value = track ? tracks.value.filter((item) => item !== track) : [...tracks.value, { musicPiece: piece, useAlbumCover: true }]
+  const next = { ...picks.value }
+  if (next[piece.musicPieceId]) delete next[piece.musicPieceId]
+  else next[piece.musicPieceId] = { useAlbumCover: true }
+  picks.value = next
 }
 
+// The name of the album the song is on now, when that's not this one
 function otherAlbum(piece) {
-  const album = props.albums.find((item) => item.albumId !== editing.value?.albumId
-    && item.tracks.some((track) => track.musicPiece.musicPieceId === piece.musicPieceId))
-  return album?.name ?? ''
+  return piece.album && piece.album.albumId !== editing.value?.albumId ? piece.album.albumName : ''
+}
+
+// The songs whose album or cover choice has to change for them to match the picks on `albumId`
+function changesFor(albumId) {
+  const changes = []
+  for (const piece of mine.value) {
+    const pick = picks.value[piece.musicPieceId]
+    const onIt = piece.album?.albumId === albumId
+    if (pick && !onIt) changes.push(() => setPieceAlbum(piece.musicPieceId, albumId, pick.useAlbumCover))
+    else if (pick && pick.useAlbumCover !== piece.usesAlbumCover) changes.push(() => updateMusicPiece(piece.musicPieceId, { useAlbumCover: pick.useAlbumCover }))
+    else if (!pick && onIt) changes.push(() => setPieceAlbum(piece.musicPieceId, null))
+  }
+  return changes
 }
 
 function saveError(err) {
-  if (err.code === 'STORAGE_FULL') return 'This browser is out of room for album covers. Try a smaller image.'
   if (PHOTO_ERRORS[err.code]) return PHOTO_ERRORS[err.code]
-  if (err.code === 'ALREADY_ON_ALBUM') return 'One of those songs is already on another album. Take it off that one first.'
+  if (err.code === 'ALBUM_NAME_TAKEN') return `${props.artist.artistName} already has an album with that name.`
+  if (err.code === 'NOT_ALBUM_EDITOR') return "Only the album's creator or the artist's creator can change it."
   if (err.code === 'ALBUM_NOT_FOUND') return 'This album was deleted. Close this and make it again.'
+  if (err.code === 'CONFLICT') return 'Someone made this album at the same moment. Try again.'
+  if (err.code === 'RATE_LIMITED') return "You're making changes too quickly. Wait a minute, then try again."
   return "We couldn't save the album. Check that the server is running, then try again."
 }
 
@@ -217,17 +258,30 @@ async function save() {
   if (!editing.value && !coverFile.value) return (error.value = 'Choose a cover for the album.')
   if (draft.value) {
     finished = true
-    emit('draft', { name: trimmed, coverImage: coverFile.value, tracks: tracks.value })
+    const tracks = mine.value
+      .filter((piece) => picks.value[piece.musicPieceId])
+      .map((piece) => ({ musicPiece: piece, useAlbumCover: picks.value[piece.musicPieceId].useAlbumCover }))
+    emit('draft', { albumName: trimmed, coverImage: coverFile.value, tracks })
     return close()
   }
-  if (!tracks.value.length) return (error.value = 'Pick at least one song.')
   saving.value = true
   try {
-    const fields = { name: trimmed, coverImage: coverFile.value, tracks: tracks.value }
+    const fields = { albumName: trimmed, coverImage: coverFile.value }
     const album = editing.value
-      ? await updateAlbum(props.artist.artistId, editing.value.albumId, fields)
-      : await createAlbum(props.artist.artistId, fields, userStore.userData?.userId)
-    notification.success(editing.value ? `Saved ${album.name}.` : `Made the album ${album.name}.`)
+      ? await updateAlbum(editing.value.albumId, fields)
+      : await findOrCreateAlbum(props.artist.artistId, fields)
+    const existed = !editing.value && props.albums.some((item) => item.albumId === album.albumId)
+    // One at a time: song edits share the upload rate limit
+    let failed = 0
+    for (const change of changesFor(album.albumId)) {
+      await change().catch((err) => {
+        if (err.sessionEnded) throw err
+        failed += 1
+      })
+    }
+    if (failed) notification.error(`Saved ${album.albumName}, but ${failed === 1 ? '1 song' : `${failed} songs`} couldn't be moved. Try again.`)
+    else if (existed) notification.success(`${props.artist.artistName} already had ${album.albumName}, so your songs went on it.`)
+    else notification.success(editing.value ? `Saved ${album.albumName}.` : `Made the album ${album.albumName}.`)
     emit('saved', album)
     close()
   } catch (err) {
@@ -241,14 +295,16 @@ async function save() {
 async function remove() {
   saving.value = true
   try {
-    await deleteAlbum(props.artist.artistId, editing.value.albumId)
-    notification.success(`Deleted ${editing.value.name}.`)
+    await deleteAlbum(editing.value.albumId)
+    notification.success(`Deleted ${editing.value.albumName}.`)
     emit('deleted', editing.value.albumId)
     close()
   } catch (err) {
     if (err.sessionEnded) return
     confirmingDelete.value = false
-    error.value = "We couldn't delete the album. Check that the server is running, then try again."
+    error.value = err.code === 'NOT_ALBUM_EDITOR'
+      ? "Only the album's creator or the artist's creator can delete it."
+      : "We couldn't delete the album. Check that the server is running, then try again."
   } finally {
     saving.value = false
   }
@@ -279,11 +335,8 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
 .song-list { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
 .song { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-1); }
 .song.picked { background: var(--purple-soft); }
-.song.taken .song-main { cursor: not-allowed; }
-.song.taken .song-name { color: var(--ink-muted); }
 .upload-track .song-main { cursor: default; }
 .song-main { align-items: center; cursor: pointer; display: flex; flex: 1; gap: var(--space-3); min-width: 0; }
-.num { color: var(--ink-muted); flex: none; font: 600 12px/16px var(--font-sans); text-align: right; width: 16px; }
 .art { border-radius: var(--radius-sm); flex: none; height: 40px; object-fit: cover; width: 40px; }
 .art-empty { background: var(--surface-alt); }
 .song-text { display: flex; flex-direction: column; min-width: 0; }

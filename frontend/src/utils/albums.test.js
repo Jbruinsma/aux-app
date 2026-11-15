@@ -1,35 +1,40 @@
-import { beforeEach, expect, it } from 'vitest'
-import { addToAlbum, albumCoverUrl, arrangeByAlbum, updateAlbum } from './albums.js'
+import { beforeEach, expect, it, vi } from 'vitest'
+import { request } from '@/utils/api.js'
+import { arrangeByAlbum, findOrCreateAlbum, setPieceAlbum, updateAlbum } from './albums.js'
 
-const piece = (id) => ({ musicPieceId: id, name: `Song ${id}`, coverUrl: `/uploads/${id}.webp` })
-const album = (albumId, ids) => ({ albumId, name: albumId, coverUrl: 'data:cover', createdBy: 'u1', tracks: ids.map((id) => ({ musicPiece: piece(id), useAlbumCover: true })) })
+vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), request: vi.fn() }))
 
-beforeEach(() => {
-  localStorage.clear()
-  localStorage.setItem('aux-albums-a1', JSON.stringify([album('one', ['m1']), album('two', ['m2'])]))
+const piece = (id, album = null) => ({ musicPieceId: id, name: `Song ${id}`, album })
+const fields = (form) => Object.fromEntries([...form.keys()].map((key) => [key, typeof form.get(key) === 'string' ? form.get(key) : 'file']))
+
+beforeEach(() => request.mockResolvedValue({}))
+
+it("puts each album's loaded songs in its section, and never lists a song on an album as a single", () => {
+  const one = { albumId: 'one', albumName: 'One' }
+  const two = { albumId: 'two', albumName: 'Two' }
+  const onOne = piece('m1', { albumId: 'one', albumName: 'One' })
+  // Two's list hasn't loaded yet, but its song still isn't a single
+  const onTwo = piece('m2', { albumId: 'two', albumName: 'Two' })
+  const { albums, singles } = arrangeByAlbum([one, two], { one: { items: [onOne] } }, [onOne, onTwo, piece('m3')])
+  expect(albums.map((section) => [section.album.albumId, section.pieces.map((p) => p.musicPieceId)])).toEqual([['one', ['m1']], ['two', []]])
+  expect(singles.map((single) => single.musicPieceId)).toEqual(['m3'])
 })
 
-it("refuses a song that's already on another album instead of moving it", async () => {
-  await expect(updateAlbum('a1', 'two', { name: 'two', tracks: [{ musicPiece: piece('m2') }, { musicPiece: piece('m1') }] }))
-    .rejects.toMatchObject({ status: 409, code: 'ALREADY_ON_ALBUM' })
-  await expect(addToAlbum('a1', 'two', piece('m1'))).rejects.toMatchObject({ code: 'ALREADY_ON_ALBUM' })
-  expect(JSON.parse(localStorage.getItem('aux-albums-a1'))[0].tracks).toHaveLength(1)
-  await addToAlbum('a1', 'two', piece('m3'))
-  expect(JSON.parse(localStorage.getItem('aux-albums-a1'))[1].tracks.map((track) => track.musicPiece.musicPieceId)).toEqual(['m2', 'm3'])
+it('sends albumName and the cover only when there is one', async () => {
+  const cover = new File(['c'], 'c.png', { type: 'image/png' })
+  await findOrCreateAlbum('a1', { albumName: 'Blonde', coverImage: cover })
+  await updateAlbum('al1', { albumName: 'Blond' })
+  expect(request.mock.calls.map(([method, url, form]) => [method, url.split('/api/')[1], fields(form)])).toEqual([
+    ['POST', 'artists/a1/albums', { albumName: 'Blonde', coverImage: 'file' }],
+    ['PUT', 'albums/al1', { albumName: 'Blond' }],
+  ])
 })
 
-it('shows album tracks with the album cover and leaves the rest as singles', () => {
-  const { albums, singles } = arrangeByAlbum([album('one', ['m1'])], [piece('m1'), piece('m4')])
-  expect(albums[0].pieces[0].coverUrl).toBe('data:cover')
-  expect(singles.map((single) => single.musicPieceId)).toEqual(['m4'])
-})
-
-it("gives a song on an album the album's cover everywhere, unless it keeps its own", async () => {
-  const onAlbum = { ...piece('m1'), artistSummary: { artistId: 'a1', artistName: 'A' } }
-  const ownCover = { ...piece('m5'), artistSummary: { artistId: 'a1', artistName: 'A' } }
-  const single = { ...piece('m9'), artistSummary: { artistId: 'a1', artistName: 'A' } }
-  await addToAlbum('a1', 'two', ownCover, false)
-  expect(albumCoverUrl(onAlbum)).toBe('data:cover')
-  expect(albumCoverUrl(ownCover)).toBe('/uploads/m5.webp')
-  expect(albumCoverUrl(single)).toBe('/uploads/m9.webp')
+it('moves a song onto an album with its cover choice, or makes it a single', async () => {
+  await setPieceAlbum('m1', 'al1', false)
+  await setPieceAlbum('m1', null)
+  expect(request.mock.calls.map(([method, url, form]) => [method, url.split('/api/')[1], fields(form)])).toEqual([
+    ['PUT', 'music-pieces/m1', { albumId: 'al1', useAlbumCover: 'false' }],
+    ['PUT', 'music-pieces/m1', { removeFromAlbum: 'true' }],
+  ])
 })

@@ -66,7 +66,7 @@
             </EmptyState>
             <template v-else>
               <div v-if="loggedIn" class="songs-tools">
-                <p class="meta">{{ albums.items.length ? 'Songs are grouped into albums, then singles.' : 'Group songs into albums so they\'re easier to find.' }}</p>
+                <p class="meta">{{ albums.items.length ? 'Songs are grouped into albums, then singles.' : 'Group your songs into albums so they\'re easier to find.' }}</p>
                 <button type="button" class="btn secondary small" @click="albumDialog.open()">New album</button>
               </div>
 
@@ -80,28 +80,40 @@
                   <img class="album-cover" :src="resolveCoverURL(section.album.coverUrl)" alt="" />
                   <div class="album-text">
                     <p class="eyebrow">Album</p>
-                    <h3 :id="`album-${section.album.albumId}`">{{ section.album.name }}</h3>
-                    <p class="meta">{{ section.pieces.length === 1 ? '1 song' : `${section.pieces.length} songs` }}</p>
+                    <h3 :id="`album-${section.album.albumId}`">{{ section.album.albumName }}</h3>
+                    <p class="meta">{{ section.album.pieceCount === 1 ? '1 song' : `${section.album.pieceCount} songs` }}</p>
                   </div>
                   <div class="album-actions">
                     <button type="button" class="btn primary small" :disabled="!section.pieces.length" @click="musicStore.playPieces(section.pieces, 0)">
-                      Play<span class="sr-only"> {{ section.album.name }}</span>
+                      Play<span class="sr-only"> {{ section.album.albumName }}</span>
                     </button>
                     <router-link v-if="loggedIn" :to="{ name: 'Upload', query: { artist: artist.artistId, album: section.album.albumId } }" class="btn secondary small">
-                      Add a song<span class="sr-only"> to {{ section.album.name }}</span>
+                      Add a song<span class="sr-only"> to {{ section.album.albumName }}</span>
                     </router-link>
                     <button v-if="section.album.canEdit" type="button" class="btn secondary small" @click="albumDialog.open(section.album)">
-                      Edit<span class="sr-only"> {{ section.album.name }}</span>
+                      Edit<span class="sr-only"> {{ section.album.albumName }}</span>
                     </button>
                   </div>
                 </header>
                 <TrackRows
+                  v-if="section.pieces.length"
                   :pieces="section.pieces"
-                  :label="`${section.album.name} by ${artist.artistName}`"
+                  :label="`${section.album.albumName} by ${artist.artistName}, most played first`"
                   ranked
                   show-uploader
                   @play="(index) => musicStore.playPieces(section.pieces, index)"
                 />
+                <p v-else-if="albumPieces[section.album.albumId]?.error" class="meta">We couldn't load this album's songs.</p>
+                <p v-else-if="!albumPieces[section.album.albumId]?.loading" class="meta">No songs on it yet.</p>
+                <button
+                  v-if="albumPieces[section.album.albumId]?.nextCursor"
+                  type="button"
+                  class="btn secondary more"
+                  :disabled="albumPieces[section.album.albumId].loading"
+                  @click="loadAlbumPieces(section.album, albumPieces[section.album.albumId].nextCursor)"
+                >
+                  {{ albumPieces[section.album.albumId].loading ? 'Loading…' : 'Show more' }}
+                </button>
               </section>
 
               <section v-if="arranged.singles.length" class="album singles" aria-labelledby="singles-heading">
@@ -138,7 +150,7 @@
     </main>
 
     <ArtistImagesDialog ref="imagesDialog" @updated="Object.assign(artist, $event)" />
-    <AlbumDialog ref="albumDialog" :artist="artist" :songs="songs.items" :albums="albums.items" @saved="onAlbumSaved" @deleted="onAlbumDeleted" />
+    <AlbumDialog ref="albumDialog" :artist="artist" :albums="albums.items" @saved="onAlbumSaved" @deleted="onAlbumDeleted" />
     <EditPieceDialog ref="editDialog" @saved="onPieceSaved" />
     <AppFooter />
   </div>
@@ -157,7 +169,7 @@ import ProfileCard from '@/components/ProfileCard.vue'
 import TrackRows from '@/components/TrackRows.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import { fetchArtist, fetchArtistPieces, setArtistFavorite } from '@/utils/artist.js'
-import { arrangeByAlbum, fetchArtistAlbums } from '@/utils/albums.js'
+import { arrangeByAlbum, fetchAlbumPieces, fetchArtistAlbums } from '@/utils/albums.js'
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
@@ -165,8 +177,9 @@ import { useNotificationStore } from '@/stores/notification.js'
 // GET /api/artists/{artistId}: laid out like a user's profile. Anyone can view it; favoriting needs an account, and
 // the artist's creator (canEdit) can change its picture and banner. Songs come from GET /api/artists/{id}/music-pieces,
 // most played first, and play on their own, like My uploads. Add music opens Upload with this artist already picked.
-// Signed-in users can group the songs into albums (ALBUMS_MOCKED: kept in this browser), each shown in its own section
-// with the album cover on its songs; the rest are singles, whose uploader can change their cover here
+// Albums (GET /api/artists/{id}/albums) each get their own section with their songs from GET /api/albums/{id}/music-pieces,
+// most played first; songs with no `album` are singles, whose uploader can change their cover here. Signed-in users
+// can make albums and put their own songs on them
 const route = useRoute()
 const userStore = useUserStore()
 const notification = useNotificationStore()
@@ -190,6 +203,7 @@ async function loadArtist() {
     if (requested !== artistId.value) return
     artist.value = data
     status.value = 'ready'
+    albums.items = []
     loadSongs()
     loadAlbums()
   } catch (err) {
@@ -219,28 +233,55 @@ async function loadSongs(cursor = null) {
 }
 
 const albums = reactive({ items: [] })
+// albumId → { items, nextCursor, loading, error }
+const albumPieces = reactive({})
 const albumDialog = ref(null)
 const editDialog = ref(null)
-const arranged = computed(() => arrangeByAlbum(albums.items, songs.items))
+const arranged = computed(() => arrangeByAlbum(albums.items, albumPieces, songs.items))
 
 async function loadAlbums() {
   const current = artist.value
-  albums.items = []
   try {
-    const items = await fetchArtistAlbums(current.artistId, userStore.userData?.userId)
-    if (artist.value === current) albums.items = items
+    const items = await fetchArtistAlbums(current.artistId)
+    if (artist.value !== current) return
+    for (const key of Object.keys(albumPieces)) delete albumPieces[key]
+    albums.items = items
+    items.forEach((album) => loadAlbumPieces(album))
   } catch {
-    // The songs still show, all as singles
+    // Songs on albums don't show; the singles still do
+    if (artist.value === current) albums.items = []
   }
 }
 
-// Saving can move songs off other albums, so the list is read again
-function onAlbumSaved() {
-  loadAlbums()
+async function loadAlbumPieces(album, cursor = null) {
+  const current = artist.value
+  if (!albumPieces[album.albumId]) albumPieces[album.albumId] = { items: [], nextCursor: null, loading: false, error: false }
+  const entry = albumPieces[album.albumId]
+  entry.loading = true
+  entry.error = false
+  try {
+    const page = await fetchAlbumPieces(album.albumId, cursor)
+    if (artist.value !== current || albumPieces[album.albumId] !== entry) return
+    entry.items = cursor ? [...entry.items, ...page.musicPieces] : page.musicPieces
+    entry.nextCursor = page.nextCursor ?? null
+  } catch (err) {
+    if (!err.sessionEnded) entry.error = true
+  } finally {
+    entry.loading = false
+  }
 }
 
+// Saving moves songs between albums and singles, and can change their covers, so both are read again
+function onAlbumSaved() {
+  loadAlbums()
+  loadSongs()
+}
+
+// Its songs are singles now
 function onAlbumDeleted(albumId) {
   albums.items = albums.items.filter((album) => album.albumId !== albumId)
+  delete albumPieces[albumId]
+  loadSongs()
 }
 
 function isMine(piece) {
@@ -254,7 +295,9 @@ function onPieceSaved(updated) {
     songs.items = songs.items.filter((piece) => piece.musicPieceId !== updated.musicPieceId)
     return
   }
-  songs.items = songs.items.map((piece) => (piece.musicPieceId === updated.musicPieceId ? { ...piece, ...updated, playCount: piece.playCount } : piece))
+  const merge = (piece) => (piece.musicPieceId === updated.musicPieceId ? { ...piece, ...updated, playCount: piece.playCount } : piece)
+  songs.items = songs.items.map(merge)
+  for (const entry of Object.values(albumPieces)) entry.items = entry.items.map(merge)
 }
 
 async function toggleFavorite() {
