@@ -8,7 +8,11 @@
   >
     <form v-if="artist" class="card" @submit.prevent="save">
       <h2 id="album-dialog-title">{{ editing ? `Edit ${editing.name}` : `New album for ${artist.artistName}` }}</h2>
-      <p class="lead">Pick its songs. Each one shows the album cover unless you keep its own.</p>
+      <p class="lead">
+        {{ draft
+          ? `“${draft.songName}” is its first track. Add any of ${artist.artistName}'s singles too; each shows the album cover unless you keep its own.`
+          : 'Pick its songs. Each one shows the album cover unless you keep its own.' }}
+      </p>
 
       <div class="top">
         <div class="cover-col">
@@ -36,18 +40,30 @@
       </div>
 
       <fieldset class="songs">
-        <legend class="label">Songs <span class="count">{{ tracks.length }} picked</span></legend>
-        <p v-if="!songs.length" class="hint">{{ artist.artistName }} has no songs yet.</p>
-        <ul v-else class="song-list">
-          <li v-for="piece in songs" :key="piece.musicPieceId" class="song" :class="{ picked: trackFor(piece) }">
+        <legend class="label">Songs <span class="count">{{ tracks.length + (draft ? 1 : 0) }} picked</span></legend>
+        <p v-if="!songs.length && !draft" class="hint">{{ artist.artistName }} has no songs yet.</p>
+        <ul v-if="songs.length || draft" class="song-list">
+          <li v-if="draft" class="song picked upload-track">
+            <span class="song-main">
+              <input type="checkbox" checked disabled :aria-label="`${draft.songName}, the song you're uploading`" />
+              <span class="num" aria-hidden="true">1</span>
+              <img v-if="coverShown" class="art" :src="coverShown" alt="" />
+              <span v-else class="art art-empty" aria-hidden="true"></span>
+              <span class="song-text">
+                <span class="song-name">{{ draft.songName }}</span>
+                <span class="song-note">The song you're uploading</span>
+              </span>
+            </span>
+          </li>
+          <li v-for="piece in songs" :key="piece.musicPieceId" class="song" :class="{ picked: trackFor(piece), taken: otherAlbum(piece) }">
             <label class="song-main">
-              <input type="checkbox" :checked="Boolean(trackFor(piece))" @change="toggle(piece)" />
-              <span class="num" aria-hidden="true">{{ trackFor(piece) ? tracks.indexOf(trackFor(piece)) + 1 : '' }}</span>
+              <input type="checkbox" :checked="Boolean(trackFor(piece))" :disabled="Boolean(otherAlbum(piece))" @change="toggle(piece)" />
+              <span class="num" aria-hidden="true">{{ trackFor(piece) ? tracks.indexOf(trackFor(piece)) + 1 + (draft ? 1 : 0) : '' }}</span>
               <img v-if="piece.coverUrl" class="art" :src="resolveCoverURL(piece.coverUrl)" alt="" loading="lazy" />
               <span v-else class="art art-empty" aria-hidden="true"></span>
               <span class="song-text">
                 <span class="song-name">{{ piece.name }}</span>
-                <span v-if="otherAlbum(piece)" class="song-note">On {{ otherAlbum(piece) }}; picking it moves it here</span>
+                <span v-if="otherAlbum(piece)" class="song-note">Already on {{ otherAlbum(piece) }}</span>
               </span>
             </label>
             <label v-if="trackFor(piece)" class="own-cover">
@@ -72,7 +88,7 @@
         <button v-if="editing" type="button" class="btn text delete" :disabled="saving" @click="confirmingDelete = true">Delete album</button>
         <span class="spacer"></span>
         <button type="button" class="btn secondary" :disabled="saving" @click="close">Cancel</button>
-        <button type="submit" class="btn primary" :disabled="saving">{{ saving ? 'Saving…' : editing ? 'Save album' : 'Create album' }}</button>
+        <button type="submit" class="btn primary" :disabled="saving">{{ submitLabel }}</button>
       </div>
     </form>
   </dialog>
@@ -87,13 +103,17 @@ import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
 // Makes or edits one of an artist's albums. The artist page calls `open(album | null)`, passing the artist, every
-// loaded song by them and their albums; it emits `saved` with the Album and `deleted` with its albumId
+// loaded song by them and their albums; it emits `saved` with the Album and `deleted` with its albumId. A song is on
+// at most one album, so songs already on another can't be picked.
+// Upload opens it with `open(null, { draft: { songName, coverFile, name, tracks } })` for a new album around the song
+// being uploaded: the cover starts as the song's, and saving emits `draft` ({ name, coverImage, tracks }) instead of
+// making the album, since the song doesn't exist yet. Closing without saving emits `cancel`
 const props = defineProps({
   artist: { type: Object, default: null },
   songs: { type: Array, required: true },
   albums: { type: Array, required: true },
 })
-const emit = defineEmits(['saved', 'deleted'])
+const emit = defineEmits(['saved', 'deleted', 'draft', 'cancel'])
 
 const userStore = useUserStore()
 const notification = useNotificationStore()
@@ -108,14 +128,27 @@ const tracks = ref([])
 const error = ref('')
 const saving = ref(false)
 const confirmingDelete = ref(false)
+const draft = ref(null)
+let finished = false
 
 const coverShown = computed(() => coverPreview.value || editing.value?.coverUrl || '')
+const submitLabel = computed(() => {
+  if (saving.value) return 'Saving…'
+  if (draft.value) return 'Use this album'
+  return editing.value ? 'Save album' : 'Create album'
+})
 
-function open(album = null) {
+function open(album = null, options = {}) {
   editing.value = album
-  name.value = album?.name ?? ''
+  draft.value = options.draft ?? null
+  name.value = album?.name ?? draft.value?.name ?? ''
   clearCover()
-  tracks.value = (album?.tracks ?? []).map((track) => ({ ...track }))
+  if (draft.value?.coverFile) {
+    coverFile.value = draft.value.coverFile
+    coverPreview.value = URL.createObjectURL(draft.value.coverFile)
+  }
+  tracks.value = (album?.tracks ?? draft.value?.tracks ?? []).map((track) => ({ ...track }))
+  finished = false
   error.value = ''
   confirmingDelete.value = false
   dialogEl.value.showModal()
@@ -129,6 +162,7 @@ function close() {
 function onClose() {
   document.documentElement.classList.remove('scroll-locked')
   clearCover()
+  if (draft.value && !finished) emit('cancel')
 }
 
 onBeforeUnmount(onClose)
@@ -163,7 +197,6 @@ function toggle(piece) {
 }
 
 function otherAlbum(piece) {
-  if (trackFor(piece)) return ''
   const album = props.albums.find((item) => item.albumId !== editing.value?.albumId
     && item.tracks.some((track) => track.musicPiece.musicPieceId === piece.musicPieceId))
   return album?.name ?? ''
@@ -172,6 +205,7 @@ function otherAlbum(piece) {
 function saveError(err) {
   if (err.code === 'STORAGE_FULL') return 'This browser is out of room for album covers. Try a smaller image.'
   if (PHOTO_ERRORS[err.code]) return PHOTO_ERRORS[err.code]
+  if (err.code === 'ALREADY_ON_ALBUM') return 'One of those songs is already on another album. Take it off that one first.'
   if (err.code === 'ALBUM_NOT_FOUND') return 'This album was deleted. Close this and make it again.'
   return "We couldn't save the album. Check that the server is running, then try again."
 }
@@ -181,6 +215,11 @@ async function save() {
   error.value = ''
   if (!trimmed) return (error.value = `Give the album a name of 1 to ${ALBUM_NAME_MAX} characters.`)
   if (!editing.value && !coverFile.value) return (error.value = 'Choose a cover for the album.')
+  if (draft.value) {
+    finished = true
+    emit('draft', { name: trimmed, coverImage: coverFile.value, tracks: tracks.value })
+    return close()
+  }
   if (!tracks.value.length) return (error.value = 'Pick at least one song.')
   saving.value = true
   try {
@@ -240,6 +279,9 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
 .song-list { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
 .song { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-1); }
 .song.picked { background: var(--purple-soft); }
+.song.taken .song-main { cursor: not-allowed; }
+.song.taken .song-name { color: var(--ink-muted); }
+.upload-track .song-main { cursor: default; }
 .song-main { align-items: center; cursor: pointer; display: flex; flex: 1; gap: var(--space-3); min-width: 0; }
 .num { color: var(--ink-muted); flex: none; font: 600 12px/16px var(--font-sans); text-align: right; width: 16px; }
 .art { border-radius: var(--radius-sm); flex: none; height: 40px; object-fit: cover; width: 40px; }

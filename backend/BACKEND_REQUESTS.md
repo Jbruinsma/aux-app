@@ -174,7 +174,8 @@ Multipart, signed in:
 - `name` (required): 1 to 100 chars, trimmed.
 - `coverImage` (required): same rules as a song cover; the server crops it to a square WebP.
 - `musicPieceIds` (required, repeat the field): 1 or more, in track order. Each must be credited to this artist and
-  playable by the caller. A song already on another album moves to this one.
+  playable by the caller, and not already on another album: `409 ALREADY_ON_ALBUM` (with the `musicPieceId`) if one
+  is. Songs are never moved between albums; take it off the other album first.
 - `ownCoverIds` (repeat the field): the subset of `musicPieceIds` that keep their own cover. The rest use the album
   cover.
 
@@ -196,6 +197,8 @@ Creator only. `204`; its songs become singles. `404 ALBUM_NOT_FOUND`.
 Upload straight onto an album (the Upload page's Album field, and an album's "Add a song" on the artist page):
 
 - `albumId` (optional): an album of the piece's `artistId`; the new piece goes at the end of its tracks.
+  (A new album around the song being uploaded needs nothing extra: the frontend uploads it, then makes the album with
+  `POST /api/artists/{artistId}/albums`, the new piece first and the song's cover as the album cover.)
   `404 ALBUM_NOT_FOUND`, `400 INVALID_FIELD` if the album belongs to another artist.
 - `useAlbumCover` (optional, default `true` when `albumId` is sent): use the album cover. With it, `coverImage` is no
   longer required; if both are sent, keep `coverImage` as the piece's own cover so it can be switched back.

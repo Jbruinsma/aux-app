@@ -19,9 +19,12 @@ export async function fetchArtistAlbums(artistId, userId) {
   return readStored(artistId).map((album) => ({ ...album, canEdit: Boolean(userId) && album.createdBy === userId }))
 }
 
-// { name, coverImage (File, required to create), tracks: [{ musicPiece, useAlbumCover }] }; returns the Album
+// { name, coverImage (File, required to create), tracks: [{ musicPiece, useAlbumCover }] }; returns the Album.
+// 409 ALREADY_ON_ALBUM when a track is on another album
 export async function createAlbum(artistId, { name, coverImage, tracks }, userId) {
   if (!ALBUMS_MOCKED) return request('POST', artistAlbumsUrl(artistId), albumForm({ name, coverImage, tracks }), quiet)
+  const albums = readStored(artistId)
+  checkFree(albums, tracks, null)
   const album = {
     albumId: `local-${Date.now().toString(36)}`,
     name,
@@ -29,7 +32,7 @@ export async function createAlbum(artistId, { name, coverImage, tracks }, userId
     createdBy: userId,
     tracks: tracks.map(storedTrack),
   }
-  writeStored(artistId, [...readStored(artistId).map((other) => withoutPieces(other, tracks)), album])
+  writeStored(artistId, [...albums, album])
   return { ...album, canEdit: true }
 }
 
@@ -39,9 +42,10 @@ export async function updateAlbum(artistId, albumId, { name, coverImage, tracks 
   const albums = readStored(artistId)
   const album = albums.find((item) => item.albumId === albumId)
   if (!album) throw Object.assign(new Error('Album not found'), { status: 404, code: 'ALBUM_NOT_FOUND' })
+  checkFree(albums, tracks, albumId)
   const updated = { ...album, name, tracks: tracks.map(storedTrack) }
   if (coverImage) updated.coverUrl = await shrinkCover(coverImage)
-  writeStored(artistId, albums.map((item) => (item.albumId === albumId ? updated : withoutPieces(item, tracks))))
+  writeStored(artistId, albums.map((item) => (item.albumId === albumId ? updated : item)))
   return { ...updated, canEdit: true }
 }
 
@@ -58,6 +62,7 @@ export async function addToAlbum(artistId, albumId, musicPiece, useAlbumCover = 
   const albums = readStored(artistId)
   const album = albums.find((item) => item.albumId === albumId)
   if (!album) throw Object.assign(new Error('Album not found'), { status: 404, code: 'ALBUM_NOT_FOUND' })
+  checkFree(albums, [{ musicPiece }], albumId)
   const tracks = [...album.tracks.filter((track) => track.musicPiece.musicPieceId !== musicPiece.musicPieceId), storedTrack({ musicPiece, useAlbumCover })]
   writeStored(artistId, albums.map((item) => (item.albumId === albumId ? { ...album, tracks } : item)))
 }
@@ -127,10 +132,11 @@ function storedTrack({ musicPiece, useAlbumCover }) {
   return { musicPiece: { musicPieceId, name, coverUrl, artistSummary, uploader, isPublic, isAvailable }, useAlbumCover: useAlbumCover !== false }
 }
 
-// A piece moved onto this album leaves any other one
-function withoutPieces(album, tracks) {
-  const moved = new Set(tracks.map((track) => track.musicPiece.musicPieceId))
-  return { ...album, tracks: album.tracks.filter((track) => !moved.has(track.musicPiece.musicPieceId)) }
+// A piece is on at most one album: one already on another (not `albumId`) is refused, not moved
+function checkFree(albums, tracks, albumId) {
+  const wanted = new Set(tracks.map((track) => track.musicPiece.musicPieceId))
+  const clash = albums.some((album) => album.albumId !== albumId && album.tracks.some((track) => wanted.has(track.musicPiece.musicPieceId)))
+  if (clash) throw Object.assign(new Error('Already on an album'), { status: 409, code: 'ALREADY_ON_ALBUM' })
 }
 
 const COVER_SIDE = 400

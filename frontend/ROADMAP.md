@@ -516,8 +516,8 @@ their own.
 **API:** `GET /api/artists/{artistId}/albums`, `POST` the same, `PUT`/`DELETE /api/albums/{albumId}` (not in the docs
 yet: "Albums" in `../backend/BACKEND_REQUESTS.md`), `PUT /api/music-pieces/{musicPieceId}` for single covers
 
-- [x] New album (signed in): a name, a square cover, and songs picked from the artist's list in track order. A song
-      already on another album moves.
+- [x] New album (signed in): a name, a square cover, and songs picked from the artist's list in track order. Songs
+      already on another album can't be picked.
 - [x] Each album gets its own section, split from the next by a rule: cover, name, song count, Play and (for its
       creator) Edit, then its tracks numbered. Everything else is listed under Singles, most played first.
 - [x] Tracks show the album cover unless "Use album cover" is unticked for them, which keeps the song's own.

@@ -64,19 +64,28 @@
 
           <ArtistPicker ref="artistPicker" v-model="artist" />
 
-          <div v-if="albums.length" class="field">
+          <div v-if="artist?.artistId" class="field">
             <label class="label" for="song-album">Album</label>
             <span class="select-wrap">
               <select id="song-album" v-model="albumId" class="input select" aria-describedby="album-hint">
                 <option value="">None, it's a single</option>
                 <option v-for="item in albums" :key="item.albumId" :value="item.albumId">{{ item.name }}</option>
+                <option :value="NEW_ALBUM">{{ draftAlbum ? `New album: ${draftAlbum.name}` : 'Create a new album…' }}</option>
               </select>
             </span>
+            <div v-if="draftAlbum && albumId === NEW_ALBUM" class="draft">
+              <img class="draft-cover" :src="draftAlbum.coverPreview" alt="" />
+              <span class="draft-text">
+                <span class="draft-name">{{ draftAlbum.name }}</span>
+                <span class="hint">{{ draftAlbum.tracks.length ? `This song, then ${draftAlbum.tracks.length === 1 ? '1 other' : `${draftAlbum.tracks.length} others`}` : 'Just this song for now' }}</span>
+              </span>
+              <button type="button" class="btn secondary small" @click="openDraft">Edit album</button>
+            </div>
             <label v-if="album" class="check">
               <input v-model="useAlbumCover" type="checkbox" />
               Use the album cover
             </label>
-            <p id="album-hint" class="hint">{{ album ? `It's added to the end of ${album.name}.` : `Or add it to one of ${artist.artistName}'s albums.` }}</p>
+            <p id="album-hint" class="hint">{{ albumHint }}</p>
           </div>
           <TagPicker v-model="tags" :error="tagsError" :disabled="uploading" @update:model-value="tagsError = ''" />
 
@@ -102,6 +111,14 @@
       </form>
     </main>
 
+    <AlbumDialog
+      ref="albumDialog"
+      :artist="artist?.artistId ? artist : null"
+      :songs="artistSongs"
+      :albums="albums"
+      @draft="onDraft"
+      @cancel="onDraftCancel"
+    />
     <AppFooter />
   </div>
 </template>
@@ -111,6 +128,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AlbumDialog from '@/components/AlbumDialog.vue'
 import ArtistPicker from '@/components/ArtistPicker.vue'
 import TagPicker from '@/components/TagPicker.vue'
 import { isTagsError, tagsErrorMessage } from '@/utils/tags.js'
@@ -124,8 +142,8 @@ import {
   uploadMusicPiece,
 } from '@/utils/music.js'
 import { useNotificationStore } from '@/stores/notification.js'
-import { fetchArtist } from '@/utils/artist.js'
-import { ALBUMS_MOCKED, addToAlbum, albumCoverFile, fetchArtistAlbums } from '@/utils/albums.js'
+import { fetchArtist, fetchArtistPieces } from '@/utils/artist.js'
+import { ALBUMS_MOCKED, addToAlbum, albumCoverFile, createAlbum, fetchArtistAlbums } from '@/utils/albums.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { useUserStore } from '@/stores/user.js'
 
@@ -162,35 +180,91 @@ const tags = ref([])
 const tagsError = ref('')
 
 // The picked artist's albums. A song put on one uses its cover unless "Use the album cover" is unticked, and choosing
-// a cover of your own unticks it. /upload?artist=<id>&album=<id> (an album's Add a song) starts with that album picked
+// a cover of your own unticks it. /upload?artist=<id>&album=<id> (an album's Add a song) starts with that album picked.
+// "Create a new album…" opens the album dialog around this song: its cover starts as the song's, and other singles by
+// the artist can join it. The album is made once the song is uploaded
+const NEW_ALBUM = 'new'
+const albumDialog = ref(null)
 const albums = ref([])
+const artistSongs = ref([])
 const albumId = ref('')
+const draftAlbum = ref(null)
 const useAlbumCover = ref(true)
-const album = computed(() => albums.value.find((item) => item.albumId === albumId.value) ?? null)
+const album = computed(() => {
+  if (albumId.value === NEW_ALBUM) return draftAlbum.value ? { name: draftAlbum.value.name, coverUrl: draftAlbum.value.coverPreview } : null
+  return albums.value.find((item) => item.albumId === albumId.value) ?? null
+})
 const usingAlbumCover = computed(() => Boolean(album.value && useAlbumCover.value))
 const coverShown = computed(() => (usingAlbumCover.value ? resolveCoverURL(album.value.coverUrl) : coverPreview.value))
+const albumHint = computed(() => {
+  if (albumId.value === NEW_ALBUM && album.value) return `${album.value.name} is made with this song as its first track.`
+  if (album.value) return `It's added to the end of ${album.value.name}.`
+  return albums.value.length ? `Or add it to one of ${artist.value.artistName}'s albums, or start a new one.` : 'Or start a new album with it.'
+})
 
 let albumsRequest = 0
 watch(() => artist.value?.artistId, async (artistId) => {
   const id = ++albumsRequest
   albums.value = []
+  artistSongs.value = []
+  dropDraft()
   if (!artistId) return (albumId.value = '')
+  if (albumId.value === NEW_ALBUM) albumId.value = ''
   try {
-    const items = await fetchArtistAlbums(artistId, userStore.userData?.userId)
+    const [items, page] = await Promise.all([
+      fetchArtistAlbums(artistId, userStore.userData?.userId),
+      fetchArtistPieces(artistId).catch(() => null),
+    ])
     if (id !== albumsRequest) return
     albums.value = items
+    artistSongs.value = page?.musicPieces ?? []
     const wanted = albumId.value || String(route.query.album ?? '')
     albumId.value = items.some((item) => item.albumId === wanted) ? wanted : ''
   } catch {
-    // No album field; it uploads as a single
+    // Only None and a new album are offered
   }
 })
+
+watch(albumId, (value) => {
+  if (value !== NEW_ALBUM) dropDraft()
+  else if (!draftAlbum.value) openDraft()
+})
+
+function openDraft() {
+  albumDialog.value.open(null, {
+    draft: {
+      songName: title.value.trim() || 'Your new song',
+      coverFile: draftAlbum.value?.coverImage ?? coverFile.value,
+      name: draftAlbum.value?.name ?? '',
+      tracks: draftAlbum.value?.tracks ?? [],
+    },
+  })
+}
+
+function onDraft({ name, coverImage, tracks }) {
+  dropDraft()
+  draftAlbum.value = { name, coverImage, tracks, coverPreview: URL.createObjectURL(coverImage) }
+  useAlbumCover.value = true
+}
+
+// Closing the dialog without an album goes back to None
+function onDraftCancel() {
+  if (!draftAlbum.value) albumId.value = ''
+}
+
+function dropDraft() {
+  if (draftAlbum.value) URL.revokeObjectURL(draftAlbum.value.coverPreview)
+  draftAlbum.value = null
+}
 
 const hasArtist = computed(() => Boolean(artist.value || artistPicker.value?.pendingName))
 const hasCover = computed(() => usingAlbumCover.value || Boolean(coverFile.value))
 const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(mp3File.value && hasCover.value && title.value.trim() && hasArtist.value))
 
-onBeforeUnmount(() => URL.revokeObjectURL(coverPreview.value))
+onBeforeUnmount(() => {
+  URL.revokeObjectURL(coverPreview.value)
+  dropDraft()
+})
 
 // From an artist's Add music: /upload?artist=<artistId> starts with that artist picked. If it can't be loaded the
 // picker just starts empty
@@ -260,9 +334,12 @@ async function upload() {
     if (!artist.value) await artistPicker.value.create()
     if (!artist.value) return
     const onAlbum = album.value
+    const newAlbum = albumId.value === NEW_ALBUM ? draftAlbum.value : null
+    const existing = onAlbum && !newAlbum ? onAlbum : null
     const albumCover = usingAlbumCover.value
     // The upload needs a cover file until the API can take albumId (ALBUMS_MOCKED), so the album's own is sent
-    const coverImage = albumCover ? (ALBUMS_MOCKED ? await albumCoverFile(onAlbum) : null) : coverFile.value
+    let coverImage = coverFile.value
+    if (albumCover) coverImage = newAlbum ? newAlbum.coverImage : ALBUMS_MOCKED ? await albumCoverFile(existing) : null
     const piece = await uploadMusicPiece({
       name: title.value.trim(),
       artistId: artist.value.artistId,
@@ -270,16 +347,23 @@ async function upload() {
       mp3File: mp3File.value,
       coverImage,
       tags: [...tags.value],
-      ...(onAlbum && !ALBUMS_MOCKED ? { albumId: onAlbum.albumId, useAlbumCover: albumCover } : {}),
+      ...(existing && !ALBUMS_MOCKED ? { albumId: existing.albumId, useAlbumCover: albumCover } : {}),
     })
-    if (onAlbum && ALBUMS_MOCKED) await addToAlbum(artist.value.artistId, onAlbum.albumId, piece, albumCover).catch(() => {})
+    if (existing && ALBUMS_MOCKED) await addToAlbum(artist.value.artistId, existing.albumId, piece, albumCover).catch(() => {})
+    let albumFailed = false
+    if (newAlbum) {
+      const tracks = [{ musicPiece: piece, useAlbumCover: albumCover }, ...newAlbum.tracks]
+      await createAlbum(artist.value.artistId, { name: newAlbum.name, coverImage: newAlbum.coverImage, tracks }, userStore.userData?.userId)
+        .catch(() => { albumFailed = true })
+    }
     if (targetPlaylist.value) {
       const result = await addPiecesToPlaylist(targetPlaylist.value.id, [piece.musicPieceId]).catch(() => null)
       if (result) notification[result.failedCount ? 'neutral' : 'success'](`Uploaded “${piece.name}”. ${additionMessage(result)}`)
       else notification.error(`Uploaded “${piece.name}”, but it couldn't be added to the playlist. Add it from your uploads.`)
       await router.push({ name: 'Playlist', params: { username: targetPlaylist.value.owner, id: targetPlaylist.value.id } })
     } else if (onAlbum) {
-      notification.success(`Uploaded “${piece.name}” to ${onAlbum.name}.`)
+      if (albumFailed) notification.error(`Uploaded “${piece.name}”, but ${onAlbum.name} couldn't be made. Make it from the artist page.`)
+      else notification.success(newAlbum ? `Uploaded “${piece.name}” and made the album ${onAlbum.name}.` : `Uploaded “${piece.name}” to ${onAlbum.name}.`)
       await router.push({ name: 'Artist', params: { artistId: artist.value.artistId } })
     } else {
       notification.success(`Uploaded “${piece.name}”. It's in My Uploads on your dashboard.`)
@@ -312,6 +396,11 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 .error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
 .check { align-items: center; cursor: pointer; display: flex; font: 600 14px/20px var(--font-sans); gap: var(--space-2); }
 .select-wrap { display: block; }
+.draft { align-items: center; background: var(--surface-alt); border-radius: var(--radius-sm); display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+.draft-cover { border-radius: var(--radius-sm); flex: none; height: 40px; object-fit: cover; width: 40px; }
+.draft-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.draft-name { font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.small { flex: none; font-size: 14px; padding: 6px 12px; }
 .check input { accent-color: var(--primary); height: 16px; margin: 0; width: 16px; }
 .actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
 .file-row { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); }
