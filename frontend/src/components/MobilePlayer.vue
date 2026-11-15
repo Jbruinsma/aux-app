@@ -37,7 +37,7 @@
         <button ref="closeRef" type="button" class="icon-btn" aria-label="Close player" @click="setOpen(false)">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
-        <p class="sheet-label">Now playing</p>
+        <p class="sheet-label">Now Playing</p>
         <span></span>
       </div>
 
@@ -114,9 +114,14 @@
       </div>
 
       <div class="modes">
-        <button type="button" class="icon-btn mode" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
-        </button>
+        <span class="mode-group">
+          <button type="button" class="icon-btn mode" :class="{ active: lyricsOpen }" :disabled="!piece?.uuid" aria-label="Lyrics" title="Lyrics" :aria-pressed="lyricsOpen ? 'true' : 'false'" @click="emit('lyrics')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
+          </button>
+          <button type="button" class="icon-btn mode" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
+          </button>
+        </span>
         <button type="button" class="icon-btn mode" :class="{ active: repeatMode !== 'OFF' }" :disabled="!canPlay" :aria-label="repeatLabel" @click="emit('repeat')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
@@ -145,6 +150,7 @@ const props = defineProps({
   canSkip: Boolean,
   canShuffle: Boolean,
   shuffleOn: Boolean,
+  lyricsOpen: Boolean,
   repeatMode: { type: String, default: 'OFF' },
   repeatLabel: { type: String, default: '' },
   progress: { type: Number, default: 0 },
@@ -153,7 +159,7 @@ const props = defineProps({
   currentTimeLabel: { type: String, default: '0:00' },
   durationLabel: { type: String, default: '0:00' },
 })
-const emit = defineEmits(['toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek'])
+const emit = defineEmits(['toggle-play', 'prev', 'next', 'shuffle', 'repeat', 'seek', 'lyrics'])
 
 const router = useRouter()
 const route = useRoute()
@@ -198,6 +204,8 @@ async function setOpen(value) {
 watch(() => route?.fullPath, () => { if (open.value) setOpen(false) })
 // A narrow window that gets wider unmounts this; don't leave the page locked
 onBeforeUnmount(() => document.body.classList.remove('player-sheet-open'))
+
+defineExpose({ setOpen, isOpen: () => open.value })
 
 async function setMenu(value, refocus = true) {
   menuOpen.value = value
@@ -330,10 +338,11 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; background: var(--purple); border: 0; border-radius: var(--radius-pill); height: 16px; margin-top: -6px; width: 16px; }
 .slider::-moz-range-thumb { background: var(--purple); border: 0; border-radius: var(--radius-pill); height: 16px; width: 16px; }
 
-.transport { align-items: center; display: flex; flex: none; gap: var(--space-8); justify-content: center; margin-top: var(--space-4); }
+.transport { align-items: center; display: flex; flex: none; gap: var(--space-8); justify-content: center; margin-top: var(--space-8); }
 .icon-btn.big { height: 56px; width: 56px; }
 .sheet-play { height: 72px; width: 72px; }
-.modes { display: flex; flex: none; justify-content: space-between; margin-top: auto; padding: var(--space-4) var(--space-2) 0; }
+.modes { display: flex; flex: none; gap: var(--space-8); justify-content: center; margin-top: auto; padding: var(--space-4) var(--space-2) 0; }
+.mode-group { display: flex; gap: var(--space-8); }
 .mode { color: var(--ink-muted); flex-direction: column; gap: 2px; height: 48px; }
 .mode.active { color: var(--link); }
 .mode::after { background: currentColor; border-radius: var(--radius-pill); content: ""; height: 4px; opacity: 0; width: 4px; }

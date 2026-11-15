@@ -22,13 +22,16 @@
       </div>
 
       <div class="body" role="tabpanel">
-        <p v-if="FOLLOWS_MOCKED" class="preview">Preview: these are sample people until Aux can list followers.</p>
-        <EmptyState v-if="list.hidden" icon="users" :title="hiddenTitle" text="They chose who can see the people they follow." />
+        <p v-if="list.partial && list.users.length" class="preview">
+          Only your friends, people you follow who follow you back, show here until Aux can list everyone.
+        </p>
+        <EmptyState v-if="list.unavailable" icon="users" title="Follower lists are coming soon" text="For now, you can see your own friends from your profile." />
+        <EmptyState v-else-if="list.hidden" icon="users" :title="hiddenTitle" text="They chose who can see the people they follow." />
         <EmptyState v-else-if="list.error" tone="error" icon="users" :title="list.error" text="Check that the server is running, then try again.">
           <button type="button" class="btn secondary" @click="load()">Try again</button>
         </EmptyState>
         <EmptyState v-else-if="list.loading && !list.users.length" tone="loading" icon="users" title="Loading…" />
-        <EmptyState v-else-if="!list.users.length" icon="users" :title="emptyTitle" />
+        <EmptyState v-else-if="!list.users.length" icon="users" :title="emptyTitle" :text="list.partial ? 'Friends show up here once you follow each other.' : ''" />
         <template v-else>
           <ul class="people">
             <li v-for="user in list.users" :key="user.userId" class="person">
@@ -63,7 +66,7 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { resolveCoverURL } from '@/utils/display.js'
-import { FOLLOWS_MOCKED, fetchFollowList, isFriend, setFollowing } from '@/utils/follows.js'
+import { fetchFollowList, isFriend, setFollowing } from '@/utils/follows.js'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
@@ -85,7 +88,7 @@ const userStore = useUserStore()
 const notification = useNotificationStore()
 const dialogEl = ref(null)
 const which = ref('followers')
-const list = reactive({ users: [], nextCursor: null, loading: false, error: '', hidden: false })
+const list = reactive({ users: [], nextCursor: null, loading: false, error: '', hidden: false, partial: false, unavailable: false })
 const busy = ref(new Set())
 let request = 0
 let changed = false
@@ -93,9 +96,11 @@ let changed = false
 const hiddenTitle = computed(() => (which.value === 'followers'
   ? `@${props.username} keeps their followers private`
   : `@${props.username} keeps who they follow private`))
-const emptyTitle = computed(() => (which.value === 'followers'
-  ? `No one follows @${props.username} yet`
-  : `@${props.username} doesn't follow anyone yet`))
+const own = computed(() => props.username === userStore.userData?.username)
+const emptyTitle = computed(() => {
+  if (list.partial) return 'No friends yet'
+  return which.value === 'followers' ? `No one follows @${props.username} yet` : `@${props.username} doesn't follow anyone yet`
+})
 
 function open(target = 'followers') {
   changed = false
@@ -119,7 +124,7 @@ onBeforeUnmount(() => document.documentElement.classList.remove('scroll-locked')
 function show(target, force = false) {
   if (which.value === target && !force) return
   which.value = target
-  Object.assign(list, { users: [], nextCursor: null, error: '', hidden: false })
+  Object.assign(list, { users: [], nextCursor: null, error: '', hidden: false, partial: false, unavailable: false })
   load()
 }
 
@@ -129,8 +134,10 @@ async function load(cursor = null) {
   list.loading = true
   list.error = ''
   try {
-    const page = await fetchFollowList(props.username, target, cursor)
+    const page = await fetchFollowList(props.username, target, cursor, { own: own.value })
     if (id !== request) return
+    list.partial = Boolean(page.partial)
+    list.unavailable = Boolean(page.unavailable)
     list.users = cursor ? [...list.users, ...page.users] : page.users
     list.nextCursor = page.nextCursor ?? null
   } catch (err) {

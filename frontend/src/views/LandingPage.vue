@@ -17,17 +17,18 @@
       </div>
     </div>
     <template #below>
-      <section class="top">
+      <section v-if="topSongs.length" class="top">
         <div class="wrap top-in">
           <div>
             <h2>Top</h2>
-            <p class="section-lead">The albums getting the most plays on Aux right now.</p>
+            <p class="section-lead">The songs getting the most plays on Aux this week.</p>
           </div>
           <ul class="grid">
-            <li v-for="album in topAlbums" :key="album.album" class="tile">
-              <img class="cover" :src="album.cover" :alt="`${album.album} cover`" loading="lazy" />
-              <span class="tile-name">{{ album.album }}</span>
-              <span class="tile-meta">{{ album.artist }}</span>
+            <li v-for="song in topSongs" :key="song.musicPieceId" class="tile">
+              <img v-if="song.coverUrl" class="cover" :src="resolveCoverURL(song.coverUrl)" :alt="`${song.name} cover`" loading="lazy" />
+              <span v-else class="cover" aria-hidden="true"></span>
+              <span class="tile-name">{{ song.name }}</span>
+              <span v-if="song.artistSummary?.artistName" class="tile-meta">{{ song.artistSummary.artistName }}</span>
             </li>
           </ul>
         </div>
@@ -43,18 +44,6 @@ import { fetchAPI } from '@/utils/api.js'
 import { resolveCoverURL } from '@/utils/display.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// Hardcoded until GET /api/core/top is implemented (analytics)
-const COVER_BASE = 'https://aux.justinabruinsma.com/music-cover'
-const topAlbums = [
-  { album: 'DAMN.', artist: 'Kendrick Lamar', cover: `${COVER_BASE}/top-damn.webp` },
-  {
-    album: 'My Beautiful Dark Twisted Fantasy',
-    artist: 'Kanye West',
-    cover: `${COVER_BASE}/top-mbdtf.webp`,
-  },
-  { album: 'UP 2 ME', artist: 'Yeat', cover: `${COVER_BASE}/top-up2me.jpg` },
-]
-
 // Random users with a custom pfp; the row stays hidden if the call fails
 const pfps = ref([])
 onMounted(async () => {
@@ -63,6 +52,17 @@ onMounted(async () => {
     pfps.value = urls.map(resolveCoverURL)
   } catch {
     // fetchAPI already logs the error
+  }
+})
+
+// GET /api/core/top: this week's most played songs. The section hides when nothing was played or the call fails
+const topSongs = ref([])
+onMounted(async () => {
+  try {
+    const songs = await fetchAPI(`${API_BASE_URL}/api/core/top`, { notifyOnError: false })
+    topSongs.value = (songs ?? []).slice(0, 3)
+  } catch {
+    // No Top section
   }
 })
 </script>
@@ -159,10 +159,16 @@ h2 {
 }
 .tile-name {
   font: 600 16px/24px var(--font-sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tile-meta {
   color: var(--ink-muted);
   font: 500 14px/20px var(--font-sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 @media (max-width: 720px) {
   .top-in {

@@ -65,13 +65,69 @@
               <router-link v-if="loggedIn" :to="addMusicRoute" class="btn secondary">Add music</router-link>
             </EmptyState>
             <template v-else>
-              <TrackRows
-                :pieces="songs.items"
-                :label="`Songs by ${artist.artistName}, most played first`"
-                :link-artists="false"
-                ranked
-                @play="(index) => musicStore.playPieces(songs.items, index)"
-              />
+              <div v-if="loggedIn" class="songs-tools">
+                <p class="meta">{{ albums.items.length ? 'Songs are grouped into albums, then singles.' : 'Group songs into albums so they\'re easier to find.' }}</p>
+                <button type="button" class="btn secondary small" @click="albumDialog.open()">New album</button>
+              </div>
+
+              <section
+                v-for="section in arranged.albums"
+                :key="section.album.albumId"
+                class="album"
+                :aria-labelledby="`album-${section.album.albumId}`"
+              >
+                <header class="album-head">
+                  <img class="album-cover" :src="resolveCoverURL(section.album.coverUrl)" alt="" />
+                  <div class="album-text">
+                    <p class="eyebrow">Album</p>
+                    <h3 :id="`album-${section.album.albumId}`">{{ section.album.name }}</h3>
+                    <p class="meta">{{ section.pieces.length === 1 ? '1 song' : `${section.pieces.length} songs` }}</p>
+                  </div>
+                  <div class="album-actions">
+                    <button type="button" class="btn primary small" :disabled="!section.pieces.length" @click="musicStore.playPieces(section.pieces, 0)">
+                      Play<span class="sr-only"> {{ section.album.name }}</span>
+                    </button>
+                    <router-link v-if="loggedIn" :to="{ name: 'Upload', query: { artist: artist.artistId, album: section.album.albumId } }" class="btn secondary small">
+                      Add a song<span class="sr-only"> to {{ section.album.name }}</span>
+                    </router-link>
+                    <button v-if="section.album.canEdit" type="button" class="btn secondary small" @click="albumDialog.open(section.album)">
+                      Edit<span class="sr-only"> {{ section.album.name }}</span>
+                    </button>
+                  </div>
+                </header>
+                <TrackRows
+                  :pieces="section.pieces"
+                  :label="`${section.album.name} by ${artist.artistName}`"
+                  ranked
+                  show-uploader
+                  @play="(index) => musicStore.playPieces(section.pieces, index)"
+                />
+              </section>
+
+              <section v-if="arranged.singles.length" class="album singles" aria-labelledby="singles-heading">
+                <h3 v-if="arranged.albums.length" id="singles-heading" class="singles-title">Singles</h3>
+                <h3 v-else id="singles-heading" class="sr-only">All songs</h3>
+                <TrackRows
+                  :pieces="arranged.singles"
+                  :label="`${arranged.albums.length ? 'Singles' : 'Songs'} by ${artist.artistName}, most played first`"
+                  ranked
+                  show-uploader
+                  @play="(index) => musicStore.playPieces(arranged.singles, index)"
+                >
+                  <template #action="{ piece }">
+                    <button
+                      v-if="isMine(piece)"
+                      type="button"
+                      class="row-edit"
+                      :aria-label="`Change the cover of ${piece.name}`"
+                      title="Change cover"
+                      @click="editDialog.open(piece)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" /></svg>
+                    </button>
+                  </template>
+                </TrackRows>
+              </section>
               <button v-if="songs.nextCursor" type="button" class="btn secondary more" :disabled="songs.loading" @click="loadSongs(songs.nextCursor)">
                 {{ songs.loading ? 'Loading…' : 'Show more' }}
               </button>
@@ -82,6 +138,8 @@
     </main>
 
     <ArtistImagesDialog ref="imagesDialog" @updated="Object.assign(artist, $event)" />
+    <AlbumDialog ref="albumDialog" :artist="artist" :songs="songs.items" :albums="albums.items" @saved="onAlbumSaved" @deleted="onAlbumDeleted" />
+    <EditPieceDialog ref="editDialog" @saved="onPieceSaved" />
     <AppFooter />
   </div>
 </template>
@@ -91,19 +149,24 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AlbumDialog from '@/components/AlbumDialog.vue'
 import ArtistImagesDialog from '@/components/ArtistImagesDialog.vue'
+import EditPieceDialog from '@/components/EditPieceDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ProfileCard from '@/components/ProfileCard.vue'
 import TrackRows from '@/components/TrackRows.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import { fetchArtist, fetchArtistPieces, setArtistFavorite } from '@/utils/artist.js'
+import { arrangeByAlbum, fetchArtistAlbums } from '@/utils/albums.js'
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
 
 // GET /api/artists/{artistId}: laid out like a user's profile. Anyone can view it; favoriting needs an account, and
 // the artist's creator (canEdit) can change its picture and banner. Songs come from GET /api/artists/{id}/music-pieces,
-// most played first, and play on their own, like My uploads. Add music opens Upload with this artist already picked
+// most played first, and play on their own, like My uploads. Add music opens Upload with this artist already picked.
+// Signed-in users can group the songs into albums (ALBUMS_MOCKED: kept in this browser), each shown in its own section
+// with the album cover on its songs; the rest are singles, whose uploader can change their cover here
 const route = useRoute()
 const userStore = useUserStore()
 const notification = useNotificationStore()
@@ -128,6 +191,7 @@ async function loadArtist() {
     artist.value = data
     status.value = 'ready'
     loadSongs()
+    loadAlbums()
   } catch (err) {
     if (err.sessionEnded || requested !== artistId.value) return
     status.value = err.status === 404 ? 'missing' : 'error'
@@ -152,6 +216,45 @@ async function loadSongs(cursor = null) {
   } finally {
     if (artist.value === current) songs.loading = false
   }
+}
+
+const albums = reactive({ items: [] })
+const albumDialog = ref(null)
+const editDialog = ref(null)
+const arranged = computed(() => arrangeByAlbum(albums.items, songs.items))
+
+async function loadAlbums() {
+  const current = artist.value
+  albums.items = []
+  try {
+    const items = await fetchArtistAlbums(current.artistId, userStore.userData?.userId)
+    if (artist.value === current) albums.items = items
+  } catch {
+    // The songs still show, all as singles
+  }
+}
+
+// Saving can move songs off other albums, so the list is read again
+function onAlbumSaved() {
+  loadAlbums()
+}
+
+function onAlbumDeleted(albumId) {
+  albums.items = albums.items.filter((album) => album.albumId !== albumId)
+}
+
+function isMine(piece) {
+  return loggedIn.value && piece.uploader?.userId === userStore.userData?.userId
+}
+
+function onPieceSaved(updated) {
+  if (!updated?.musicPieceId) return
+  // Credited to another artist now: it leaves this page
+  if (updated.artistSummary?.artistId && updated.artistSummary.artistId !== artist.value.artistId) {
+    songs.items = songs.items.filter((piece) => piece.musicPieceId !== updated.musicPieceId)
+    return
+  }
+  songs.items = songs.items.map((piece) => (piece.musicPieceId === updated.musicPieceId ? { ...piece, ...updated, playCount: piece.playCount } : piece))
 }
 
 async function toggleFavorite() {
@@ -199,6 +302,26 @@ p.page-state { display: block; }
 .icon.filled { fill: var(--link); stroke: var(--link); }
 
 .more { margin-top: var(--space-6); }
+.sr-only { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.btn.small { font-size: 14px; padding: 6px 12px; }
+
+.songs-tools { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; margin-bottom: var(--space-4); }
+
+/* Albums: each gets its own section, split from the next by a rule */
+.album { border-top: 1px solid var(--line); padding-top: var(--space-6); }
+.album + .album { margin-top: var(--space-8); }
+.album:first-of-type { border-top: 0; padding-top: 0; }
+.album-head { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-4); }
+.album-cover { border-radius: var(--radius-sm); flex: none; height: 96px; object-fit: cover; width: 96px; }
+.album-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.eyebrow { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); letter-spacing: 0.06em; margin: 0; text-transform: uppercase; }
+h3 { font: 700 20px/28px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
+.album-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.singles-title { margin-bottom: var(--space-3); }
+.row-edit { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink-muted); cursor: pointer; display: flex; height: 32px; justify-content: center; padding: 0; width: 32px; }
+.row-edit:hover { background: var(--surface); color: var(--link); }
+.row-edit:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.row-edit svg { fill: none; height: 18px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 18px; }
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }

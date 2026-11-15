@@ -131,6 +131,13 @@ body.player-sheet-open { overflow: hidden; }
   syntax: '<color>';
 }
 
+/* Where the full-screen player's glow is centered, so it can slide when lyrics open */
+@property --glow-x {
+  inherits: true;
+  initial-value: 50%;
+  syntax: '<percentage>';
+}
+
 .aux-page *,
 .aux-page *::before,
 .aux-page *::after {

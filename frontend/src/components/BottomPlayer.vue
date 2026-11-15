@@ -1,6 +1,7 @@
 <template>
   <div>
     <MobilePlayer
+      ref="mobilePlayer"
       v-if="isMobile && shouldShowPlayer"
       :piece="currentMusicPiece"
       :uploader="uploader"
@@ -23,6 +24,8 @@
       @shuffle="toggleShuffle"
       @repeat="musicStore.cycleRepeat()"
       @seek="v => progress = v"
+      :lyrics-open="lyricsOpen"
+      @lyrics="setMobileLyrics(!lyricsOpen)"
     />
     <QueueView
       v-if="shouldShowPlayer && !isMobile"
@@ -45,7 +48,7 @@
       :duration-label="formattedDuration"
       :volume="Number(volume)"
       :volume-fill="volumeFill"
-      @close="setQueueOpen(false)"
+      @close="closeFullView"
       @play-at="playQueueAt"
       @toggle-play="togglePlay"
       @prev="prevTrack"
@@ -54,6 +57,24 @@
       @repeat="musicStore.cycleRepeat()"
       @seek="v => progress = v"
       @volume="v => volume = v"
+      :lyrics-open="lyricsOpen"
+      @lyrics="lyricsOpen = !lyricsOpen"
+      @lyrics-seek="seekTo"
+    />
+    <LyricsPanel
+      :open="lyricsOpen && shouldShowPlayer && isMobile"
+      :piece="currentMusicPiece"
+      :position="progress"
+      :duration="duration"
+      :is-playing="isPlaying"
+      :can-play="canPlay"
+      :can-skip="canSkip"
+      @close="setMobileLyrics(false)"
+      @scrub="v => progress = v"
+      @toggle-play="togglePlay"
+      @prev="prevTrack"
+      @next="nextTrack"
+      @seek="seekTo"
     />
     <button
       v-if="showArrow && !isMobile && !queueOpen"
@@ -137,6 +158,18 @@
       </div>
 
       <div class="right-side">
+        <button
+          type="button"
+          class="icon-btn toggle"
+          :class="{ active: lyricsOpen }"
+          :disabled="!currentMusicPiece?.uuid"
+          aria-label="Lyrics"
+          title="Lyrics"
+          :aria-pressed="lyricsOpen ? 'true' : 'false'"
+          @click="openLyrics"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
+        </button>
         <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="toggleShuffle">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" />
@@ -176,7 +209,7 @@
       </div>
     </div>
 
-    <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" style="width:0; height:0; opacity:0;"></audio>
+    <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" @playing="nowPlaying.schedule()" @pause="nowPlaying.schedule()" @seeked="nowPlaying.schedule()" style="width:0; height:0; opacity:0;"></audio>
 
     <div class="progress-bar-container" :class="{ collapsed, 'queue-open': queueOpen }" v-if="shouldShowPlayer && !isMobile" :inert="queueOpen">
       <span class="time">{{ formattedCurrentTime }}</span>
@@ -202,8 +235,11 @@ import { computed, watch, watchEffect, nextTick, onBeforeUnmount, ref } from 'vu
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
+import { nowPlayingReporter } from '@/utils/playback.js'
 import MobilePlayer from '@/components/MobilePlayer.vue'
 import QueueView from '@/components/QueueView.vue'
+import LyricsPanel from '@/components/LyricsPanel.vue'
+import { glide } from '@/utils/glide.js'
 
 const userStore = useUserStore()
 const musicStore = useMusicStore()
@@ -245,13 +281,63 @@ watchEffect(() => {
 })
 // The queue is desktop only; the mobile player has its own full-screen view. It also closes if the song goes away
 watch([isMobile, canOpenQueue], ([mobile, canOpen]) => { if (queueOpen.value && (mobile || !canOpen)) setQueueOpen(false) })
+// Lyrics left open across a resize stay full screen: in the queue view on desktop, over the open player on a phone
+watch(isMobile, async (mobile) => {
+  if (!lyricsOpen.value) return
+  if (!mobile && !queueOpen.value) return setQueueOpen(true)
+  await nextTick()
+  if (mobile) mobilePlayer.value?.setOpen(true)
+})
 onBeforeUnmount(() => {
+  nowPlaying.cancel()
   if (queueOpen.value) document.body.classList.remove('player-sheet-open')
   mobileQuery?.removeEventListener?.('change', onMobileChange)
   document.documentElement.classList.remove('player-open', 'player-collapsed')
 })
 const duration = ref(0)
 const audioRef = ref(null)
+
+// Lyrics, from the button next to shuffle. On desktop they open full screen in the queue view (cover on the left,
+// lyrics on the right, over the cover's color); its lyrics button switches back to the queue. On phones they cover
+// the mobile player. A clicked line seeks there and plays
+const lyricsOpen = ref(false)
+
+function openLyrics() {
+  lyricsOpen.value = true
+  setQueueOpen(true)
+}
+
+// On a phone the cover glides between the player's big cover and the small one at the top of the lyrics. Closing
+// lyrics always lands on the full player with the cover in front, even when they were opened without it (lyrics left
+// open on desktop, then the window narrowed): then the player slides up instead
+const mobilePlayer = ref(null)
+
+async function setMobileLyrics(value) {
+  const sheetOpen = mobilePlayer.value?.isOpen() ?? false
+  const from = document.querySelector(value ? '.sheet .sheet-cover' : '.lyrics.page .art')?.getBoundingClientRect()
+  if (!value && !sheetOpen) mobilePlayer.value?.setOpen(true)
+  lyricsOpen.value = value
+  await nextTick()
+  if (sheetOpen) glide(document.querySelector(value ? '.lyrics.page .art' : '.sheet .sheet-cover'), from)
+}
+
+function closeFullView() {
+  lyricsOpen.value = false
+  setQueueOpen(false)
+}
+
+function seekTo(seconds) {
+  progress.value = seconds
+  if (!isPlaying.value) togglePlay()
+}
+
+// Tells friends what's playing (PUT /api/users/me/now-playing) on start, pause, resume and after a seek, from the
+// audio element itself so it matches what's heard. Not from /stream: streams are fetched ahead of time
+const nowPlaying = nowPlayingReporter(() => {
+  const audio = audioRef.value
+  if (!audio || !userStore.loggedIn) return null
+  return { musicPieceId: currentMusicPiece.value?.uuid, positionSeconds: audio.currentTime, isPlaying: !audio.paused && !audio.ended }
+})
 const progress  = computed({
     get: () => musicStore.position,
     set: v  => { musicStore.position = v }

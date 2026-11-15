@@ -91,7 +91,7 @@ it('confirms both password code delivery and the completed password change', asy
   expect(useNotificationStore().message).toBe('Your password is changed.')
 })
 
-it('uses a neutral notice for mocked account deletion and keeps the session', async () => {
+async function openDelete() {
   route.params.tab = 'account'
   vi.useFakeTimers()
   await render(Settings)
@@ -100,10 +100,29 @@ it('uses a neutral notice for mocked account deletion and keeps the session', as
   dialog.close = vi.fn()
   await wrapper.findAll('button').find(b => b.text() === 'Delete account').trigger('click')
   await vi.advanceTimersByTimeAsync(6000)
-  await wrapper.get('dialog .btn.primary').trigger('click')
-  await vi.advanceTimersByTimeAsync(400)
-  expect(useNotificationStore().type).toBe('neutral')
-  expect(useNotificationStore().message).toContain("account wasn't deleted")
+}
+
+it('deletes the account with the current password, then logs out and goes home', async () => {
+  await openDelete()
+  const confirm = wrapper.get('dialog .confirm-actions .btn.primary')
+  expect(confirm.attributes('disabled')).toBeDefined()
+  await wrapper.get('#delete-password').setValue('correct-horse')
+  request.mockResolvedValueOnce(null)
+  await confirm.trigger('click')
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('DELETE', expect.stringContaining('/api/users/me'), { currentPassword: 'correct-horse' }, { notifyOnError: false })
+  expect(useUserStore().loggedIn).toBe(false)
+  expect(useNotificationStore().message).toBe('Your account is deleted.')
+  expect(replace).toHaveBeenCalledWith({ name: 'Home' })
+})
+
+it('shows a wrong password on the field and keeps the session', async () => {
+  await openDelete()
+  await wrapper.get('#delete-password').setValue('wrong-pass')
+  request.mockRejectedValueOnce({ status: 403, code: 'WRONG_PASSWORD' })
+  await wrapper.get('dialog .confirm-actions .btn.primary').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('#delete-password-error').text()).toBe("That isn't your current password. Try again.")
   expect(useUserStore().loggedIn).toBe(true)
 })
 

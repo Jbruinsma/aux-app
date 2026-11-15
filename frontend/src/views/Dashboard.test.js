@@ -119,6 +119,16 @@ it('plays a recent card from its playlist with the current shuffle, or on its ow
   expect(playPieces).toHaveBeenCalledWith([piece(1)])
 })
 
+it('links a recent card to the playlist it was played from, and nothing without one', async () => {
+  useEventsStore().recents = { recents: [{ musicPiece: piece(2), playlistId: 'p1', playlistOwnerUsername: 'owner', playlistName: 'Mix' }, { musicPiece: piece(1), playlistId: null }] }
+  wrapper = mount(Dashboard, { global: { stubs: { AppHeader: true, AppFooter: true, CreateDialog: true, RouterLink: { props: ['to'], template: '<a :data-to="JSON.stringify(to)"><slot /></a>' } } } })
+  await flushPromises()
+  const links = wrapper.findAll('section[aria-labelledby="recent-heading"] .card-playlist')
+  expect(links).toHaveLength(1)
+  expect(links[0].text()).toBe('From Mix')
+  expect(JSON.parse(links[0].attributes('data-to'))).toEqual({ name: 'Playlist', params: { username: 'owner', id: 'p1' } })
+})
+
 it('does not make the sample recents playable', async () => {
   useEventsStore().recents = { recents: [] }
   await render()

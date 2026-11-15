@@ -17,58 +17,6 @@ ______________________________________________________
 
 - [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
 
-### 21. Show the real top list on the landing page
-
-`GET /api/core/top` now returns this week's most-played songs, so the hardcoded albums can go.
-
-**Files:** `src/views/LandingPage.vue`
-**API:** `GET /api/core/top` (public, no token)
-
-- [ ] Replace the hardcoded `topAlbums` with a call to `GET /api/core/top` in `onMounted`, next to the
-      `/api/core/users` call. Show the first 3.
-- [ ] Load each cover through `resolveCoverURL`, which can't take null, so guard it like `src/stores/music.js` does
-      (`piece.coverUrl ? resolveCoverURL(piece.coverUrl) : ''`).
-- [ ] These are songs, not albums: change the lead to something like "The songs getting the most plays on Aux this
-      week." and rename `album` in the template.
-- [ ] Hide the Top section when the list is empty (nothing played that week) or the call fails, the same way the
-      profile picture row hides.
-
-**Done when:** the landing page shows this week's most-played songs from the server, and a fresh database shows no Top
-section instead of a blank one.
-
-### 22. Load the artist page's songs from the artist endpoint
-
-**Files:** `src/utils/artist.js`, `src/views/ArtistPage.vue`
-**API:** `GET /api/artists/{artistId}/music-pieces` (public, token optional)
-
-- [ ] Show the uploader on each row now that the pieces carry `uploader`.
-
-**Done when:** every song on the artist page shows who uploaded it.
-
-### 23. Link Recently played to its playlist
-
-**Files:** `src/views/Dashboard.vue`
-**API:** `recents` event on `GET /api/users/me/events`
-
-- [ ] Each recent now carries `playlistOwnerUsername` next to `playlistId`. Link the card's playlist to
-      `/playlist/{playlistOwnerUsername}/{playlistId}`; show no link when `playlistId` is null.
-- [ ] Add `playlistOwnerUsername` to the mock recents in `src/utils/dashboardPreview.js`.
-
-**Done when:** a song played from a playlist links to that playlist from Recently played.
-
-### 24. Delete account for real
-
-**Files:** `src/utils/account.js`, `src/views/Settings.vue`
-**API:** `DELETE /api/users/me`
-
-- [ ] Turn off `ACCOUNT_MOCKED`.
-- [ ] Ask for the current password before deleting, like Change email does, and send it as `currentPassword`. The mocked
-      call sends no body today.
-- [ ] Show `403 WRONG_PASSWORD` on the password field. It's a 403, not a 401, so `request` won't log the user out.
-- [ ] On success, log out and go to the landing page.
-
-**Done when:** deleting an account logs out, and logging back in with it fails.
-
 ### 25. Build the music piece page
 
 **Files:** new view and route, `src/views/Dashboard.vue` (My uploads)
@@ -142,19 +90,6 @@ style guide and ask before designing it.
 
 **Done when:** a friend playing a public song shows it as playing now, and it clears when they pause.
 
-### 35. Report now playing from the player
-
-Nothing shows as playing now on the Friends page (task 34) until the player reports it. Don't report from `/stream`:
-the player fetches streams ahead of time.
-
-**Files:** `src/stores/music.js`, `src/utils/playback.js`
-**API:** `PUT /api/users/me/now-playing`
-
-- [ ] Report when a song starts playing, on pause and resume, and after a seek.
-- [ ] Fire and forget: a failed report must never interrupt playback.
-
-**Done when:** playing, pausing and seeking each send one report, and private songs never show to friends.
-
 ### 38. Albums
 
 Anyone signed in can add an album to an artist. The album's creator and the artist's creator can rename it, change its
@@ -179,6 +114,8 @@ the style guide and ask before designing the new screens.
 - [ ] Edit piece dialog: change or remove the album, and switch between the album's cover and an uploaded one.
 - [ ] Link the album name on song rows that carry `album`.
 - [ ] Profile: replace the Top albums placeholder with `GET /api/albums/top/{username}`.
+- [ ] Swap the browser-only albums from `src/utils/albums.js` (`ALBUMS_MOCKED`, built before these endpoints
+      existed) onto the real API, then remove the mock.
 
 **Done when:** a song uploaded into an album shows the album's cover, changing the album's cover updates it, and
 deleting the album leaves the song with the same cover.
