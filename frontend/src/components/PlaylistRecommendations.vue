@@ -1,5 +1,5 @@
 <template>
-  <section v-if="status !== 'hidden'" class="recs" aria-labelledby="recs-heading" :aria-busy="status === 'loading' ? 'true' : 'false'">
+  <section v-if="showSection" class="recs" aria-labelledby="recs-heading" :aria-busy="status === 'loading' ? 'true' : 'false'">
     <div class="recs-head">
       <div>
         <h2 id="recs-heading">Recommended</h2>
@@ -20,6 +20,9 @@
         </span>
       </li>
     </ol>
+
+    <EmptyState v-else-if="status === 'error'" tone="error" title="Recommendations couldn't load." text="Check that the server is running, then try Refresh." />
+    <EmptyState v-else-if="!visible.length" title="No recommendations yet" :text="EMPTY_TEXT" />
 
     <TransitionGroup v-else tag="ol" name="rec" class="tracks">
       <li v-for="piece in visible" :key="piece.musicPieceId" class="track">
@@ -120,6 +123,7 @@
 // to this playlist in one click; anyone else adds it to one of their own playlists. Errors and empty results hide the
 // section, since it's an extra
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { useEventsStore } from '@/stores/events.js'
 import { useMusicStore } from '@/stores/music.js'
 import { useNotificationStore } from '@/stores/notification.js'
@@ -181,20 +185,27 @@ function addLabel(piece) {
   return props.canEdit ? `Add ${piece.name} to this playlist` : `Add ${piece.name} to one of your playlists`
 }
 
+// Owners and editors always see the section, with an empty or error state when there's nothing to show, so they know
+// it's there. Listeners only see it when it has songs
+const EMPTY_TEXT = "They come from other people's public songs, so check back as more get uploaded."
+const showSection = computed(() => props.canEdit || status.value === 'loading' || (status.value === 'ready' && visible.value.length > 0))
+
+// status: loading, ready (pool may be empty), or error (every discover request failed)
 async function load() {
   const mine = ++request
   status.value = 'loading'
-  const seeds = pickSeeds(props.tracks)
+  const seeds = pickSeeds(props.tracks, userStore.userData?.username)
   if (!seeds.length) {
-    status.value = 'hidden'
+    pool.value = []
+    status.value = 'ready'
     return
   }
   const results = await Promise.allSettled(seeds.map((seed) => fetchDiscover(seed.musicPieceId)))
   if (mine !== request) return
-  const lists = results.filter((r) => r.status === 'fulfilled').map((r) => r.value?.musicPieces ?? [])
-  pool.value = mergeRecommendations(lists, inPlaylist.value)
+  const fulfilled = results.filter((r) => r.status === 'fulfilled')
+  pool.value = mergeRecommendations(fulfilled.map((r) => r.value?.musicPieces ?? []), inPlaylist.value)
   gone.clear()
-  status.value = pool.value.length ? 'ready' : 'hidden'
+  status.value = fulfilled.length ? 'ready' : 'error'
 }
 
 function refresh() {

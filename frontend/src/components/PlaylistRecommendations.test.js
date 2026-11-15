@@ -52,20 +52,59 @@ it('shows the top 5 merged recommendations, leaving out songs already in the pla
   expect(names()).toEqual(['Rec 3', 'Rec 1', 'Rec 2', 'Rec 4', 'Rec 5'])
 })
 
-it('hides itself when there are no public seeds, no results, or every request fails', async () => {
-  await render({ tracks: [{ ...track(1), isPublic: false }] })
-  expect(wrapper.find('.recs').exists()).toBe(false)
-  expect(fetchDiscover).not.toHaveBeenCalled()
-  wrapper.unmount()
-
+it('shows owners and editors an empty state when there is nothing to recommend', async () => {
   fetchDiscover.mockResolvedValue({ musicPieces: [] })
   await render()
+  expect(wrapper.get('h2').text()).toBe('Recommended')
+  expect(wrapper.text()).toContain('No recommendations yet')
+  expect(wrapper.text()).toContain("They come from other people's public songs")
+  expect(wrapper.find('.refresh').attributes('disabled')).toBeUndefined()
+  wrapper.unmount()
+
+  // No seed they could use at all: someone else's private songs only
+  fetchDiscover.mockClear()
+  await render({ tracks: [{ ...track(1), isPublic: false, uploader: { username: 'other' } }] })
+  expect(fetchDiscover).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('No recommendations yet')
+})
+
+it('shows owners and editors an error when every request fails, and Refresh tries again', async () => {
+  fetchDiscover.mockRejectedValue(new Error('down'))
+  await render()
+  expect(wrapper.get('[role="alert"]').text()).toContain("Recommendations couldn't load.")
+  fetchDiscover.mockImplementation(async () => ({ musicPieces: [piece(1)] }))
+  await wrapper.get('.refresh').trigger('click')
+  await flushPromises()
+  expect(names()).toEqual(['Rec 1'])
+})
+
+it('stays hidden from listeners when there is nothing to show', async () => {
+  fetchDiscover.mockResolvedValue({ musicPieces: [] })
+  await render({ canEdit: false })
   expect(wrapper.find('.recs').exists()).toBe(false)
   wrapper.unmount()
 
   fetchDiscover.mockRejectedValue(new Error('down'))
-  await render()
+  await render({ canEdit: false })
   expect(wrapper.find('.recs').exists()).toBe(false)
+})
+
+it("seeds with the owner's own private songs", async () => {
+  useUserStore().login({ username: 'me', userId: 'u1' })
+  await render({ tracks: [{ ...track(1), isPublic: false, uploader: { username: 'me' } }] })
+  expect(fetchDiscover.mock.calls.map(c => c[0])).toEqual(['m1'])
+})
+
+it('shows the empty state once the last recommendation has been added', async () => {
+  fetchDiscover.mockImplementation(async () => ({ musicPieces: [piece(1)] }))
+  addPiecesToPlaylist.mockResolvedValue({ addedCount: 1, failedCount: 0, totalPieces: 3 })
+  await render()
+  await wrapper.get('button[aria-label="Add Rec 1 to this playlist"]').trigger('click')
+  await wrapper.setProps({ tracks: [track(1), track(2), piece(1)] })
+  await flushPromises()
+  vi.advanceTimersByTime(700)
+  await flushPromises()
+  expect(wrapper.text()).toContain('No recommendations yet')
 })
 
 it('plays a recommendation on its own', async () => {

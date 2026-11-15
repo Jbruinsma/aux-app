@@ -6,14 +6,17 @@
 export const MAX_SEEDS = 3
 
 /**
- * The songs to ask discover about: the newest public, playable songs in the playlist, newest first. Discover only
- * takes a seed the caller could play on its own, so private songs are skipped.
+ * The songs to ask discover about: the newest playable songs in the playlist, newest first. Discover only takes a seed
+ * the caller could play on its own: a public song, or a private one they uploaded (`username` is the caller's).
  */
-export function pickSeeds(tracks, max = MAX_SEEDS) {
+export function pickSeeds(tracks, username = null, max = MAX_SEEDS) {
+  const me = username?.toLowerCase() ?? null
   const seeds = []
   for (let i = tracks.length - 1; i >= 0 && seeds.length < max; i--) {
     const track = tracks[i]
-    if (track.isPublic !== false && track.isAvailable !== false) seeds.push(track)
+    if (track.isAvailable === false) continue
+    const mine = me !== null && track.uploader?.username?.toLowerCase() === me
+    if (track.isPublic !== false || mine) seeds.push(track)
   }
   return seeds
 }

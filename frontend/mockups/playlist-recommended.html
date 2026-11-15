@@ -218,14 +218,14 @@ section.list{padding-top:var(--space-6)}
         <li><b>Listener</b> (not the owner or an editor of this playlist): the same Add button, with a small chevron, opens "Add to playlist", a menu of your own playlists with cover, name and song count. Picking one adds the song there, shows "Added to Late night", and briefly turns the button into "Added". The song stays in the list, since it wasn't added to this playlist, and a check marks the playlists it went to this visit. Adding it again to the same playlist says "already in". Arrow keys move through the menu, Esc closes it, and it opens upward near the bottom of the window.</li>
         <li>A listener with no playlists of their own sees "You don't have any playlists yet."</li>
         <li>Refresh asks again. Equal matches come back in random order from the server, so the list changes.</li>
-        <li>While loading: 5 placeholder rows. On an error or with no results, the section is hidden. It's an extra, so no error message.</li>
+        <li>While loading: 5 placeholder rows. Owners and editors always see the section: with no results it shows "No recommendations yet" (they come from other people's public songs), and when every request fails it shows an error with Refresh. Listeners only see it when it has songs.</li>
       </ul>
     </section>
     <section>
       <h2>Data</h2>
       <ul>
         <li>Picks up to 3 public songs from the playlist as seeds (newest added first) and calls <code>discover</code> for each in parallel. Results are merged: a song that comes up for more than one seed ranks higher. Songs already in the playlist are dropped, and the top 5 are shown. The rest are kept to fill in after an Add.</li>
-        <li><code>discover</code> already leaves out your own uploads, your favorites and anything you played in the last 7 days. Seeds must be public, so a playlist of only private songs gets no section.</li>
+        <li><code>discover</code> already leaves out your own uploads, your favorites and anything you played in the last 7 days. Seeds must be songs the caller could play on their own: public, or private ones they uploaded.</li>
         <li>Add uses <code>POST /api/playlists/{playlistId}/pieces</code> with one id, either this playlist or the one picked. The song is added to the list straight away and removed again if the request fails, with an error toast. A response with <code>failedCount: 1</code> means the song was already there.</li>
         <li>The listener's playlists come from the <code>library</code> event (already in the events store): entries whose <code>ownerUsername</code> is the current user. Playlists you can edit but don't own aren't offered, because <code>LibraryPlaylist</code> doesn't say whether you're an editor or a listener.</li>
         <li>Three requests per page view. A playlist-level <code>GET /api/playlists/{playlistId}/discover</code> would be one request and could leave out the playlist's songs on the server. That would be a backend nice-to-have, not a blocker.</li>

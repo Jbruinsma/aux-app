@@ -6,8 +6,18 @@ const piece = (id, extra = {}) => ({ musicPieceId: id, name: id, ...extra })
 it('seeds with the newest public, playable songs, newest first', () => {
   const tracks = [piece('a'), piece('b'), piece('c', { isPublic: false }), piece('d', { isAvailable: false }), piece('e'), piece('f')]
   expect(pickSeeds(tracks).map(p => p.musicPieceId)).toEqual(['f', 'e', 'b'])
-  expect(pickSeeds(tracks, 1).map(p => p.musicPieceId)).toEqual(['f'])
+  expect(pickSeeds(tracks, null, 1).map(p => p.musicPieceId)).toEqual(['f'])
   expect(pickSeeds([piece('x', { isPublic: false })])).toEqual([])
+})
+
+it("also seeds with the caller's own private songs, which discover accepts", () => {
+  const tracks = [
+    piece('mine', { isPublic: false, uploader: { username: 'Me' } }),
+    piece('theirs', { isPublic: false, uploader: { username: 'other' } }),
+    piece('gone', { isPublic: false, isAvailable: false, uploader: { username: 'me' } }),
+  ]
+  expect(pickSeeds(tracks, 'me').map(p => p.musicPieceId)).toEqual(['mine'])
+  expect(pickSeeds(tracks, null)).toEqual([])
 })
 
 it('ranks songs that come up for several seeds first, then by position', () => {
