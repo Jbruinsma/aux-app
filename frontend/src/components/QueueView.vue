@@ -34,7 +34,10 @@
           </span>
         </button>
         <p class="now-title"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><MarqueeText :text="piece?.title || ''" :play="isPlaying" /></p>
-        <p v-if="piece?.artist" class="now-artist"><MarqueeText :text="piece.artist" :play="isPlaying" /></p>
+        <p v-if="piece?.artist" class="now-artist">
+          <router-link v-if="piece.artistId" class="now-artist-link" :to="{ name: 'Artist', params: { artistId: piece.artistId } }"><MarqueeText :text="piece.artist" :play="isPlaying" /></router-link>
+          <MarqueeText v-else :text="piece.artist" :play="isPlaying" />
+        </p>
       </div>
       <LyricsPanel
         class="lyrics-col"
@@ -67,9 +70,16 @@
             </span>
             <span class="cap">
               <span class="cap-title"><span v-if="slot.index === current" class="eq" aria-hidden="true"><i></i><i></i><i></i></span>{{ slot.title }}</span>
-              <span v-if="slot.subtitle" class="cap-artist">{{ slot.subtitle }}</span>
             </span>
           </button>
+          <!-- Outside the slot's button, so the artist (or uploader) name can be its own link -->
+          <router-link
+            v-if="slot.subtitle && slot.to"
+            class="cap-artist cap-link"
+            :class="{ on: slot.index === current, past: slot.index < current }"
+            :to="slot.to"
+          >{{ slot.subtitle }}</router-link>
+          <span v-else-if="slot.subtitle" class="cap-artist" :class="{ on: slot.index === current, past: slot.index < current }">{{ slot.subtitle }}</span>
         </li>
       </ol>
       <button type="button" class="nudge next" :disabled="view >= slots.length - 1" aria-label="Show later songs" @click="browse(1)">
@@ -186,6 +196,12 @@ const closeRef = ref(null)
 // Covers are only rendered this many places either side of the one in view
 const WINDOW = 7
 
+// The name under a cover opens the artist's page, or the uploader's profile when that's the name shown
+function nameLink(artistName, artistId, uploaderName) {
+  if (artistName) return artistId ? { name: 'Artist', params: { artistId } } : null
+  return uploaderName ? { name: 'Profile', params: { username: uploaderName } } : null
+}
+
 const slots = computed(() => {
   if (props.queue.length && props.index !== null) {
     return props.queue.map((p, i) => {
@@ -196,6 +212,7 @@ const slots = computed(() => {
         index: i,
         title: p.name,
         subtitle,
+        to: nameLink(artist, p.artistSummary?.artistId, p.uploader?.username),
         label: subtitle ? `${p.name} by ${subtitle}` : p.name,
         cover: p.coverUrl ? resolveCoverURL(p.coverUrl) : '',
       }
@@ -203,7 +220,8 @@ const slots = computed(() => {
   }
   if (!props.piece?.uuid) return []
   const subtitle = props.piece.artist || props.piece.uploader?.username || ''
-  return [{ key: props.piece.uuid, index: 0, title: props.piece.title, subtitle, label: subtitle ? `${props.piece.title} by ${subtitle}` : props.piece.title, cover: props.piece.cover }]
+  const to = nameLink(props.piece.artist, props.piece.artistId, props.piece.uploader?.username)
+  return [{ key: props.piece.uuid, index: 0, title: props.piece.title, subtitle, to, label: subtitle ? `${props.piece.title} by ${subtitle}` : props.piece.title, cover: props.piece.cover }]
 })
 
 const current = computed(() => (props.queue.length && props.index !== null ? props.index : 0))
@@ -250,7 +268,7 @@ watch(() => props.lyricsOpen, async (toLyrics) => {
   const from = root.querySelector(toLyrics ? '.slot.on .cover' : '.now-cover')?.getBoundingClientRect()
   await nextTick()
   glide(root.querySelector(toLyrics ? '.now-cover' : '.slot.on .cover'), from)
-  rise(root.querySelectorAll(toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .nudge'))
+  rise(root.querySelectorAll(toLyrics ? '.now-title, .now-artist, .lyrics-col' : '.slot:not(.on), .slot.on .cap, .cap-artist, .nudge'))
 })
 
 // Following a link (the playlist name) leaves the queue
@@ -323,12 +341,18 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .slot.on .cap { margin-top: var(--space-4); padding: 0; }
 .slot.past .cap { opacity: 0.7; }
 .cap-title { display: block; font: 600 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cap-artist { color: var(--ink-muted); display: block; font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cap-artist { color: var(--ink-muted); display: block; font: 500 14px/20px var(--font-sans); margin: 0 auto; max-width: calc(100% - var(--space-6) * 2); overflow: hidden; text-align: center; text-overflow: ellipsis; transition: opacity var(--dur-fast) var(--ease); white-space: nowrap; width: fit-content; }
+.cap-artist.past { opacity: 0.7; }
+.cap-link { text-decoration: none; }
+.cap-link:hover { color: var(--link); text-decoration: underline; }
+.now-artist-link { color: inherit; display: block; text-decoration: none; }
+.now-artist-link:hover { text-decoration: underline; }
 .slot.on .cap-title { color: var(--link); font: 700 20px/28px var(--font-sans); }
-.slot.on .cap-artist { font: 500 16px/24px var(--font-sans); }
+.cap-artist.on { font: 500 16px/24px var(--font-sans); max-width: 100%; }
 /* Muted gray and purple text can't be kept readable on an unknown tint, so text over the glow uses ink. The
    equalizer bars still mark the playing song */
 .glow .cap-artist, .glow .label, .glow .slot.on .cap-title { color: var(--ink); }
+.glow .cap-link:hover { color: var(--ink); }
 .eq { align-items: flex-end; display: inline-flex; gap: 2px; height: 14px; margin-right: var(--space-2); }
 .eq i { animation: eq 900ms var(--ease) infinite alternate; background: currentColor; border-radius: 1px; display: block; height: 100%; transform-origin: bottom; width: 3px; }
 .eq i:nth-child(2) { animation-delay: -300ms; }

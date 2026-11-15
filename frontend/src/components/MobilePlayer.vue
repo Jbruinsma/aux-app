@@ -47,21 +47,25 @@
       </span>
 
       <div class="meta">
-        <button
-          v-if="menuItems.length"
-          ref="menuBtnRef"
-          type="button"
-          class="meta-text meta-btn"
-          aria-haspopup="menu"
-          :aria-expanded="menuOpen ? 'true' : 'false'"
-          @click="setMenu(!menuOpen)"
-        >
-          <span class="sheet-title">{{ title }}</span>
-          <span v-if="piece?.artist" class="sheet-artist">{{ piece.artist }}</span>
-        </button>
-        <div v-else class="meta-text">
-          <span class="sheet-title">{{ title }}</span>
-          <span v-if="piece?.artist" class="sheet-artist">{{ piece.artist }}</span>
+        <div class="meta-text">
+          <button
+            v-if="menuItems.length"
+            ref="menuBtnRef"
+            type="button"
+            class="meta-btn"
+            aria-haspopup="menu"
+            :aria-expanded="menuOpen ? 'true' : 'false'"
+            @click="setMenu(!menuOpen)"
+          >
+            <span class="sheet-title">{{ title }}</span>
+          </button>
+          <span v-else class="sheet-title">{{ title }}</span>
+          <router-link
+            v-if="piece?.artist && piece?.artistId"
+            class="sheet-artist sheet-artist-link"
+            :to="{ name: 'Artist', params: { artistId: piece.artistId } }"
+          >{{ piece.artist }}</router-link>
+          <span v-else-if="piece?.artist" class="sheet-artist">{{ piece.artist }}</span>
         </div>
         <router-link
           v-if="uploader"
@@ -310,10 +314,12 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 
 .meta { align-items: flex-end; display: flex; flex: none; gap: var(--space-3); justify-content: space-between; position: relative; }
 .meta-text { display: block; flex: 1; min-width: 0; }
-.meta-btn { background: none; border: 0; border-radius: var(--radius-sm); color: inherit; cursor: pointer; margin: calc(var(--space-1) * -1); padding: var(--space-1); text-align: left; transition: background var(--dur-fast) var(--ease); }
+.meta-btn { background: none; border: 0; border-radius: var(--radius-sm); color: inherit; cursor: pointer; display: block; margin: calc(var(--space-1) * -1); max-width: calc(100% + var(--space-2)); padding: var(--space-1); text-align: left; transition: background var(--dur-fast) var(--ease); }
 .meta-btn:active, .meta-btn[aria-expanded="true"] { background: var(--surface-alt); }
 .sheet-title { display: block; font: 700 20px/28px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet-artist { color: var(--ink-muted); display: block; font: 500 14px/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-artist-link { text-decoration: none; width: fit-content; max-width: 100%; }
+.sheet-artist-link:hover, .sheet-artist-link:active { text-decoration: underline; }
 .uploader { align-items: center; color: var(--ink-muted); display: inline-flex; flex: none; font: 600 12px/16px var(--font-sans); gap: var(--space-1); max-width: 40%; min-height: 44px; text-decoration: none; }
 .uploader:hover { color: var(--ink); }
 .uploader-pfp { border-radius: var(--radius-pill); flex: none; height: 20px; object-fit: cover; width: 20px; }
