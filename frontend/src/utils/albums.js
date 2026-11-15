@@ -52,6 +52,23 @@ export async function deleteAlbum(artistId, albumId) {
   return null
 }
 
+// Puts a just-uploaded piece at the end of an album. Once the API has albums the upload sends `albumId` itself
+// (BACKEND_REQUESTS.md, "Albums"), so this is only needed while ALBUMS_MOCKED
+export async function addToAlbum(artistId, albumId, musicPiece, useAlbumCover = true) {
+  const albums = readStored(artistId)
+  const album = albums.find((item) => item.albumId === albumId)
+  if (!album) throw Object.assign(new Error('Album not found'), { status: 404, code: 'ALBUM_NOT_FOUND' })
+  const tracks = [...album.tracks.filter((track) => track.musicPiece.musicPieceId !== musicPiece.musicPieceId), storedTrack({ musicPiece, useAlbumCover })]
+  writeStored(artistId, albums.map((item) => (item.albumId === albumId ? { ...album, tracks } : item)))
+}
+
+// The album's cover as a File, to send as an upload's coverImage while ALBUMS_MOCKED (the upload needs one)
+export async function albumCoverFile(album) {
+  const blob = await (await fetch(album.coverUrl)).blob()
+  const type = ['image/jpeg', 'image/png'].includes(blob.type) ? blob.type : 'image/jpeg'
+  return new File([blob], `${album.name}.${type === 'image/png' ? 'png' : 'jpg'}`, { type })
+}
+
 // The cover a track shows: the album's when it uses it, its own otherwise
 export function trackCover(album, track) {
   return track.useAlbumCover ? album.coverUrl : track.musicPiece.coverUrl

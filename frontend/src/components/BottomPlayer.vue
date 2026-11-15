@@ -176,7 +176,7 @@
       </div>
     </div>
 
-    <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" style="width:0; height:0; opacity:0;"></audio>
+    <audio v-if="currentMusicPiece?.mp3File" ref="audioRef" :key="`${currentMusicPiece.uuid}-${forceShowPlayer}`" :src="currentMusicPiece.mp3File" preload="metadata" controls @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @ended="onTrackEnd" @error="onAudioError" @seeking="onSeeking" @playing="nowPlaying.schedule()" @pause="nowPlaying.schedule()" @seeked="nowPlaying.schedule()" style="width:0; height:0; opacity:0;"></audio>
 
     <div class="progress-bar-container" :class="{ collapsed, 'queue-open': queueOpen }" v-if="shouldShowPlayer && !isMobile" :inert="queueOpen">
       <span class="time">{{ formattedCurrentTime }}</span>
@@ -202,6 +202,7 @@ import { computed, watch, watchEffect, nextTick, onBeforeUnmount, ref } from 'vu
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { resolveCoverURL } from '@/utils/display.js'
+import { nowPlayingReporter } from '@/utils/playback.js'
 import MobilePlayer from '@/components/MobilePlayer.vue'
 import QueueView from '@/components/QueueView.vue'
 
@@ -246,12 +247,21 @@ watchEffect(() => {
 // The queue is desktop only; the mobile player has its own full-screen view. It also closes if the song goes away
 watch([isMobile, canOpenQueue], ([mobile, canOpen]) => { if (queueOpen.value && (mobile || !canOpen)) setQueueOpen(false) })
 onBeforeUnmount(() => {
+  nowPlaying.cancel()
   if (queueOpen.value) document.body.classList.remove('player-sheet-open')
   mobileQuery?.removeEventListener?.('change', onMobileChange)
   document.documentElement.classList.remove('player-open', 'player-collapsed')
 })
 const duration = ref(0)
 const audioRef = ref(null)
+
+// Tells friends what's playing (PUT /api/users/me/now-playing) on start, pause, resume and after a seek, from the
+// audio element itself so it matches what's heard. Not from /stream: streams are fetched ahead of time
+const nowPlaying = nowPlayingReporter(() => {
+  const audio = audioRef.value
+  if (!audio || !userStore.loggedIn) return null
+  return { musicPieceId: currentMusicPiece.value?.uuid, positionSeconds: audio.currentTime, isPlaying: !audio.paused && !audio.ended }
+})
 const progress  = computed({
     get: () => musicStore.position,
     set: v  => { musicStore.position = v }

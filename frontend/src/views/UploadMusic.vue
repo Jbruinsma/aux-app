@@ -8,12 +8,12 @@
           <label
             for="cover-input"
             class="drop"
-            :class="{ over: dragOver, filled: coverPreview }"
+            :class="{ over: dragOver, filled: coverShown }"
             @dragover.prevent="dragOver = true"
             @dragleave="dragOver = false"
             @drop.prevent="onDropCover"
           >
-            <img v-if="coverPreview" :src="coverPreview" alt="Cover preview" />
+            <img v-if="coverShown" :src="coverShown" alt="Cover preview" />
             <span v-else class="drop-hint">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
@@ -30,7 +30,8 @@
             aria-describedby="cover-hint"
             @change="onPickCover($event.target.files[0])"
           />
-          <p id="cover-hint" class="hint">A JPEG or PNG, at least 256 × 256 pixels and up to 5MB. It's cropped to a square.</p>
+          <p v-if="usingAlbumCover" id="cover-hint" class="hint">Using the cover of {{ album.name }}. Choose your own to use that instead.</p>
+          <p v-else id="cover-hint" class="hint">A JPEG or PNG, at least 256 × 256 pixels and up to 5MB. It's cropped to a square.</p>
         </div>
 
         <div class="fields">
@@ -62,6 +63,21 @@
           </div>
 
           <ArtistPicker ref="artistPicker" v-model="artist" />
+
+          <div v-if="albums.length" class="field">
+            <label class="label" for="song-album">Album</label>
+            <span class="select-wrap">
+              <select id="song-album" v-model="albumId" class="input select" aria-describedby="album-hint">
+                <option value="">None, it's a single</option>
+                <option v-for="item in albums" :key="item.albumId" :value="item.albumId">{{ item.name }}</option>
+              </select>
+            </span>
+            <label v-if="album" class="check">
+              <input v-model="useAlbumCover" type="checkbox" />
+              Use the album cover
+            </label>
+            <p id="album-hint" class="hint">{{ album ? `It's added to the end of ${album.name}.` : `Or add it to one of ${artist.artistName}'s albums.` }}</p>
+          </div>
           <TagPicker v-model="tags" :error="tagsError" :disabled="uploading" @update:model-value="tagsError = ''" />
 
           <div class="field">
@@ -91,7 +107,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
@@ -109,10 +125,14 @@ import {
 } from '@/utils/music.js'
 import { useNotificationStore } from '@/stores/notification.js'
 import { fetchArtist } from '@/utils/artist.js'
+import { ALBUMS_MOCKED, addToAlbum, albumCoverFile, fetchArtistAlbums } from '@/utils/albums.js'
+import { resolveCoverURL } from '@/utils/display.js'
+import { useUserStore } from '@/stores/user.js'
 
 const route = useRoute()
 const router = useRouter()
 const notification = useNotificationStore()
+const userStore = useUserStore()
 
 // From a playlist's Add music page: /upload?playlist=<id>&owner=<username> adds the song to it afterwards
 const targetPlaylist = computed(() => (route.query.playlist && route.query.owner
@@ -141,8 +161,34 @@ const error = ref('')
 const tags = ref([])
 const tagsError = ref('')
 
+// The picked artist's albums. A song put on one uses its cover unless "Use the album cover" is unticked, and choosing
+// a cover of your own unticks it. /upload?artist=<id>&album=<id> (an album's Add a song) starts with that album picked
+const albums = ref([])
+const albumId = ref('')
+const useAlbumCover = ref(true)
+const album = computed(() => albums.value.find((item) => item.albumId === albumId.value) ?? null)
+const usingAlbumCover = computed(() => Boolean(album.value && useAlbumCover.value))
+const coverShown = computed(() => (usingAlbumCover.value ? resolveCoverURL(album.value.coverUrl) : coverPreview.value))
+
+let albumsRequest = 0
+watch(() => artist.value?.artistId, async (artistId) => {
+  const id = ++albumsRequest
+  albums.value = []
+  if (!artistId) return (albumId.value = '')
+  try {
+    const items = await fetchArtistAlbums(artistId, userStore.userData?.userId)
+    if (id !== albumsRequest) return
+    albums.value = items
+    const wanted = albumId.value || String(route.query.album ?? '')
+    albumId.value = items.some((item) => item.albumId === wanted) ? wanted : ''
+  } catch {
+    // No album field; it uploads as a single
+  }
+})
+
 const hasArtist = computed(() => Boolean(artist.value || artistPicker.value?.pendingName))
-const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(mp3File.value && coverFile.value && title.value.trim() && hasArtist.value))
+const hasCover = computed(() => usingAlbumCover.value || Boolean(coverFile.value))
+const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(mp3File.value && hasCover.value && title.value.trim() && hasArtist.value))
 
 onBeforeUnmount(() => URL.revokeObjectURL(coverPreview.value))
 
@@ -192,6 +238,7 @@ async function onPickCover(file) {
   URL.revokeObjectURL(coverPreview.value)
   coverFile.value = file
   coverPreview.value = URL.createObjectURL(file)
+  useAlbumCover.value = false
 }
 
 function formatLength(seconds) {
@@ -212,19 +259,28 @@ async function upload() {
     // A typed name that wasn't picked from the list becomes (or finds) that artist
     if (!artist.value) await artistPicker.value.create()
     if (!artist.value) return
+    const onAlbum = album.value
+    const albumCover = usingAlbumCover.value
+    // The upload needs a cover file until the API can take albumId (ALBUMS_MOCKED), so the album's own is sent
+    const coverImage = albumCover ? (ALBUMS_MOCKED ? await albumCoverFile(onAlbum) : null) : coverFile.value
     const piece = await uploadMusicPiece({
       name: title.value.trim(),
       artistId: artist.value.artistId,
       isPublic: isPublic.value,
       mp3File: mp3File.value,
-      coverImage: coverFile.value,
+      coverImage,
       tags: [...tags.value],
+      ...(onAlbum && !ALBUMS_MOCKED ? { albumId: onAlbum.albumId, useAlbumCover: albumCover } : {}),
     })
+    if (onAlbum && ALBUMS_MOCKED) await addToAlbum(artist.value.artistId, onAlbum.albumId, piece, albumCover).catch(() => {})
     if (targetPlaylist.value) {
       const result = await addPiecesToPlaylist(targetPlaylist.value.id, [piece.musicPieceId]).catch(() => null)
       if (result) notification[result.failedCount ? 'neutral' : 'success'](`Uploaded “${piece.name}”. ${additionMessage(result)}`)
       else notification.error(`Uploaded “${piece.name}”, but it couldn't be added to the playlist. Add it from your uploads.`)
       await router.push({ name: 'Playlist', params: { username: targetPlaylist.value.owner, id: targetPlaylist.value.id } })
+    } else if (onAlbum) {
+      notification.success(`Uploaded “${piece.name}” to ${onAlbum.name}.`)
+      await router.push({ name: 'Artist', params: { artistId: artist.value.artistId } })
     } else {
       notification.success(`Uploaded “${piece.name}”. It's in My Uploads on your dashboard.`)
       await router.push({ name: 'Dashboard' })
@@ -255,6 +311,7 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 .hint { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; }
 .error { color: var(--danger); font: 500 14px/20px var(--font-sans); margin: 0; }
 .check { align-items: center; cursor: pointer; display: flex; font: 600 14px/20px var(--font-sans); gap: var(--space-2); }
+.select-wrap { display: block; }
 .check input { accent-color: var(--primary); height: 16px; margin: 0; width: 16px; }
 .actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
 .file-row { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); }

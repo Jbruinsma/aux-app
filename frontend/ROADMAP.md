@@ -328,19 +328,6 @@ section instead of a blank one.
 
 **Done when:** a song played from a playlist links to that playlist from Recently played.
 
-### 24. Delete account for real
-
-**Files:** `src/utils/account.js`, `src/views/Settings.vue`
-**API:** `DELETE /api/users/me`
-
-- [ ] Turn off `ACCOUNT_MOCKED`.
-- [ ] Ask for the current password before deleting, like Change email does, and send it as `currentPassword`. The mocked
-      call sends no body today.
-- [ ] Show `403 WRONG_PASSWORD` on the password field. It's a 403, not a 401, so `request` won't log the user out.
-- [ ] On success, log out and go to the landing page.
-
-**Done when:** deleting an account logs out, and logging back in with it fails.
-
 ### 25. Build the music piece page
 
 **Files:** new view and route, `src/views/Dashboard.vue` (My uploads)
@@ -474,19 +461,6 @@ style guide and ask before designing it.
 - [ ] Empty state for no friends yet, pointing to profiles to follow people back.
 
 **Done when:** a friend playing a public song shows it as playing now, and it clears when they pause.
-
-### 35. Report now playing from the player
-
-Nothing shows as playing now on the Friends page (task 34) until the player reports it. Don't report from `/stream`:
-the player fetches streams ahead of time.
-
-**Files:** `src/stores/music.js`, `src/utils/playback.js`
-**API:** `PUT /api/users/me/now-playing`
-
-- [ ] Report when a song starts playing, on pause and resume, and after a seek.
-- [ ] Fire and forget: a failed report must never interrupt playback.
-
-**Done when:** playing, pausing and seeking each send one report, and private songs never show to friends.
 
 ### 36. Desktop queue and cover glow
 

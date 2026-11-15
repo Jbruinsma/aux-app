@@ -191,6 +191,18 @@ sending `musicPieceIds` replaces the whole track list (with `ownCoverIds` read a
 
 Creator only. `204`; its songs become singles. `404 ALBUM_NOT_FOUND`.
 
+### `albumId` on POST /api/music-pieces/create
+
+Upload straight onto an album (the Upload page's Album field, and an album's "Add a song" on the artist page):
+
+- `albumId` (optional): an album of the piece's `artistId`; the new piece goes at the end of its tracks.
+  `404 ALBUM_NOT_FOUND`, `400 INVALID_FIELD` if the album belongs to another artist.
+- `useAlbumCover` (optional, default `true` when `albumId` is sent): use the album cover. With it, `coverImage` is no
+  longer required; if both are sent, keep `coverImage` as the piece's own cover so it can be switched back.
+
+Anyone uploading a song credited to the album's artist can add it this way, not only the album's creator. Until this
+exists the frontend sends the album cover as `coverImage` and adds the track in the browser.
+
 ### `album` on MusicPieceOverview, and the album cover everywhere
 
 - Add `album: { albumId, name } | null` to `MusicPieceOverview`, so the frontend can say which album a song is on.

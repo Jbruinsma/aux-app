@@ -69,7 +69,6 @@
                 <p class="meta">{{ albums.items.length ? 'Songs are grouped into albums, then singles.' : 'Group songs into albums so they\'re easier to find.' }}</p>
                 <button type="button" class="btn secondary small" @click="albumDialog.open()">New album</button>
               </div>
-              <p v-if="ALBUMS_MOCKED && albums.items.length" class="hint">Albums are saved in this browser until Aux can store them.</p>
 
               <section
                 v-for="section in arranged.albums"
@@ -88,6 +87,9 @@
                     <button type="button" class="btn primary small" :disabled="!section.pieces.length" @click="musicStore.playPieces(section.pieces, 0)">
                       Play<span class="sr-only"> {{ section.album.name }}</span>
                     </button>
+                    <router-link v-if="loggedIn" :to="{ name: 'Upload', query: { artist: artist.artistId, album: section.album.albumId } }" class="btn secondary small">
+                      Add a song<span class="sr-only"> to {{ section.album.name }}</span>
+                    </router-link>
                     <button v-if="section.album.canEdit" type="button" class="btn secondary small" @click="albumDialog.open(section.album)">
                       Edit<span class="sr-only"> {{ section.album.name }}</span>
                     </button>
@@ -155,7 +157,7 @@ import ProfileCard from '@/components/ProfileCard.vue'
 import TrackRows from '@/components/TrackRows.vue'
 import { resolveCoverURL } from '@/utils/display.js'
 import { fetchArtist, fetchArtistPieces, setArtistFavorite } from '@/utils/artist.js'
-import { ALBUMS_MOCKED, arrangeByAlbum, fetchArtistAlbums } from '@/utils/albums.js'
+import { arrangeByAlbum, fetchArtistAlbums } from '@/utils/albums.js'
 import { useMusicStore } from '@/stores/music.js'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
@@ -300,7 +302,6 @@ p.page-state { display: block; }
 .icon.filled { fill: var(--link); stroke: var(--link); }
 
 .more { margin-top: var(--space-6); }
-.hint { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0 0 var(--space-3); }
 .sr-only { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 .btn.small { font-size: 14px; padding: 6px 12px; }
 
@@ -315,7 +316,7 @@ p.page-state { display: block; }
 .album-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .eyebrow { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); letter-spacing: 0.06em; margin: 0; text-transform: uppercase; }
 h3 { font: 700 20px/28px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
-.album-actions { display: flex; gap: var(--space-2); }
+.album-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .singles-title { margin-bottom: var(--space-3); }
 .row-edit { align-items: center; background: none; border: 0; border-radius: var(--radius-pill); color: var(--ink-muted); cursor: pointer; display: flex; height: 32px; justify-content: center; padding: 0; width: 32px; }
 .row-edit:hover { background: var(--surface); color: var(--link); }

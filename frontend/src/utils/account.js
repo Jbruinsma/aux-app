@@ -1,12 +1,6 @@
 import { fetchAPI, request } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
-// Account deletion isn't on the backend yet. It's requested in backend/BACKEND_REQUESTS.md and answers from mock data until
-// then; flip this off once it ships, since the real call below already uses the requested shape
-export const ACCOUNT_MOCKED = true
-
-const wait = () => new Promise((resolve) => setTimeout(resolve, 400))
-
 export const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/
 // Same limits as registration
 export const EMAIL_MIN = 3
@@ -29,11 +23,10 @@ export function changeUsername(username) {
   return request('PUT', `${API_BASE_URL}/api/users/me/username`, { username })
 }
 
-// Returns nothing (204). The session token stops working once the account is gone
-export async function deleteAccount() {
-  if (!ACCOUNT_MOCKED) return request('DELETE', `${API_BASE_URL}/api/users/me`)
-  await wait()
-  return null
+// Returns nothing (204). The session token stops working once the account is gone. 403 WRONG_PASSWORD (a 403, so it
+// doesn't log the user out), 429 RATE_LIMITED
+export function deleteAccount(currentPassword) {
+  return request('DELETE', `${API_BASE_URL}/api/users/me`, { currentPassword }, { notifyOnError: false })
 }
 
 // Email and password changes are two steps: the request call emails a 6-digit code, the confirm call spends it.

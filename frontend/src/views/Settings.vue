@@ -532,12 +532,27 @@
             <p class="hint">
               {{ deleteReady ? 'You can delete your account now.' : `Take a moment to read this. Delete unlocks in ${DELETE_WAIT - deleteElapsed}s.` }}
             </p>
+            <form class="delete-password" @submit.prevent="confirmDelete">
+              <label class="form-label" for="delete-password">Current Password</label>
+              <input
+                id="delete-password"
+                v-model="deletePassword"
+                class="input"
+                type="password"
+                autocomplete="current-password"
+                :maxlength="PASSWORD_MAX"
+                :aria-invalid="deletePasswordError ? 'true' : 'false'"
+                aria-describedby="delete-password-error"
+                @input="deletePasswordError = ''"
+              />
+              <p v-if="deletePasswordError" id="delete-password-error" class="error">{{ deletePasswordError }}</p>
+            </form>
             <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
             <div class="confirm-actions">
               <button type="button" class="btn secondary" autofocus :disabled="deleting" @click="deleteDialog.close()">
                 Keep my account
               </button>
-              <button type="button" class="btn primary" :disabled="!deleteReady || deleting" @click="confirmDelete">
+              <button type="button" class="btn primary" :disabled="!canDelete" @click="confirmDelete">
                 {{ deleting ? 'Deleting…' : 'Delete account' }}
               </button>
             </div>
@@ -595,7 +610,6 @@ import { COUNTRIES } from '@/utils/countries.js'
 import { FOLLOWS_MOCKED, FOLLOWS_VISIBILITY, readFollowsVisibility, saveFollowsVisibility } from '@/utils/follows.js'
 import { setSkipExternalWarning, skipExternalWarning } from '@/utils/externalLinks.js'
 import {
-  ACCOUNT_MOCKED,
   EMAIL_MAX,
   EMAIL_MIN,
   PASSWORD_MAX,
@@ -1226,12 +1240,17 @@ const deleteElapsed = ref(0)
 const deleteRun = ref(0)
 const deleting = ref(false)
 const deleteError = ref('')
+const deletePassword = ref('')
+const deletePasswordError = ref('')
 let deleteTimer = null
 
 const deleteReady = computed(() => deleteElapsed.value >= DELETE_WAIT)
+const canDelete = computed(() => deleteReady.value && !deleting.value && deletePassword.value.length >= PASSWORD_MIN)
 
 function openDeleteDialog() {
   deleteError.value = ''
+  deletePassword.value = ''
+  deletePasswordError.value = ''
   deleteElapsed.value = 0
   deleteRun.value++
   deleteDialog.value.showModal()
@@ -1244,28 +1263,27 @@ function openDeleteDialog() {
 
 function onDeleteDialogClose() {
   clearInterval(deleteTimer)
+  deletePassword.value = ''
   document.documentElement.classList.remove('scroll-locked')
 }
 
 onBeforeUnmount(onDeleteDialogClose)
 
 async function confirmDelete() {
-  if (!deleteReady.value || deleting.value) return
+  if (!canDelete.value) return
   deleteError.value = ''
   deleting.value = true
   try {
-    await deleteAccount()
+    await deleteAccount(deletePassword.value)
     deleteDialog.value.close()
-    if (ACCOUNT_MOCKED) {
-      notification.neutral("Preview only: your account wasn't deleted.")
-      return
-    }
     userStore.logout()
     notification.success('Your account is deleted.')
     await router.replace({ name: 'Home' })
   } catch (err) {
     if (err.sessionEnded) return
-    deleteError.value = "We couldn't delete your account. Check that the server is running, then try again."
+    if (err.code === 'WRONG_PASSWORD') deletePasswordError.value = "That isn't your current password. Try again."
+    else if (err.code === 'RATE_LIMITED' || err.status === 429) deleteError.value = "You've tried too many times. Wait a minute, then try again."
+    else deleteError.value = "We couldn't delete your account. Check that the server is running, then try again."
   } finally {
     deleting.value = false
   }
@@ -1328,6 +1346,7 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0 0 var(--space-4); }
 .confirm h2 { margin: 0; }
 .confirm-text { margin: 0; }
 .confirm-actions { display: flex; gap: var(--space-3); margin-top: var(--space-2); }
+.delete-password { display: flex; flex-direction: column; gap: var(--space-2); }
 .countdown { background: var(--surface-alt); border-radius: var(--radius-pill); height: 8px; overflow: hidden; }
 .countdown-fill { animation: countdown 6s linear forwards; background: var(--primary); height: 100%; transform: scaleX(var(--progress)); transform-origin: left; }
 @keyframes countdown { from { transform: scaleX(0); } to { transform: scaleX(1); } }

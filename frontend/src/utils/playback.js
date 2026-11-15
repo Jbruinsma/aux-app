@@ -40,3 +40,32 @@ export const REPEAT_MODES = ['OFF', 'PLAYLIST', 'PIECE']
 export function savePlayPreferences({ shuffleEnabled, repeatPreference }) {
   return request('PUT', `${API_BASE_URL}/api/users/me/play-preferences`, { shuffleEnabled, repeatPreference }, quiet)
 }
+
+// What the player is doing, for friends (`nowPlaying` on GET /api/users/me/friends). The server ignores private and
+// unknown pieces, and `isPlaying: false` clears it
+export function reportNowPlaying(musicPieceId, positionSeconds, isPlaying) {
+  return request('PUT', `${API_BASE_URL}/api/users/me/now-playing`, { musicPieceId, positionSeconds, isPlaying }, quiet)
+}
+
+// The audio element fires several events for one change (a seek while playing sends seeked, then often playing), so
+// reports wait a moment and only the last state is sent. `read()` returns { musicPieceId, positionSeconds, isPlaying },
+// or null to send nothing. Fire and forget: a failed report never reaches the player
+export function nowPlayingReporter(read, delay = 300) {
+  let timer = null
+  function send() {
+    timer = null
+    const state = read()
+    if (!state?.musicPieceId) return
+    reportNowPlaying(state.musicPieceId, Math.max(0, Math.floor(state.positionSeconds)), state.isPlaying).catch(() => {})
+  }
+  return {
+    schedule() {
+      clearTimeout(timer)
+      timer = setTimeout(send, delay)
+    },
+    cancel() {
+      clearTimeout(timer)
+      timer = null
+    },
+  }
+}
