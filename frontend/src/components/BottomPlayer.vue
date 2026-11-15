@@ -23,6 +23,8 @@
       @shuffle="toggleShuffle"
       @repeat="musicStore.cycleRepeat()"
       @seek="v => progress = v"
+      :lyrics-open="lyricsOpen"
+      @lyrics="lyricsOpen = !lyricsOpen"
     />
     <QueueView
       v-if="shouldShowPlayer && !isMobile"
@@ -54,6 +56,16 @@
       @repeat="musicStore.cycleRepeat()"
       @seek="v => progress = v"
       @volume="v => volume = v"
+      :lyrics-open="lyricsOpen"
+      @lyrics="lyricsOpen = !lyricsOpen"
+    />
+    <LyricsPanel
+      :open="lyricsOpen && shouldShowPlayer"
+      :piece="currentMusicPiece"
+      :position="progress"
+      :duration="duration"
+      @close="lyricsOpen = false"
+      @seek="seekTo"
     />
     <button
       v-if="showArrow && !isMobile && !queueOpen"
@@ -147,6 +159,18 @@
         <button
           type="button"
           class="icon-btn toggle"
+          :class="{ active: lyricsOpen }"
+          :disabled="!currentMusicPiece?.uuid"
+          aria-label="Lyrics"
+          title="Lyrics"
+          :aria-pressed="lyricsOpen ? 'true' : 'false'"
+          @click="lyricsOpen = !lyricsOpen"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
+        </button>
+        <button
+          type="button"
+          class="icon-btn toggle"
           :class="{ active: repeatMode !== 'OFF' }"
           :disabled="!canPlay"
           :aria-label="REPEAT_LABELS[repeatMode]"
@@ -205,6 +229,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { nowPlayingReporter } from '@/utils/playback.js'
 import MobilePlayer from '@/components/MobilePlayer.vue'
 import QueueView from '@/components/QueueView.vue'
+import LyricsPanel from '@/components/LyricsPanel.vue'
 
 const userStore = useUserStore()
 const musicStore = useMusicStore()
@@ -254,6 +279,15 @@ onBeforeUnmount(() => {
 })
 const duration = ref(0)
 const audioRef = ref(null)
+
+// The lyrics panel, opened from the button next to shuffle in the bar, the queue view or the mobile player. A clicked
+// line seeks there and plays
+const lyricsOpen = ref(false)
+
+function seekTo(seconds) {
+  progress.value = seconds
+  if (!isPlaying.value) togglePlay()
+}
 
 // Tells friends what's playing (PUT /api/users/me/now-playing) on start, pause, resume and after a seek, from the
 // audio element itself so it matches what's heard. Not from /stream: streams are fetched ahead of time
