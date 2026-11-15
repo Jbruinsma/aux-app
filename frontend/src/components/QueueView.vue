@@ -96,6 +96,9 @@
       <div class="controls">
         <span></span>
         <div class="transport">
+          <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
+          </button>
           <button type="button" class="icon-btn big" :disabled="!canSkip" aria-label="Previous" @click="emit('prev')">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM19 5.5v13a.5.5 0 0 1-.77.42L9 12.42a.5.5 0 0 1 0-.84l9.23-6.5a.5.5 0 0 1 .77.42z" /></svg>
           </button>
@@ -106,14 +109,12 @@
           <button type="button" class="icon-btn big" :disabled="!canSkip" aria-label="Next" @click="emit('next')">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5.5v13a.5.5 0 0 0 .77.42L15 12.42a.5.5 0 0 0 0-.84L5.77 5.08A.5.5 0 0 0 5 5.5z" /></svg>
           </button>
+          <span class="transport-spacer" aria-hidden="true"></span>
         </div>
         <div class="right">
           <div class="modes">
             <button type="button" class="icon-btn toggle" :class="{ active: lyricsOpen }" :disabled="!piece?.uuid" aria-label="Lyrics" title="Lyrics" :aria-pressed="lyricsOpen ? 'true' : 'false'" @click="emit('lyrics')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" /><path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928 2.356-6 2-2.072-.356-2.775-3.369-1.5-4.5" /><circle cx="16" cy="7" r="5" /></svg>
-            </button>
-            <button type="button" class="icon-btn toggle" :class="{ active: shuffleOn }" :disabled="!canShuffle" aria-label="Shuffle" :aria-pressed="shuffleOn ? 'true' : 'false'" @click="emit('shuffle')">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 14 4 4-4 4" /><path d="m18 2 4 4-4 4" /><path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6a4 4 0 0 1 3.3-1.7H22" /><path d="M2 6h1.97a4 4 0 0 1 3.3 1.7l.47.73M22 18h-5.97a4 4 0 0 1-3.3-1.7l-.47-.73" /></svg>
             </button>
             <button type="button" class="icon-btn toggle" :class="{ active: repeatMode !== 'OFF' }" :disabled="!canPlay" :aria-label="repeatLabel" :title="repeatLabel" @click="emit('repeat')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -357,6 +358,8 @@ button:disabled, input:disabled { cursor: not-allowed; opacity: 0.4; }
 .time:last-child { text-align: right; }
 .controls { align-items: center; display: grid; grid-template-columns: 1fr auto 1fr; margin-top: var(--space-2); }
 .transport { align-items: center; display: flex; gap: var(--space-6); }
+/* Balances shuffle on the left so play stays centered */
+.transport-spacer { flex: none; width: 36px; }
 .volume { align-items: center; color: var(--ink-muted); display: flex; gap: var(--space-2); }
 .volume .slider { flex: none; width: 100px; }
 .slider { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; flex: 1; height: 16px; margin: 0; }
