@@ -3,6 +3,7 @@ package com.aux_app.entity;
 import java.time.Instant;
 
 import com.aux_app.dto.users.OnboardingStep;
+import com.aux_app.dto.users.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,6 +50,11 @@ public class UserEntity {
     @Column(name = "onboarding_step", nullable = false)
     private OnboardingStep onboardingStep;
 
+    // No setter: roles are only changed by hand in the DB (see V10__user_roles.sql)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role = UserRole.USER;
+
     protected UserEntity() {}
 
     public UserEntity(
@@ -78,6 +84,7 @@ public class UserEntity {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public OnboardingStep getOnboardingStep() { return onboardingStep; }
+    public UserRole getRole() { return role; }
 
     public void setUsername(String username) {
         this.username = username;

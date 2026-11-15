@@ -4,7 +4,7 @@ import { appendTags } from '@/utils/tags.js'
 
 // The backend's limits for an upload (POST /api/music-pieces/create); checked here first to save a 25MB round trip
 export const MAX_MP3_BYTES = 25 * 1024 * 1024
-export const MIN_SECONDS = 5
+export const MIN_SECONDS = 30
 export const MAX_SECONDS = 10 * 60
 export const TITLE_MAX = 200
 export const ARTIST_NAME_MAX = 100
@@ -13,7 +13,7 @@ export const ARTIST_NAME_MAX = 100
 export const UPLOAD_ERRORS = {
   UNSUPPORTED_AUDIO_TYPE: "That file isn't an MP3. Choose an MP3 file.",
   INVALID_AUDIO: "We couldn't read that MP3. It may be damaged; try another file.",
-  AUDIO_TOO_SHORT: 'That song is too short. Songs need to be at least 5 seconds long.',
+  AUDIO_TOO_SHORT: 'That song is too short. Songs need to be at least 30 seconds long.',
   AUDIO_TOO_LONG: 'That song is too long. Songs can be up to 10 minutes long.',
   REQUEST_FAILED: 'That file is too big. MP3s can be up to 25MB.',
   STORAGE_QUOTA_EXCEEDED: "This upload would go over your 2GB of storage. Delete some uploads first.",
@@ -59,12 +59,14 @@ export function findOrCreateArtist(artistName) {
 
 // Returns the new MusicPieceOverview. The server crops the cover; send the original. `albumId` puts it on one of the
 // artist's albums: leave the cover out to use the album's (and follow it). A single needs a cover of its own
-export function uploadMusicPiece({ name, artistId, isPublic, mp3File, coverImage, tags = [], albumId = null }) {
+// Send either mp3File or importId, a READY YouTube import (see utils/youtube.js)
+export function uploadMusicPiece({ name, artistId, isPublic, mp3File = null, importId = null, coverImage, tags = [], albumId = null }) {
   const form = new FormData()
   form.append('name', name)
   form.append('artistId', artistId)
   form.append('isPublic', isPublic)
-  form.append('mp3File', mp3File)
+  if (importId) form.append('importId', importId)
+  else form.append('mp3File', mp3File)
   if (coverImage) form.append('coverImage', coverImage)
   if (albumId) form.append('albumId', albumId)
   appendTags(form, tags)

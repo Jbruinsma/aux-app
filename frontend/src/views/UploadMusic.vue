@@ -39,22 +39,63 @@
           <p v-if="targetPlaylist" class="lead">It's added to your playlist once it's uploaded.</p>
 
           <div class="field">
-            <span class="label">MP3 file</span>
-            <div class="file-row">
-              <input
-                id="mp3-input"
-                ref="mp3Input"
-                class="visually-hidden"
-                type="file"
-                accept="audio/mpeg,.mp3"
-                aria-describedby="mp3-hint"
-                @change="onPickMp3($event.target.files[0])"
-              />
-              <label for="mp3-input" class="btn secondary">{{ mp3File ? 'Choose a different MP3' : 'Choose MP3' }}</label>
-              <span v-if="checkingMp3" class="file-meta">Checking…</span>
-              <span v-else-if="mp3File" class="file-meta">{{ mp3File.name }} · {{ formatLength(mp3Seconds) }} · {{ formatSize(mp3File.size) }}</span>
+            <div v-if="youtubeAvailable" class="tabs" role="tablist" aria-label="Where the song comes from">
+              <button
+                v-for="item in SOURCES"
+                :key="item.id"
+                type="button"
+                role="tab"
+                class="tab"
+                :class="{ active: source === item.id }"
+                :aria-selected="source === item.id ? 'true' : 'false'"
+                :disabled="uploading"
+                @click="source = item.id"
+              >{{ item.label }}</button>
             </div>
-            <p id="mp3-hint" class="hint">An MP3 up to 25MB, between 5 seconds and 10 minutes long. Uploads count toward your 2GB of storage.</p>
+            <span v-else class="label">MP3 file</span>
+            <template v-if="source === 'youtube'">
+              <div v-if="youtubeImport" class="import">
+                <img class="import-thumb" :src="youtubeImport.thumbnailUrl" alt="" />
+                <span class="import-text" aria-live="polite">
+                  <span class="import-title">{{ youtubeImport.title ?? 'YouTube video' }}</span>
+                  <span class="hint">{{ importReady ? `${formatLength(youtubeImport.durationSeconds)} · Ready to upload` : YOUTUBE_STEPS[youtubeImport.status] }}</span>
+                </span>
+                <button type="button" class="btn secondary small" :disabled="uploading" @click="clearImport">{{ importReady ? 'Use a different link' : 'Cancel' }}</button>
+              </div>
+              <div v-else class="file-row">
+                <label class="visually-hidden" for="youtube-url">YouTube link</label>
+                <input
+                  id="youtube-url"
+                  v-model="youtubeUrl"
+                  class="input url"
+                  type="url"
+                  inputmode="url"
+                  :maxlength="YOUTUBE_URL_MAX"
+                  autocomplete="off"
+                  aria-describedby="youtube-hint"
+                  @keydown.enter.prevent="getAudio"
+                />
+                <button type="button" class="btn secondary" :disabled="!youtubeUrl.trim() || startingImport" @click="getAudio">{{ startingImport ? 'Starting…' : 'Get audio' }}</button>
+              </div>
+              <p id="youtube-hint" class="hint">A link to one YouTube video, 30 seconds to 10 minutes long. Getting the audio usually takes under a minute. It counts toward your 2GB of storage once uploaded.</p>
+            </template>
+            <template v-else>
+              <div class="file-row">
+                <input
+                  id="mp3-input"
+                  ref="mp3Input"
+                  class="visually-hidden"
+                  type="file"
+                  accept="audio/mpeg,.mp3"
+                  aria-describedby="mp3-hint"
+                  @change="onPickMp3($event.target.files[0])"
+                />
+                <label for="mp3-input" class="btn secondary">{{ mp3File ? 'Choose a different MP3' : 'Choose MP3' }}</label>
+                <span v-if="checkingMp3" class="file-meta">Checking…</span>
+                <span v-else-if="mp3File" class="file-meta">{{ mp3File.name }} · {{ formatLength(mp3Seconds) }} · {{ formatSize(mp3File.size) }}</span>
+              </div>
+              <p id="mp3-hint" class="hint">An MP3 up to 25MB, between 30 seconds and 10 minutes long. Uploads count toward your 2GB of storage.</p>
+            </template>
           </div>
 
           <div class="field">
@@ -144,6 +185,17 @@ import { useNotificationStore } from '@/stores/notification.js'
 import { fetchArtist } from '@/utils/artist.js'
 import { fetchArtistAlbums, findOrCreateAlbum, setPieceAlbum } from '@/utils/albums.js'
 import { resolveCoverURL } from '@/utils/display.js'
+import {
+  YOUTUBE_ERRORS,
+  YOUTUBE_PENDING,
+  YOUTUBE_POLL_MS,
+  YOUTUBE_STEPS,
+  discardYoutubeImport,
+  fetchYoutubeImport,
+  fetchYoutubeImportAvailability,
+  startYoutubeImport,
+  youtubeErrorMessage,
+} from '@/utils/youtube.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -175,6 +227,29 @@ const uploading = ref(false)
 const error = ref('')
 const tags = ref([])
 const tagsError = ref('')
+
+// The title the page filled in itself (from a file name or a video title). A new file or video replaces it, but never
+// a title the user typed
+let autoTitle = ''
+function suggestTitle(suggestion) {
+  const current = title.value.trim()
+  if (current && current !== autoTitle) return
+  autoTitle = suggestion.slice(0, TITLE_MAX).trim()
+  title.value = autoTitle
+}
+
+// Testers can take the audio from a YouTube video instead of an MP3: "Get audio" starts an import on the server, which
+// is polled until it's READY, and the upload then sends its importId instead of a file. The tabs only show for
+// testers (GET /api/imports/youtube says so). Each tab keeps its own choice; the upload uses the open one
+const SOURCES = [{ id: 'mp3', label: 'MP3 file' }, { id: 'youtube', label: 'YouTube link' }]
+const YOUTUBE_URL_MAX = 200
+const source = ref('mp3')
+const youtubeAvailable = ref(false)
+const youtubeUrl = ref('')
+const youtubeImport = ref(null)
+const startingImport = ref(false)
+const importReady = computed(() => youtubeImport.value?.status === 'READY')
+let pollTimer = null
 
 // The picked artist's albums. A song put on one uses its cover unless "Use the album cover" is unticked, and choosing
 // a cover of your own unticks it. /upload?artist=<id>&album=<id> (an album's Add a song) starts with that album picked.
@@ -251,12 +326,73 @@ function dropDraft() {
 
 const hasArtist = computed(() => Boolean(artist.value || artistPicker.value?.pendingName))
 const hasCover = computed(() => usingAlbumCover.value || Boolean(coverFile.value))
-const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(mp3File.value && hasCover.value && title.value.trim() && hasArtist.value))
+const hasAudio = computed(() => (source.value === 'youtube' ? importReady.value : Boolean(mp3File.value)))
+const canUpload = computed(() => !uploading.value && !checkingMp3.value && Boolean(hasAudio.value && hasCover.value && title.value.trim() && hasArtist.value))
 
 onBeforeUnmount(() => {
   URL.revokeObjectURL(coverPreview.value)
   dropDraft()
+  clearImport()
 })
+
+onMounted(async () => {
+  youtubeAvailable.value = await fetchYoutubeImportAvailability()
+})
+
+async function getAudio() {
+  const url = youtubeUrl.value.trim()
+  if (!url || startingImport.value) return
+  error.value = ''
+  startingImport.value = true
+  try {
+    showImport(await startYoutubeImport(url))
+  } catch (err) {
+    if (err.sessionEnded) return
+    error.value = err.code === 'RATE_LIMITED' ? "You're going too quickly. Wait a minute, then try again." : youtubeErrorMessage(err.code)
+  } finally {
+    startingImport.value = false
+  }
+}
+
+function showImport(item) {
+  clearTimeout(pollTimer)
+  if (item.status === 'FAILED') {
+    // The link stays in the box, so it can be fixed or tried again
+    youtubeImport.value = null
+    error.value = youtubeErrorMessage(item.error?.code)
+    return
+  }
+  youtubeImport.value = item
+  if (YOUTUBE_PENDING.includes(item.status)) pollTimer = setTimeout(poll, YOUTUBE_POLL_MS)
+  else if (item.status === 'READY' && item.title) suggestTitle(item.title)
+}
+
+async function poll() {
+  const current = youtubeImport.value
+  if (!current) return
+  try {
+    const item = await fetchYoutubeImport(current.importId)
+    // Cancelled, or replaced by another link, while this was in flight
+    if (youtubeImport.value?.importId !== current.importId) return
+    showImport(item)
+  } catch (err) {
+    if (youtubeImport.value?.importId !== current.importId || err.sessionEnded) return
+    if (err.code === 'IMPORT_NOT_FOUND') {
+      youtubeImport.value = null
+      error.value = YOUTUBE_ERRORS.IMPORT_NOT_FOUND
+      return
+    }
+    // A dropped request; the import is still running on the server
+    pollTimer = setTimeout(poll, YOUTUBE_POLL_MS)
+  }
+}
+
+// Cancels a running import or throws away an unused one, so it doesn't hold space on the server
+function clearImport() {
+  clearTimeout(pollTimer)
+  if (youtubeImport.value) discardYoutubeImport(youtubeImport.value.importId)
+  youtubeImport.value = null
+}
 
 // From an artist's Add music: /upload?artist=<artistId> starts with that artist picked. If it can't be loaded the
 // picker just starts empty
@@ -284,7 +420,7 @@ async function onPickMp3(file) {
   }
   mp3File.value = file
   mp3Seconds.value = seconds
-  if (!title.value.trim()) title.value = file.name.replace(/\.mp3$/i, '').slice(0, TITLE_MAX)
+  suggestTitle(file.name.replace(/\.mp3$/i, ''))
 }
 
 function onDropCover(event) {
@@ -339,15 +475,19 @@ async function upload() {
         return
       }
     }
+    const fromYoutube = source.value === 'youtube'
     const piece = await uploadMusicPiece({
       name: title.value.trim(),
       artistId: artist.value.artistId,
       isPublic: isPublic.value,
-      mp3File: mp3File.value,
+      mp3File: fromYoutube ? null : mp3File.value,
+      importId: fromYoutube ? youtubeImport.value.importId : null,
       coverImage: usingAlbumCover.value ? null : coverFile.value,
       tags: [...tags.value],
       albumId: onAlbum?.albumId ?? null,
     })
+    // The server used it up; nothing to discard on the way out
+    if (fromYoutube) youtubeImport.value = null
     // The caller's other songs picked in the album dialog join it too, one at a time (they share the upload rate limit)
     let movesFailed = 0
     for (const track of newAlbum?.tracks ?? []) {
@@ -369,7 +509,10 @@ async function upload() {
   } catch (err) {
     if (err.sessionEnded) return
     if (isTagsError(err)) tagsError.value = tagsErrorMessage(err)
-    else if (UPLOAD_ERRORS[err.code]) error.value = UPLOAD_ERRORS[err.code]
+    else if (source.value === 'youtube' && YOUTUBE_ERRORS[err.code] && !UPLOAD_ERRORS[err.code]) {
+      error.value = YOUTUBE_ERRORS[err.code]
+      if (err.code === 'IMPORT_NOT_FOUND') youtubeImport.value = null
+    } else if (UPLOAD_ERRORS[err.code]) error.value = UPLOAD_ERRORS[err.code]
     else if (PHOTO_ERRORS[err.code]) error.value = PHOTO_ERRORS[err.code]
     else if (err.code === 'INVALID_FIELD') error.value = `Give the song a title of 1 to ${TITLE_MAX} characters, and choose an artist.`
     else if (err.code === 'RATE_LIMITED') error.value = "You're uploading too quickly. Wait a minute, then try again."
@@ -402,7 +545,17 @@ h1 { font: 700 28px/34px var(--font-sans); margin: 0; }
 .actions { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
 .file-row { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .file-meta { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); overflow-wrap: anywhere; }
-.file-row:has(input:focus-visible) .btn { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.file-row:has(input[type="file"]:focus-visible) .btn { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.url { flex: 1; min-width: 0; }
+.tabs { display: flex; gap: var(--space-6); }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink-muted); cursor: pointer; font: 600 14px/20px var(--font-sans); padding: 0 0 var(--space-2); }
+.tab:hover { border-bottom-color: var(--primary); color: var(--ink); }
+.tab.active { border-bottom-color: var(--primary); color: var(--link); }
+.tab[disabled] { cursor: not-allowed; opacity: 0.4; }
+.import { align-items: center; background: var(--surface-alt); border-radius: var(--radius-sm); display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+.import-thumb { aspect-ratio: 16 / 9; border-radius: var(--radius-sm); flex: none; object-fit: cover; width: 64px; }
+.import-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.import-title { font: 600 15px/22px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .icon { fill: none; height: 32px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; width: 32px; }
 
 .cover { display: flex; flex-direction: column; gap: var(--space-2); }

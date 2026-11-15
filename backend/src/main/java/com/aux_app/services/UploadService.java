@@ -257,13 +257,35 @@ public class UploadService {
             List<MultipartFile> files,
             Function<List<StoredTrack>, List<MusicPieceEntity>> toPieces
     ) {
-        // SQLite takes its write lock at BEGIN (transaction_mode=IMMEDIATE), so a caller's transaction would
-        // block every other writer in the app for as long as the R2 uploads below take
+        requireNoTransaction();
+        // Validate every file before uploading any, so one bad file doesn't leave the others orphaned
+        return storeParsed(user, files.stream().map(UploadService::readMp3).toList(), toPieces);
+    }
+
+    // Same as storeTracks for one MP3 the server produced itself (a YouTube import). It gets the same checks as
+    // an upload: frames only, 30 seconds to 10 minutes, quota
+    public List<MusicPieceEntity> storeImportedTrack(
+            UserEntity user,
+            byte[] mp3,
+            Function<List<StoredTrack>, List<MusicPieceEntity>> toPieces
+    ) {
+        requireNoTransaction();
+        return storeParsed(user, List.of(parseMp3(mp3)), toPieces);
+    }
+
+    // SQLite takes its write lock at BEGIN (transaction_mode=IMMEDIATE), so a caller's transaction would
+    // block every other writer in the app for as long as the R2 uploads take
+    private static void requireNoTransaction() {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("storeTracks must not be called inside a transaction");
         }
-        // Validate every file before uploading any, so one bad file doesn't leave the others orphaned
-        List<Mp3> tracks = files.stream().map(UploadService::readMp3).toList();
+    }
+
+    private List<MusicPieceEntity> storeParsed(
+            UserEntity user,
+            List<Mp3> tracks,
+            Function<List<StoredTrack>, List<MusicPieceEntity>> toPieces
+    ) {
         long batchBytes = tracks.stream().mapToLong(t -> t.frames().length).sum();
         // Early check so an over-quota batch fails before uploading; the check that counts is the one below
         if (musicPieces.totalSizeBytes(user.getUserId()) + batchBytes > MAX_STORAGE_BYTES) {

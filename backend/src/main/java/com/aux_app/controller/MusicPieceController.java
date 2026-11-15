@@ -29,6 +29,7 @@ import com.aux_app.services.PlaybackEventService;
 import com.aux_app.services.RecommendationService;
 import com.aux_app.services.TagService;
 import com.aux_app.services.UploadService;
+import com.aux_app.services.YoutubeImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,6 +42,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/api/music-pieces")
@@ -57,6 +59,7 @@ public class MusicPieceController {
     private final TagService tags;
     private final RecommendationService recommendations;
     private final ApplicationEventPublisher events;
+    private final YoutubeImportService youtubeImports;
 
     public MusicPieceController(
             UploadService uploads,
@@ -69,7 +72,8 @@ public class MusicPieceController {
             PlaybackEventService playbackEvents,
             TagService tags,
             RecommendationService recommendations,
-            ApplicationEventPublisher events
+            ApplicationEventPublisher events,
+            YoutubeImportService youtubeImports
     ) {
         this.uploads = uploads;
         this.artists = artists;
@@ -82,6 +86,7 @@ public class MusicPieceController {
         this.tags = tags;
         this.recommendations = recommendations;
         this.events = events;
+        this.youtubeImports = youtubeImports;
     }
 
     @GetMapping("")
@@ -108,8 +113,11 @@ public class MusicPieceController {
                     - `artistId` (required): id of an existing artist.
                     - `isPublic`: `true` or `false`, defaults to `false`. A private piece is only playable by its
                       uploader, and by the other collaborators on private playlists the uploader adds it to.
-                    - `mp3File` (required): an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the
-                      caller's 2GB storage quota.
+                    - `mp3File`: an MP3, at most 25MB, 30 seconds to 10 minutes long. Counts toward the caller's 2GB
+                      storage quota.
+                    - `importId`: a READY YouTube import (`POST /api/imports/youtube`), in place of `mp3File`. Send
+                      exactly one of the two. Same limits and quota as an upload. Used up once the piece is created;
+                      if creating fails (bad field, quota) it stays READY, so fix the form and send it again.
                     - `albumId`: one of the artist's albums (`GET /api/artists/{artistId}/albums`). Omit for a single.
                     - `coverImage`: same rules as a playlist cover. Send the original image; the server crops it to a
                       square and stores it as WebP. Required for a single. With `albumId`, omit it to show the
@@ -120,14 +128,25 @@ public class MusicPieceController {
                     The caller is the uploader. Returns the new piece; `isFavorite` is always `false`.
                     """)
     @ApiResponse(responseCode = "200", description = "Music piece created; body is the new piece")
-    @ApiResponse(responseCode = "400", description = "Missing or bad field, including no cover for a single (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
-    @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND), or album not found (code ALBUM_NOT_FOUND)")
+    @ApiResponse(responseCode = "400", description = "Missing or bad field, including no cover for a single or not exactly one of `mp3File` and `importId` (code INVALID_FIELD), album of another artist (code ALBUM_ARTIST_MISMATCH), damaged, too short or too long MP3 (codes INVALID_AUDIO, AUDIO_TOO_SHORT, AUDIO_TOO_LONG), or unreadable or too small cover (codes INVALID_IMAGE, IMAGE_TOO_SMALL)")
+    @ApiResponse(responseCode = "403", description = "`importId` sent by someone who isn't a tester or admin (code YOUTUBE_IMPORT_FORBIDDEN)")
+    @ApiResponse(responseCode = "404", description = "Artist not found (code ARTIST_NOT_FOUND), album not found (code ALBUM_NOT_FOUND), or no such import (code IMPORT_NOT_FOUND)")
+    @ApiResponse(responseCode = "409", description = "Import not READY (code IMPORT_NOT_READY), or already being used by another request (code IMPORT_IN_USE)")
     @ApiResponse(responseCode = "413", description = "Upload would pass the 2GB storage quota (code STORAGE_QUOTA_EXCEEDED), cover over 5MB or 25 megapixels (code IMAGE_TOO_LARGE), or file over 25MB (code REQUEST_FAILED)")
     @ApiResponse(responseCode = "415", description = "File is not an MP3 (code UNSUPPORTED_AUDIO_TYPE), or cover is not a JPEG or PNG (code UNSUPPORTED_IMAGE_TYPE)")
     public MusicPieceOverview createMusicPiece(
             @CurrentUser UserEntity user,
             @Valid @ModelAttribute MusicPieceCreationDetails musicPieceCreationDetails
     ) {
+        if ((musicPieceCreationDetails.mp3File() == null) == (musicPieceCreationDetails.importId() == null)) {
+            throw new AuxException(
+                    HttpStatus.BAD_REQUEST,
+                    "INVALID_FIELD",
+                    "Send either an MP3 file or a YouTube import",
+                    "mp3File"
+            );
+        }
+
         // Before the upload, so bad tags fail fast
         List<String> newTags = TagService.normalize(musicPieceCreationDetails.tags());
 
@@ -156,10 +175,8 @@ public class MusicPieceController {
             );
         }
 
-        // Uploads the MP3 and saves the row; mp3_file_url gets the R2 key, signed into a URL at play time
-        MusicPieceEntity newMusicPiece = this.uploads.storeTracks(
-                user,
-                List.of(musicPieceCreationDetails.mp3File()),
+        // Builds the row once the MP3 is in R2; mp3_file_url gets the R2 key, signed into a URL at play time
+        Function<List<UploadService.StoredTrack>, List<MusicPieceEntity>> toPieces =
                 stored -> {
                     UploadService.StoredTrack track = stored.getFirst();
                     MusicPieceEntity piece = new MusicPieceEntity(
@@ -183,19 +200,36 @@ public class MusicPieceController {
                         }
                     }
                     return List.of(piece);
-                }
-        ).getFirst();
+                };
 
-        // A piece without the album's cover needs its own, so a failed cover undoes the whole piece
-        if (ownCover) {
-            try {
-                this.uploads.replaceMusicPieceCover(newMusicPiece, musicPieceCreationDetails.coverImage());
-            } catch (RuntimeException e) {
-                this.musicPieces.delete(newMusicPiece);
-                this.uploads.deleteTrack(newMusicPiece.getMp3FileUrl());
-                throw e;
+        // Last of the checks, so a bad form doesn't hold the import. Released below if anything fails
+        YoutubeImportService.Claim imported = musicPieceCreationDetails.importId() == null ? null
+                : this.youtubeImports.claim(user, musicPieceCreationDetails.importId());
+
+        MusicPieceEntity newMusicPiece;
+        try {
+            // Uploads the MP3 and saves the row
+            newMusicPiece = (imported == null
+                    ? this.uploads.storeTracks(user, List.of(musicPieceCreationDetails.mp3File()), toPieces)
+                    : this.uploads.storeImportedTrack(user, imported.mp3(), toPieces)
+            ).getFirst();
+
+            // A piece without the album's cover needs its own, so a failed cover undoes the whole piece
+            if (ownCover) {
+                try {
+                    this.uploads.replaceMusicPieceCover(newMusicPiece, musicPieceCreationDetails.coverImage());
+                } catch (RuntimeException e) {
+                    this.musicPieces.delete(newMusicPiece);
+                    this.uploads.deleteTrack(newMusicPiece.getMp3FileUrl());
+                    throw e;
+                }
             }
+        } catch (RuntimeException e) {
+            if (imported != null) imported.release();
+            throw e;
         }
+        // The piece has its own copy in R2 now
+        if (imported != null) imported.complete();
         if (newTags != null) {
             this.tags.setPieceTags(newMusicPiece.getMusicPieceId(), newTags);
         }
