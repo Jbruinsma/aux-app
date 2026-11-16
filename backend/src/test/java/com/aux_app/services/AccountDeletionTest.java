@@ -28,6 +28,7 @@ class AccountDeletionTest {
             exec(db, "INSERT INTO profile_details (user_id, about) VALUES ('gone', 'hi'), ('keep', 'hi')");
             exec(db, "INSERT INTO user_play_preferences (user_id) VALUES ('gone')");
             exec(db, "INSERT INTO otp_codes (user_id, code_hash, expires_at) VALUES ('gone', 'x', 1)");
+            exec(db, "INSERT INTO refresh_tokens (token_hash, user_id, family_id, expires_at) VALUES ('h', 'gone', 'f', 1)");
             // 'gone' created the artist, and 'keep' uploads under it
             exec(db, "INSERT INTO artists (artist_id, artist_name, public_id, created_by_user_id) VALUES ('A', 'A', 'a_A', 'gone')");
             exec(db, "INSERT INTO music_pieces (music_piece_id, uploader_user_id, artist_id, mp3_file_url, is_public, public_id, name) "
@@ -69,7 +70,8 @@ class AccountDeletionTest {
             assertEquals("L:", one(db, "SELECT group_concat(album_id || ':' || COALESCE(created_by_user_id, '')) FROM albums"));
             assertEquals("L", one(db, "SELECT group_concat(album_id) FROM music_pieces"));
             for (String table : new String[] {"playlist_members", "notifications", "user_saved_playlists", "follows",
-                    "user_favorite_artists", "music_piece_tags", "playlist_tags", "otp_codes", "user_play_preferences"}) {
+                    "user_favorite_artists", "music_piece_tags", "playlist_tags", "otp_codes", "refresh_tokens",
+                    "user_play_preferences"}) {
                 assertEquals("0", one(db, "SELECT COUNT(*) FROM " + table), table);
             }
             assertEquals(null, one(db, "SELECT group_concat(\"table\") FROM pragma_foreign_key_check"));

@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class SessionService {
 
+    // Custom claim holding the refresh-token family id, so a request can say which of the user's sessions it is
+    public static final String SESSION_CLAIM = "sid";
+
     private final SecretKey key;
 
     // aux.jwt-secret comes from AUX_JWT_SECRET in .env (see application.properties)
@@ -41,6 +44,12 @@ public class SessionService {
     // Returns the user id ('sub'). Throws JwtException on a bad signature, wrong issuer, or expired token
     public String verify(String token) {
         return claims(token).getSubject();
+    }
+
+    // The session (refresh-token family) the token was issued for, or null for tokens issued before sessions had ids.
+    // Same checks and throws as verify
+    public String sessionId(String token) {
+        return claims(token).get(SESSION_CLAIM, String.class);
     }
 
     // When the token stops working ('exp'), so long-lived connections can close with it. Same checks and throws as verify

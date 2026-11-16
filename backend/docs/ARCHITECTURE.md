@@ -138,7 +138,7 @@ Repositories are left out to keep lines readable: every controller and service r
 
 | Controller | Base path | Covers |
 |---|---|---|
-| `AuthController` | `/api/auth` | Register, login, password reset, email change |
+| `AuthController` | `/api/auth` | Register, login, refresh, logout, password reset, email change |
 | `UserController` | `/api/users` | Onboarding, profile, settings, follows, last playback, live event stream, account deletion |
 | `CoreController` | `/api/core` | User list, top pieces, search |
 | `ArtistController` | `/api/artists` | Artists, artist images, favorites, an artist's pieces |
@@ -150,7 +150,8 @@ Repositories are left out to keep lines readable: every controller and service r
 
 | Service | Job |
 |---|---|
-| `SessionService` | Issues and verifies session JWTs (HS256, 1 hour) |
+| `SessionService` | Issues and verifies session JWTs (HS256, 1 hour; `sid` claim names the session) |
+| `RefreshTokenService` | Single-use refresh tokens (30 days, sliding, stored hashed) that trade for a new JWT; reuse after 30 s ends the session |
 | `OtpService` | Email codes for password and email changes, stored as bcrypt hashes |
 | `OnboardingService` | Walks new accounts through onboarding steps |
 | `UsernameService` | Username rules, reserved names, `ProfanityFilter` |

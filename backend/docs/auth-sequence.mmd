@@ -39,10 +39,27 @@ sequenceDiagram
             AC-->>FE: 401 INVALID_CREDENTIALS
         end
     else valid
-        AC->>SS: issueSymmetricToken(userId)
-        SS-->>AC: HS256 JWT (iss=aux, sub=userId, exp=+1h)
-        AC-->>FE: 200 {token, expiresAt, user}
-        FE->>FE: store token
+        AC->>SS: issueSymmetricToken(userId, sid=familyId)
+        SS-->>AC: HS256 JWT (iss=aux, sub=userId, sid, exp=+1h)
+        AC->>DB: save SHA-256 of new refresh token (family, exp=+30d)
+        AC-->>FE: 200 {token, expiresAt, refreshToken, refreshExpiresAt, user}
+        FE->>FE: store tokens
+    end
+
+    Note over FE,SS: 1b. Refresh (2 min before expiresAt, or after a 401 INVALID_TOKEN)
+    FE->>AC: POST /api/auth/refresh {refreshToken}
+    AC->>DB: find by SHA-256(refreshToken)
+    alt unknown, expired, or reused more than 30 s after it was traded
+        rect rgb(253,236,234)
+            AC->>DB: reused: delete the whole family
+            AC-->>FE: 401 INVALID_REFRESH_TOKEN
+            FE->>FE: end session (log in again)
+        end
+    else valid
+        AC->>DB: mark used, save successor (same family, exp=+30d)
+        AC->>SS: issueSymmetricToken(userId, sid=familyId)
+        AC-->>FE: 200 {token, expiresAt, refreshToken, refreshExpiresAt, user}
+        FE->>FE: store tokens, retry the failed request
     end
 
     Note over FE,MP: 2. Protected request (upload)
@@ -59,7 +76,7 @@ sequenceDiagram
             rect rgb(253,236,234)
                 SS-->>CU: JwtException
                 CU-->>FE: 401 INVALID_TOKEN
-                FE->>FE: end session (frontend logs out on 401)
+                FE->>FE: refresh (1b) and retry once
             end
         else token valid
             SS-->>CU: userId (sub)
