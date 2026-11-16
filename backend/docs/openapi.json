@@ -3981,6 +3981,85 @@
         }
       }
     },
+    "/api/auth/refresh" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "summary" : "Refresh the session",
+        "description" : "JSON body: `refreshToken` from the last register, login or refresh response. Returns a new token,\na new refresh token and the user, in the same shape as login. No Authorization header needed, so it\nworks after the token has expired. Each refresh token works once: keep the new one. Reusing an old\none (more than 30 seconds after it was traded) ends that session everywhere.\n",
+        "operationId" : "refresh",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Refreshed; body holds the new tokens and the user",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing refresh token (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Refresh token unknown, expired, revoked or reused (code INVALID_REFRESH_TOKEN): log in again",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/password/request" : {
       "post" : {
         "tags" : [ "auth-controller" ],
@@ -4070,8 +4149,16 @@
       "post" : {
         "tags" : [ "auth-controller" ],
         "summary" : "Finish a password change",
-        "description" : "JSON body: `code` from the email and `newPassword` (same rules as registration).",
+        "description" : "JSON body: `code` from the email and `newPassword` (same rules as registration).\nLogs out every other session of the account; this one stays logged in.\n",
         "operationId" : "confirmPasswordChange",
+        "parameters" : [ {
+          "name" : "Authorization",
+          "in" : "header",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -4149,6 +4236,68 @@
         "security" : [ {
           "bearerAuth" : [ ]
         } ]
+      }
+    },
+    "/api/auth/logout" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "summary" : "Log out",
+        "description" : "JSON body: `refreshToken`. Ends that session so its refresh token stops working. The current\ntoken still works until it expires (at most an hour), so the client should drop it too.\nAlways 204, also for an unknown token.\n",
+        "operationId" : "logout",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Logged out"
+          },
+          "400" : {
+            "description" : "Invalid or malformed body (codes INVALID_FIELD, MALFORMED_BODY)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 10 requests per minute per IP, shared by all /api/auth endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/auth/login" : {
@@ -4892,7 +5041,7 @@
       "get" : {
         "tags" : [ "user-controller" ],
         "summary" : "Get a user's profile",
-        "description" : "This will be a public endpoint. The playlists returned depend on who is asking:\n- If the person who makes the request is the profile owner: returns public AND private playlists.\n- If anyone else makes the request, or there is no token: returns public playlists only.\n`isMe` in the response is true when the caller is the profile owner.\nFor a signed-in caller viewing someone else, `compatibility`, `sharedArtists` and `sharedTags` hold\ntheir musical compatibility (see the `matches` event of `GET /api/users/me/events`). They're null\nwhen signed out, on the caller's own profile, or when either user has no plays or favorites yet.\nMaybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).\n",
+        "description" : "This will be a public endpoint. The playlists returned depend on who is asking:\n- If the person who makes the request is the profile owner: returns public AND private playlists.\n- If anyone else makes the request, or there is no token: returns public playlists only.\n`isMe` in the response is true when the caller is the profile owner.\nFor a signed-in caller viewing someone else, `compatibility`, `sharedArtists` and `sharedTags` hold\ntheir musical compatibility (see the `matches` event of `GET /api/users/me/events`). They're null\nwhen signed out, on the caller's own profile, or when either user has no plays or favorites yet.\n`recentPlays`, `topArtists`, `topAlbums` and `favoriteArtists` fill the profile's listening\nsections, so the page needs no other call for them. Only pieces the caller can play show up or\ncount. They (and the compatibility) are cached per caller for up to 2 minutes, and refreshed as\nsoon as the owner or the caller plays something or changes a favorite, so loading the profile\nagain (say after a follow) is cheap.\nMaybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).\n",
         "operationId" : "retrieveProfile",
         "parameters" : [ {
           "name" : "username",
@@ -6901,7 +7050,7 @@
       "get" : {
         "tags" : [ "album-controller" ],
         "summary" : "List a user's most played albums",
-        "description" : "Public; a token is optional. Up to 10 albums the user played most, all time, ties going to the\none played most recently. Only plays of pieces the caller can play on their own count, so the\nlist never reveals private pieces. `pieceCount` and `canEdit` are for the caller, as elsewhere.\nFor the profile's Top albums section.\n",
+        "description" : "Public; a token is optional. Up to 10 albums the user played most, all time, ties going to the\none played most recently. Only plays of pieces the caller can play on their own count, so the\nlist never reveals private pieces. `pieceCount` and `canEdit` are for the caller, as elsewhere.\nThe profile response already includes this as `topAlbums`.\n",
         "operationId" : "getTopAlbums",
         "parameters" : [ {
           "name" : "username",
@@ -8229,7 +8378,7 @@
       },
       "AuthResponse" : {
         "type" : "object",
-        "description" : "Session returned by register and login",
+        "description" : "Session returned by register, login and refresh",
         "properties" : {
           "token" : {
             "type" : "string",
@@ -8242,11 +8391,35 @@
             "description" : "When the token stops being valid (UTC)",
             "example" : "2026-10-25T12:00:00Z"
           },
+          "refreshToken" : {
+            "type" : "string",
+            "description" : "Single-use token for POST /api/auth/refresh; each refresh returns a new one",
+            "example" : "Q2xhdWRl..."
+          },
+          "refreshExpiresAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the refresh token stops being valid (UTC); renewed on every refresh",
+            "example" : "2026-11-24T11:00:00Z"
+          },
           "user" : {
             "$ref" : "#/components/schemas/UserSummary",
             "description" : "The signed-in user"
           }
         }
+      },
+      "RefreshRequest" : {
+        "type" : "object",
+        "description" : "A refresh token from register, login or a previous refresh",
+        "properties" : {
+          "refreshToken" : {
+            "type" : "string",
+            "description" : "The `refreshToken` from the last AuthResponse",
+            "maxLength" : 128,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "refreshToken" ]
       },
       "PasswordChangeRequest" : {
         "type" : "object",
@@ -8402,6 +8575,67 @@
           }
         }
       },
+      "AlbumOverview" : {
+        "type" : "object",
+        "description" : "An album as shown on a card",
+        "properties" : {
+          "albumId" : {
+            "type" : "string",
+            "description" : "Public id of the album",
+            "example" : "l_4Hq9xT"
+          },
+          "albumName" : {
+            "type" : "string",
+            "description" : "Album name",
+            "example" : "Currents"
+          },
+          "coverUrl" : {
+            "type" : "string",
+            "description" : "Square WebP cover URL",
+            "example" : "https://aux.justinabruinsma.com/album-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "artistSummary" : {
+            "$ref" : "#/components/schemas/ArtistSummary",
+            "description" : "The album's artist"
+          },
+          "pieceCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Pieces in the album the caller can play on their own: public ones, plus the caller's private ones",
+            "example" : 12
+          },
+          "canEdit" : {
+            "type" : "boolean",
+            "description" : "Whether the caller can rename, re-cover or delete the album: they created it or its artist. False with no token",
+            "example" : false
+          }
+        }
+      },
+      "LastPlayback" : {
+        "type" : "object",
+        "description" : "The last music piece the caller played",
+        "properties" : {
+          "musicPiece" : {
+            "$ref" : "#/components/schemas/MusicPieceOverview",
+            "description" : "The music piece"
+          },
+          "playlistId" : {
+            "type" : "string",
+            "description" : "Public id of the playlist it was played from, or null",
+            "example" : "p_8sK2mQ"
+          },
+          "playlistOwnerUsername" : {
+            "type" : "string",
+            "description" : "Username of that playlist's owner, for the link /playlist/{ownerUsername}/{playlistId}; null when playlistId is null",
+            "example" : "justin"
+          },
+          "playlistName" : {
+            "type" : "string",
+            "description" : "That playlist's name; null when playlistId is null",
+            "example" : "Road trip"
+          }
+        }
+      },
       "ProfilePlaylist" : {
         "type" : "object",
         "description" : "A playlist as listed on a profile",
@@ -8457,6 +8691,34 @@
             "description" : "The user's playlists: public ones, plus private ones when the caller is the owner",
             "items" : {
               "$ref" : "#/components/schemas/ProfilePlaylist"
+            }
+          },
+          "recentPlays" : {
+            "type" : "array",
+            "description" : "Up to 10 pieces the user played most recently, newest first, one row per piece from its latest play. Only pieces the caller can play are listed; `isFavorite` and the playlist (left off when the caller can't see it) are the caller's view. Empty if none",
+            "items" : {
+              "$ref" : "#/components/schemas/LastPlayback"
+            }
+          },
+          "topArtists" : {
+            "type" : "array",
+            "description" : "Up to 10 artists the user played most, all time, ties going to the one played most recently. Only plays of pieces the caller can play count. Empty if none",
+            "items" : {
+              "$ref" : "#/components/schemas/ArtistSummary"
+            }
+          },
+          "topAlbums" : {
+            "type" : "array",
+            "description" : "Up to 10 albums the user played most, as in `GET /api/albums/top/{username}`. Empty if none",
+            "items" : {
+              "$ref" : "#/components/schemas/AlbumOverview"
+            }
+          },
+          "favoriteArtists" : {
+            "type" : "array",
+            "description" : "The user's favorite artists, newest favorite first, as in `GET /api/artists/favorites/{username}`. Empty if none",
+            "items" : {
+              "$ref" : "#/components/schemas/ArtistSummary"
             }
           },
           "isMe" : {
@@ -9139,42 +9401,6 @@
           }
         }
       },
-      "AlbumOverview" : {
-        "type" : "object",
-        "description" : "An album as shown on a card",
-        "properties" : {
-          "albumId" : {
-            "type" : "string",
-            "description" : "Public id of the album",
-            "example" : "l_4Hq9xT"
-          },
-          "albumName" : {
-            "type" : "string",
-            "description" : "Album name",
-            "example" : "Currents"
-          },
-          "coverUrl" : {
-            "type" : "string",
-            "description" : "Square WebP cover URL",
-            "example" : "https://aux.justinabruinsma.com/album-cover/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
-          },
-          "artistSummary" : {
-            "$ref" : "#/components/schemas/ArtistSummary",
-            "description" : "The album's artist"
-          },
-          "pieceCount" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Pieces in the album the caller can play on their own: public ones, plus the caller's private ones",
-            "example" : 12
-          },
-          "canEdit" : {
-            "type" : "boolean",
-            "description" : "Whether the caller can rename, re-cover or delete the album: they created it or its artist. False with no token",
-            "example" : false
-          }
-        }
-      },
       "TopAlbumsResponse" : {
         "type" : "object",
         "description" : "A user's most played albums",
@@ -9237,31 +9463,6 @@
           "errorDetails" : {
             "$ref" : "#/components/schemas/ErrorDetails",
             "description" : "What went wrong"
-          }
-        }
-      },
-      "LastPlayback" : {
-        "type" : "object",
-        "description" : "The last music piece the caller played",
-        "properties" : {
-          "musicPiece" : {
-            "$ref" : "#/components/schemas/MusicPieceOverview",
-            "description" : "The music piece"
-          },
-          "playlistId" : {
-            "type" : "string",
-            "description" : "Public id of the playlist it was played from, or null",
-            "example" : "p_8sK2mQ"
-          },
-          "playlistOwnerUsername" : {
-            "type" : "string",
-            "description" : "Username of that playlist's owner, for the link /playlist/{ownerUsername}/{playlistId}; null when playlistId is null",
-            "example" : "justin"
-          },
-          "playlistName" : {
-            "type" : "string",
-            "description" : "That playlist's name; null when playlistId is null",
-            "example" : "Road trip"
           }
         }
       },
