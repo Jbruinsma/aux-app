@@ -83,7 +83,7 @@ public class PlaybackEventService {
         return playEvents.findRecentPlaybacks(userId).stream().map(PlaybackEventService::toLastPlayback).toList();
     }
 
-    private static LastPlayback toLastPlayback(PlayEventRepository.LastPlaybackRow row) {
+    static LastPlayback toLastPlayback(PlayEventRepository.LastPlaybackRow row) {
         return new LastPlayback(
                 new MusicPieceOverview(
                         row.getMusicPieceId(),
@@ -104,7 +104,7 @@ public class PlaybackEventService {
                         TagRepository.split(row.getTags()),
                         row.getIsPublic() == 1,
                         row.getIsFavorite() == 1,
-                        true // findLastPlayback and findRecentPlaybacks only return pieces the user can play
+                        true // findLastPlayback and findRecentPlays only return pieces the user (or viewer) can play
                 ),
                 row.getPlaylistId().isEmpty() ? null : row.getPlaylistId(),
                 row.getPlaylistOwnerUsername().isEmpty() ? null : row.getPlaylistOwnerUsername(),
@@ -173,6 +173,7 @@ public class PlaybackEventService {
                 Set.of(user.getUserId()),
                 Set.of(LiveEventService.Section.RECENTS, LiveEventService.Section.TOP_ARTISTS)
         ));
+        events.publishEvent(new ProfileListeningService.Changed(user.getUserId()));
         // The player's taste changed, and with it their score with everyone online
         events.publishEvent(LiveEventService.Update.everyoneOnline(Set.of(LiveEventService.Section.MATCHES)));
     }

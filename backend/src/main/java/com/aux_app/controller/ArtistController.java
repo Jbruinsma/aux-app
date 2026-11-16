@@ -18,6 +18,7 @@ import com.aux_app.repository.MusicPieceRepository;
 import com.aux_app.repository.UserFavoriteArtistRepository;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.LiveEventService;
+import com.aux_app.services.ProfileListeningService;
 import com.aux_app.services.UploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -226,7 +227,7 @@ public class ArtistController {
         // Skip the save so a repeat call keeps the original created_at
         if (!this.favorites.existsById(id)) {
             this.favorites.save(new UserFavoriteArtistEntity(user.getUserId(), artist.getArtistId()));
-            publishMatches();
+            publishMatches(user);
         }
     }
 
@@ -241,7 +242,7 @@ public class ArtistController {
         ArtistEntity artist = this.artists.findByPublicId(artistId);
         if (artist != null) {
             this.favorites.deleteById(new UserFavoriteArtistId(user.getUserId(), artist.getArtistId()));
-            publishMatches();
+            publishMatches(user);
         }
     }
 
@@ -302,7 +303,8 @@ public class ArtistController {
 
 
     // A favorite artist is part of the user's taste, so their score with everyone online shifts
-    private void publishMatches() {
+    private void publishMatches(UserEntity user) {
+        events.publishEvent(new ProfileListeningService.Changed(user.getUserId()));
         events.publishEvent(LiveEventService.Update.everyoneOnline(Set.of(LiveEventService.Section.MATCHES)));
     }
 }

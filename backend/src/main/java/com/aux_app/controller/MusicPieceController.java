@@ -26,6 +26,7 @@ import com.aux_app.repository.UserFavoriteTrackRepository;
 import com.aux_app.services.AlbumService;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
+import com.aux_app.services.ProfileListeningService;
 import com.aux_app.services.RecommendationService;
 import com.aux_app.services.TagService;
 import com.aux_app.services.UploadService;
@@ -430,7 +431,7 @@ public class MusicPieceController {
         // Skip the save so a repeat call keeps the original created_at
         if (!this.favorites.existsById(id)) {
             this.favorites.save(new UserFavoriteTrackEntity(user.getUserId(), piece.getMusicPieceId()));
-            publishMatches();
+            publishMatches(user);
         }
     }
 
@@ -450,11 +451,12 @@ public class MusicPieceController {
 
         if (id != null && this.favorites.existsById(id)) {
             this.favorites.deleteById(id);
-            publishMatches();
+            publishMatches(user);
         }
     }
 
-    private void publishMatches() {
+    private void publishMatches(UserEntity user) {
+        events.publishEvent(new ProfileListeningService.Changed(user.getUserId()));
         events.publishEvent(LiveEventService.Update.everyoneOnline(Set.of(LiveEventService.Section.MATCHES)));
     }
 

@@ -49,13 +49,14 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                         first.getWebsite(),
                         first.getAbout()),
                 formatPlaylists(rows),
+                List.of(), List.of(), List.of(), List.of(), // listening: added by the controller (ProfileListeningService)
                 first.getUserId().equals(currentUserId),
                 Integer.valueOf(1).equals(first.getIsFollowing()),
                 Integer.valueOf(1).equals(first.getFollowingMe()),
                 UserProfile.compactCount(first.getFollowersCount()),
                 UserProfile.compactCount(first.getFollowingCount()),
                 UserProfile.compactCount(first.getUploadsCount()),
-                null, null, null); // compatibility: added by the controller for a signed-in viewer
+                null, null, null); // compatibility: likewise
     }
 
     private static @NonNull List<ProfilePlaylist> formatPlaylists(List<ProfileRow> rows) {
@@ -208,6 +209,28 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
             LIMIT 20
             """, nativeQuery = true)
     List<TopArtistRow> findTopArtistRows(@Param("userId") String userId);
+
+    default List<ArtistSummary> findProfileTopArtists(String ownerId, String viewerId) {
+        return findProfileTopArtistRows(ownerId, viewerId).stream()
+                .map(r -> new ArtistSummary(r.getArtistId(), r.getArtistName(), r.getArtistPfpUrl()))
+                .toList();
+    }
+
+    // For a profile: the owner's 10 most played artists, all time, ties going to the one played most recently. Only
+    // plays of pieces the viewer can play on their own count (as in AlbumRepository.findTopAlbums), so the list never
+    // reveals private pieces. :viewerId null (signed out) counts public pieces only.
+    @Query(value = """
+            SELECT a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl
+            FROM play_events pe
+            JOIN music_pieces mp ON mp.music_piece_id = pe.music_piece_id
+            JOIN artists a ON a.artist_id = mp.artist_id
+            WHERE pe.user_id = :ownerId
+              AND (mp.is_public = 1 OR mp.uploader_user_id = CAST(:viewerId AS varchar))
+            GROUP BY a.artist_id
+            ORDER BY COUNT(*) DESC, MAX(pe.played_at) DESC, a.artist_id
+            LIMIT 10
+            """, nativeQuery = true)
+    List<TopArtistRow> findProfileTopArtistRows(@Param("ownerId") String ownerId, @Param("viewerId") String viewerId);
 
     interface TopArtistRow {
         String getArtistId();

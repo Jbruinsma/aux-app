@@ -21,10 +21,9 @@ const piece = (id, artistId, playCount) => ({ tags: [],
   musicPieceId: id, name: `Song ${id}`, coverUrl: null, artistSummary: { artistId, artistName: `Artist ${artistId}`, artistPfpUrl: null }, playCount,
 })
 
-// The profile, favorites and (on your own profile) uploads
+// The profile (with its listening sections) and, on your own profile, uploads
 function backend(data, uploads = []) {
   fetchAPI.mockImplementation(async (url) => {
-    if (url.includes('/api/artists/favorites/')) return []
     if (url.includes('/api/music-pieces')) return { uploadedPiecesCount: uploads.length, uploadedMusicPieces: uploads }
     return data
   })
@@ -93,6 +92,27 @@ it('groups your uploads by artist, most played first, and plays them in that ord
   const playPieces = vi.spyOn(music, 'playPieces').mockReturnValue(true)
   await groups[1].get('button.play').trigger('click')
   expect(playPieces).toHaveBeenCalledWith([uploads[2], uploads[0], uploads[1]], 2)
+})
+
+it('fills recent tracks, top artists, favorite artists and top albums from the one profile call', async () => {
+  const recent = [piece('r1', 'a'), piece('r2', 'b')]
+  backend(profile({
+    recentPlays: recent.map((musicPiece) => ({ musicPiece, playlistId: null, playlistOwnerUsername: null, playlistName: null })),
+    topArtists: [{ artistId: 'a', artistName: 'Top One', artistPfpUrl: null }],
+    favoriteArtists: [{ artistId: 'f', artistName: 'Fave', artistPfpUrl: null }],
+    topAlbums: [{ albumId: 'l1', albumName: 'Currents', coverUrl: null, artistSummary: { artistId: 'a', artistName: 'Top One' }, pieceCount: 3, canEdit: false }],
+  }))
+  await render()
+  const section = (id) => wrapper.get(`section[aria-labelledby="${id}"]`)
+  expect(section('recent-heading').findAll('.tr').map((row) => row.get('.ti').text())).toEqual(['Song r1', 'Song r2'])
+  expect(section('artists-heading').text()).toContain('Top One')
+  expect(section('favorites-heading').text()).toContain('Fave')
+  expect(section('albums-heading').text()).toContain('Currents')
+  expect(fetchAPI.mock.calls.map(([url]) => url)).toEqual([expect.stringContaining('/api/users/profile/pal')])
+
+  const playPieces = vi.spyOn(useMusicStore(), 'playPieces').mockReturnValue(true)
+  await section('recent-heading').findAll('button.play')[1].trigger('click')
+  expect(playPieces).toHaveBeenCalledWith(recent, 1)
 })
 
 it("says other people's uploads are coming soon until the backend can list them", async () => {
