@@ -195,7 +195,7 @@ public class AlbumController {
                     Public; a token is optional. Up to 10 albums the user played most, all time, ties going to the
                     one played most recently. Only plays of pieces the caller can play on their own count, so the
                     list never reveals private pieces. `pieceCount` and `canEdit` are for the caller, as elsewhere.
-                    For the profile's Top albums section.
+                    The profile response already includes this as `topAlbums`.
                     """)
     @ApiResponse(responseCode = "200", description = "OK; `albums` is empty if the user hasn't played any album's pieces")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")

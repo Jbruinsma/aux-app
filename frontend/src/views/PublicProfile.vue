@@ -86,7 +86,15 @@
 
           <section aria-labelledby="recent-heading">
             <h2 id="recent-heading">Recent tracks</h2>
+            <TrackRows
+              v-if="recentPieces.length"
+              :pieces="recentPieces"
+              :label="`Songs @${profile.username} played recently, newest first`"
+              linked
+              @play="(index) => musicStore.playPieces(recentPieces, index)"
+            />
             <EmptyState
+              v-else
               title="No plays yet"
               :text="profile.isMe ? 'Play a song and it shows up here.' : `Songs @${profile.username} plays show up here.`"
             />
@@ -94,7 +102,9 @@
 
           <section aria-labelledby="artists-heading">
             <h2 id="artists-heading">Top artists</h2>
+            <ArtistGrid v-if="profile.topArtists?.length" :artists="profile.topArtists" :add-music="false" />
             <EmptyState
+              v-else
               icon="mic"
               title="No top artists yet"
               :text="profile.isMe
@@ -105,22 +115,22 @@
 
           <section aria-labelledby="favorites-heading">
             <h2 id="favorites-heading">Favorite artists</h2>
-            <EmptyState v-if="favorites.error" tone="error" icon="mic" :title="favorites.error" text="Check that the server is running, then refresh the page." />
-            <EmptyState v-else-if="favorites.loading" tone="loading" icon="mic" title="Loading favorite artists…" />
+            <ArtistGrid v-if="profile.favoriteArtists?.length" :artists="profile.favoriteArtists" :add-music="false" />
             <EmptyState
-              v-else-if="!favorites.items.length"
+              v-else
               icon="mic"
               title="No favorite artists yet"
               :text="profile.isMe
                 ? 'Favorite an artist from their page and they show up here.'
                 : `Artists @${profile.username} favorites show up here.`"
             />
-            <ArtistGrid v-else :artists="favorites.items" :add-music="false" />
           </section>
 
           <section aria-labelledby="albums-heading">
             <h2 id="albums-heading">Top albums</h2>
+            <AlbumGrid v-if="profile.topAlbums?.length" :albums="profile.topAlbums" />
             <EmptyState
+              v-else
               icon="disc"
               title="No top albums yet"
               :text="profile.isMe
@@ -203,6 +213,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AlbumGrid from '@/components/AlbumGrid.vue'
 import ArtistGrid from '@/components/ArtistGrid.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import FollowListDialog from '@/components/FollowListDialog.vue'
@@ -215,7 +226,6 @@ import { useUserStore } from '@/stores/user.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 import { COUNTRIES } from '@/utils/countries.js'
 import { compatibilityLevel, nameSeparator } from '@/utils/matches.js'
-import { fetchFavoriteArtists } from '@/utils/artist.js'
 import { FOLLOWS_MOCKED, isFriend, setFollowing } from '@/utils/follows.js'
 import { USER_UPLOADS_MOCKED, fetchUploads, fetchUserUploads, groupByArtist } from '@/utils/music.js'
 import { useMusicStore } from '@/stores/music.js'
@@ -254,7 +264,7 @@ const pictureUrl = computed(() => (profile.value?.pfpUrl ? resolveCoverURL(profi
 const bannerUrl = computed(() => (profile.value?.bannerUrl ? resolveCoverURL(profile.value.bannerUrl) : ''))
 const countryName = computed(() => COUNTRIES.find((c) => c.code === profile.value?.profileDetails?.country)?.name ?? '')
 
-// Playlists here are already filtered by the backend: other people only see public ones
+// One call for everything but uploads. Playlists are already filtered by the backend: other people only see public ones
 async function loadProfile() {
   const requested = username.value
   status.value = 'loading'
@@ -318,22 +328,9 @@ async function glideToTopAfterRefresh() {
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
 }
 
-// GET /api/artists/favorites/{username}, newest first
-const favorites = reactive({ items: [], loading: true, error: '' })
-
-async function loadFavorites() {
-  const requested = username.value
-  Object.assign(favorites, { items: [], loading: true, error: '' })
-  try {
-    const items = await fetchFavoriteArtists(requested)
-    if (requested === username.value) favorites.items = items ?? []
-  } catch (err) {
-    if (err.sessionEnded || requested !== username.value) return
-    favorites.error = "We couldn't load favorite artists."
-  } finally {
-    if (requested === username.value) favorites.loading = false
-  }
-}
+// The listening sections (recent plays, top artists and albums, favorite artists) come with the profile. The server
+// caches them, so refreshProfile after a follow doesn't redo them. Recent plays play as a queue from the one clicked
+const recentPieces = computed(() => (profile.value?.recentPlays ?? []).map((play) => play.musicPiece))
 
 // Uploads: your own from GET /api/music-pieces; anyone else's need GET /api/users/{username}/music-pieces, which isn't in
 // the API yet (USER_UPLOADS_MOCKED). Shown grouped by artist, most played first
@@ -382,7 +379,6 @@ async function goToUploads() {
 
 watch(username, () => {
   loadProfile()
-  loadFavorites()
   loadUploads()
 }, { immediate: true })
 </script>

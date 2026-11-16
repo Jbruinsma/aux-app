@@ -20,7 +20,8 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
-// Runs PlayEventRepository.findRecentPlaybacks on a real SQLite DB built by the Flyway migrations
+// Runs PlayEventRepository.findRecentPlays (findRecentPlaybacks and the profile's recent plays) on a real SQLite DB
+// built by the Flyway migrations
 class RecentPlaybacksQueryTest {
 
     // sqlite-jdbc types an expression column from the first row and Hibernate keeps that type for every row. A first
@@ -42,12 +43,7 @@ class RecentPlaybacksQueryTest {
             exec(db, "INSERT INTO play_events (play_event_id, user_id, music_piece_id, played_at, listen_duration_seconds, context_playlist_id) "
                     + "VALUES ('old', 'caller', 'tagged', 1000, 60, 'pl'), ('new', 'caller', 'bare', 2000, 60, NULL)");
 
-            String sql = PlayEventRepository.class.getMethod("findRecentPlaybacks", String.class)
-                    .getAnnotation(Query.class).value();
-            try (PreparedStatement statement = db.prepareStatement(sql.replace(":userId", "?"))) {
-                for (int i = 1; i <= statement.getParameterMetaData().getParameterCount(); i++) {
-                    statement.setString(i, "caller");
-                }
+            try (PreparedStatement statement = db.prepareStatement(recentPlaysSql("'caller'", "'caller'"))) {
                 try (ResultSet rows = statement.executeQuery()) {
                     assertTrue(rows.next());
                     assertEquals("m_bare", rows.getString("musicPieceId"));
@@ -134,15 +130,64 @@ class RecentPlaybacksQueryTest {
                 assertEquals(1790099688008L, row.getLong(1)); // fractional seconds kept
                 assertEquals("integer", row.getString(2));
             }
-            assertEquals(List.of("m_one", "m_two"), pieceIds(db, "findRecentPlaybacks"));
-            assertEquals(List.of("m_one"), pieceIds(db, "findLastPlayback"));
+            assertEquals(List.of("m_one", "m_two"), pieceIds(db, recentPlaysSql("'caller'", "'caller'")));
+            assertEquals(List.of("m_one"), pieceIds(db, lastPlaybackSql()));
         }
     }
 
-    private static List<String> pieceIds(Connection db, String method) throws Exception {
-        String sql = PlayEventRepository.class.getMethod(method, String.class).getAnnotation(Query.class).value();
+    // On a profile the viewer sees only what they could play: public pieces and their own uploads, the playlist only
+    // when they can see it, and their own favorites
+    @Test
+    void profileShowsOnlyWhatTheViewerCanPlay(@TempDir Path dir) throws Exception {
+        String url = "jdbc:sqlite:" + dir.resolve("test.db");
+        Flyway.configure().dataSource(url, null, null).load().migrate();
+
+        try (Connection db = DriverManager.getConnection(url)) {
+            exec(db, "INSERT INTO users (user_id, username, email, password_hash, onboarding_step, public_id) VALUES "
+                    + "('owner', 'owner', 'o@x', 'x', 'DONE', 'u_o'), ('viewer', 'viewer', 'v@x', 'x', 'DONE', 'u_v')");
+            exec(db, "INSERT INTO artists (artist_id, artist_name, public_id) VALUES ('A', 'A', 'a_A')");
+            exec(db, "INSERT INTO playlists (playlist_id, owner_id, is_public, playlist_name, public_id) "
+                    + "VALUES ('secret', 'owner', 0, 'Secret mix', 'p_secret')");
+            exec(db, "INSERT INTO music_pieces (music_piece_id, uploader_user_id, artist_id, mp3_file_url, is_public, public_id, name) VALUES "
+                    + "('pub', 'owner', 'A', 'x', 1, 'm_pub', 'pub'), "
+                    + "('ownersPrivate', 'owner', 'A', 'x', 0, 'm_op', 'op'), "
+                    + "('viewersPrivate', 'viewer', 'A', 'x', 0, 'm_vp', 'vp')");
+            exec(db, "INSERT INTO user_favorite_tracks (user_id, music_piece_id) VALUES ('viewer', 'pub')");
+            exec(db, "INSERT INTO play_events (play_event_id, user_id, music_piece_id, played_at, listen_duration_seconds, context_playlist_id) VALUES "
+                    + "('p1', 'owner', 'pub', 1000, 60, 'secret'), "
+                    + "('p2', 'owner', 'ownersPrivate', 2000, 60, NULL), "
+                    + "('p3', 'owner', 'viewersPrivate', 3000, 60, NULL)");
+
+            assertEquals(List.of("m_op", "m_pub"), pieceIds(db, recentPlaysSql("'owner'", "'owner'")));
+            assertEquals(List.of("m_vp", "m_pub"), pieceIds(db, recentPlaysSql("'owner'", "'viewer'")));
+            assertEquals(List.of("m_pub"), pieceIds(db, recentPlaysSql("'owner'", "NULL")));
+
+            try (Statement statement = db.createStatement();
+                 ResultSet rows = statement.executeQuery(recentPlaysSql("'owner'", "'viewer'"))) {
+                assertTrue(rows.next());
+                assertTrue(rows.next());
+                assertEquals("m_pub", rows.getString("musicPieceId"));
+                assertEquals("", rows.getString("playlistId")); // the viewer can't see the owner's private playlist
+                assertEquals(1, rows.getInt("isFavorite"));
+            }
+        }
+    }
+
+    // owner and viewer are SQL literals: 'id' or NULL
+    private static String recentPlaysSql(String owner, String viewer) throws Exception {
+        return PlayEventRepository.class.getMethod("findRecentPlays", String.class, String.class, int.class)
+                .getAnnotation(Query.class).value()
+                .replace(":ownerId", owner).replace(":viewerId", viewer).replace(":limit", "20");
+    }
+
+    private static String lastPlaybackSql() throws Exception {
+        return PlayEventRepository.class.getMethod("findLastPlayback", String.class)
+                .getAnnotation(Query.class).value().replace(":userId", "'caller'");
+    }
+
+    private static List<String> pieceIds(Connection db, String sql) throws Exception {
         List<String> ids = new ArrayList<>();
-        try (PreparedStatement statement = db.prepareStatement(sql.replace(":userId", "'caller'"));
+        try (PreparedStatement statement = db.prepareStatement(sql);
              ResultSet rows = statement.executeQuery()) {
             while (rows.next()) ids.add(rows.getString("musicPieceId"));
         }

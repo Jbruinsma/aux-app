@@ -5,9 +5,9 @@ import com.aux_app.repository.FollowRepository;
 import com.aux_app.repository.ProfileDetailsRepository;
 import com.aux_app.repository.UserPlayPreferencesRepository;
 import com.aux_app.services.AccountService;
-import com.aux_app.services.CompatibilityService;
 import com.aux_app.services.LiveEventService;
 import com.aux_app.services.PlaybackEventService;
+import com.aux_app.services.ProfileListeningService;
 import com.aux_app.services.SessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -60,7 +60,7 @@ public class UserController {
     private final SessionService sessions;
     private final LiveEventService liveEvents;
     private final FollowRepository follows;
-    private final CompatibilityService compatibility;
+    private final ProfileListeningService listening;
     private final AccountService accounts;
     private final ApplicationEventPublisher events;
     private final FriendsService friends;
@@ -76,7 +76,7 @@ public class UserController {
             SessionService sessions,
             LiveEventService liveEvents,
             FollowRepository follows,
-            CompatibilityService compatibility,
+            ProfileListeningService listening,
             AccountService accounts,
             ApplicationEventPublisher events,
             FriendsService friends
@@ -91,7 +91,7 @@ public class UserController {
         this.sessions = sessions;
         this.liveEvents = liveEvents;
         this.follows = follows;
-        this.compatibility = compatibility;
+        this.listening = listening;
         this.accounts = accounts;
         this.events = events;
         this.friends = friends;
@@ -153,6 +153,11 @@ public class UserController {
                     For a signed-in caller viewing someone else, `compatibility`, `sharedArtists` and `sharedTags` hold
                     their musical compatibility (see the `matches` event of `GET /api/users/me/events`). They're null
                     when signed out, on the caller's own profile, or when either user has no plays or favorites yet.
+                    `recentPlays`, `topArtists`, `topAlbums` and `favoriteArtists` fill the profile's listening
+                    sections, so the page needs no other call for them. Only pieces the caller can play show up or
+                    count. They (and the compatibility) are cached per caller for up to 2 minutes, and refreshed as
+                    soon as the owner or the caller plays something or changes a favorite, so loading the profile
+                    again (say after a follow) is cheap.
                     Maybe add a `public view` switch in the frontend so the owner can toggle between views (do not make separate API calls).
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
@@ -161,12 +166,8 @@ public class UserController {
             @Parameter(description = "Username of the profile owner", example = "justin") @PathVariable String username,
             @OptionalCurrentUser UserEntity user
     ) {
-        String currentUserId = (user != null) ? user.getUserId() : null;
-
-        UserProfile userProfile = users.findProfile(
-                username,
-                currentUserId
-        );
+        UserEntity owner = users.findByUsernameIgnoreCase(username);
+        UserProfile userProfile = owner == null ? null : users.findProfile(username, user == null ? null : user.getUserId());
 
         if (userProfile == null) {
             throw new AuxException(
@@ -177,13 +178,9 @@ public class UserController {
             );
         }
 
-        if (user != null && !userProfile.isMe()) {
-            CompatibilityMatch match = compatibility.pair(user.getUserId(), users.findByUsernameIgnoreCase(username));
-            if (match != null) {
-                return userProfile.withCompatibility(match);
-            }
-        }
-        return userProfile;
+        ProfileListeningService.Listening sections = listening.get(owner, user);
+        return userProfile.withListening(sections.recentPlays(), sections.topArtists(), sections.topAlbums(),
+                sections.favoriteArtists(), sections.compatibility());
     }
 
     @PutMapping("/{username}/follow")

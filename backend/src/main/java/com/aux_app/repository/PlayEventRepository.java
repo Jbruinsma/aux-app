@@ -53,14 +53,21 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             """, nativeQuery = true)
     LastPlaybackRow findLastPlayback(@Param("userId") String userId);
 
-    // The user's 20 most recently played distinct pieces they can still play, newest first, one row per piece from its
-    // latest play. Same visibility rules as findLastPlayback.
+    // The user's 20 most recently played distinct pieces they can still play, newest first (the dashboard's recents)
+    default List<LastPlaybackRow> findRecentPlaybacks(String userId) {
+        return findRecentPlays(userId, userId, 20);
+    }
+
+    // :ownerId's :limit most recently played distinct pieces that :viewerId can play, newest first, one row per piece
+    // from its latest play. Same visibility rules as findLastPlayback, applied to the viewer: favorites and the
+    // playlist the play came from are the viewer's too, and a playlist they can't see is left off. :viewerId null
+    // (signed out) sees public pieces only.
     @Query(value = """
             WITH latest AS (
                 SELECT pe.music_piece_id, pe.context_playlist_id, pe.played_at,
                        ROW_NUMBER() OVER (PARTITION BY pe.music_piece_id ORDER BY pe.played_at DESC) AS rn
                 FROM play_events pe
-                WHERE pe.user_id = :userId
+                WHERE pe.user_id = :ownerId
             )
             SELECT mp.public_id AS musicPieceId, mp.name AS name, mp.cover_url AS coverUrl,
                    a.public_id AS artistId, a.artist_name AS artistName, a.artist_pfp_url AS artistPfpUrl,
@@ -68,11 +75,11 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
                    CAST(mp.is_public AS INTEGER) AS isPublic, CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite,
                    al.public_id AS albumId, al.album_name AS albumName,
                    CAST(mp.uses_album_cover AS INTEGER) AS usesAlbumCover,
-                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = CAST(:viewerId AS varchar) OR m.status = 'ACCEPTED'
                         THEN p.public_id END, '') AS playlistId, -- '' not NULL: see TagRepository.PIECE_TAGS
-                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = CAST(:viewerId AS varchar) OR m.status = 'ACCEPTED'
                         THEN po.username END, '') AS playlistOwnerUsername,
-                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = :userId OR m.status = 'ACCEPTED'
+                   COALESCE(CASE WHEN p.is_public = 1 OR p.owner_id = CAST(:viewerId AS varchar) OR m.status = 'ACCEPTED'
                         THEN p.playlist_name END, '') AS playlistName,
             """ + TagRepository.PIECE_TAGS + """
              AS tags
@@ -81,20 +88,21 @@ public interface PlayEventRepository extends JpaRepository<PlayEventEntity, Stri
             JOIN artists a ON a.artist_id = mp.artist_id
             JOIN users u ON u.user_id = mp.uploader_user_id
             LEFT JOIN albums al ON al.album_id = mp.album_id
-            LEFT JOIN user_favorite_tracks f ON f.user_id = :userId AND f.music_piece_id = mp.music_piece_id
+            LEFT JOIN user_favorite_tracks f ON f.user_id = CAST(:viewerId AS varchar) AND f.music_piece_id = mp.music_piece_id
             LEFT JOIN playlists p ON p.playlist_id = l.context_playlist_id
-            LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = :userId
+            LEFT JOIN playlist_members m ON m.playlist_id = p.playlist_id AND m.user_id = CAST(:viewerId AS varchar)
             LEFT JOIN users po ON po.user_id = p.owner_id
             WHERE l.rn = 1
-              AND (mp.is_public = 1 OR mp.uploader_user_id = :userId
-                   OR (COALESCE(p.is_public, 0) = 0 AND (p.owner_id = :userId OR m.status = 'ACCEPTED')
+              AND (mp.is_public = 1 OR mp.uploader_user_id = CAST(:viewerId AS varchar)
+                   OR (COALESCE(p.is_public, 0) = 0 AND (p.owner_id = CAST(:viewerId AS varchar) OR m.status = 'ACCEPTED')
                        AND (mp.uploader_user_id = p.owner_id OR EXISTS (
                            SELECT 1 FROM playlist_members um WHERE um.playlist_id = p.playlist_id
                              AND um.user_id = mp.uploader_user_id AND um.status = 'ACCEPTED'))))
             ORDER BY l.played_at DESC
-            LIMIT 20
+            LIMIT :limit
             """, nativeQuery = true)
-    List<LastPlaybackRow> findRecentPlaybacks(@Param("userId") String userId);
+    List<LastPlaybackRow> findRecentPlays(@Param("ownerId") String ownerId, @Param("viewerId") String viewerId,
+                                          @Param("limit") int limit);
 
     interface LastPlaybackRow {
         String getMusicPieceId();

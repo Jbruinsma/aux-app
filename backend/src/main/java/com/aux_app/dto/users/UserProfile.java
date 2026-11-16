@@ -2,6 +2,7 @@ package com.aux_app.dto.users;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import com.aux_app.dto.album.AlbumOverview;
 import com.aux_app.dto.artist.ArtistSummary;
 import com.aux_app.dto.playlist.ProfilePlaylist;
 
@@ -17,6 +18,10 @@ public record UserProfile(
         @Schema(description = "Banner URL", example = "https://aux.justinabruinsma.com/banner/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp") String bannerUrl,
         @Schema(description = "Optional profile fields") ProfileDetails profileDetails,
         @Schema(description = "The user's playlists: public ones, plus private ones when the caller is the owner") List<ProfilePlaylist> playlists,
+        @Schema(description = "Up to 10 pieces the user played most recently, newest first, one row per piece from its latest play. Only pieces the caller can play are listed; `isFavorite` and the playlist (left off when the caller can't see it) are the caller's view. Empty if none") List<LastPlayback> recentPlays,
+        @Schema(description = "Up to 10 artists the user played most, all time, ties going to the one played most recently. Only plays of pieces the caller can play count. Empty if none") List<ArtistSummary> topArtists,
+        @Schema(description = "Up to 10 albums the user played most, as in `GET /api/albums/top/{username}`. Empty if none") List<AlbumOverview> topAlbums,
+        @Schema(description = "The user's favorite artists, newest favorite first, as in `GET /api/artists/favorites/{username}`. Empty if none") List<ArtistSummary> favoriteArtists,
         @Schema(description = "Whether the caller owns this profile", example = "false") boolean isMe,
         @Schema(description = "Whether the caller follows this user", example = "true") boolean isFollowing,
         @Schema(description = "Whether this user follows the caller", example = "false") boolean followingMe,
@@ -27,9 +32,17 @@ public record UserProfile(
         @Schema(description = "Up to 3 artists both listen to, the one both play most first. Null when `compatibility` is") List<ArtistSummary> sharedArtists,
         @Schema(description = "Up to 3 curated tags both listen to, strongest first. Null when `compatibility` is", example = "[\"r&b\", \"chill\"]") List<String> sharedTags
 ) {
-    public UserProfile withCompatibility(CompatibilityMatch match) {
-        return new UserProfile(username, pfpUrl, bannerUrl, profileDetails, playlists, isMe, isFollowing, followingMe,
-                followersCount, followingCount, uploadsCount, match.compatibility(), match.sharedArtists(), match.sharedTags());
+    // The listening sections and compatibility, which ProfileListeningService loads and caches. A null match leaves
+    // compatibility, sharedArtists and sharedTags null
+    public UserProfile withListening(List<LastPlayback> recentPlays, List<ArtistSummary> topArtists,
+                                     List<AlbumOverview> topAlbums, List<ArtistSummary> favoriteArtists,
+                                     CompatibilityMatch match) {
+        return new UserProfile(username, pfpUrl, bannerUrl, profileDetails, playlists,
+                recentPlays, topArtists, topAlbums, favoriteArtists, isMe, isFollowing, followingMe,
+                followersCount, followingCount, uploadsCount,
+                match == null ? null : match.compatibility(),
+                match == null ? null : match.sharedArtists(),
+                match == null ? null : match.sharedTags());
     }
 
     public static String compactCount(int count) {
