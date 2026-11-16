@@ -68,20 +68,25 @@
         </aside>
 
         <div class="main-col">
-          <section v-if="compatibility" class="compatibility" aria-label="Musical compatibility">
-            <div class="compatibility-top">
-              <img v-if="pictureUrl" class="compatibility-avatar" :src="pictureUrl" alt="" />
-              <span v-else class="compatibility-avatar compatibility-initial" aria-hidden="true">{{ profile.username.charAt(0).toUpperCase() }}</span>
-              <p class="compatibility-line">Your musical compatibility with <b>{{ profile.username }}</b> is <span class="compatibility-level">{{ compatibility.label }}</span></p>
+          <section v-if="compatibility" class="compatibility" aria-labelledby="compatibility-heading">
+            <h2 id="compatibility-heading">Your compatibility</h2>
+            <div class="compatibility-body">
+              <p class="compatibility-score">
+                <span class="compatibility-percent">{{ profile.compatibility }}<span class="compatibility-unit">%</span></span>
+                <span class="compatibility-level">{{ compatibility.label }}</span>
+              </p>
+              <div class="compatibility-meter" role="img" :aria-label="`${profile.compatibility} percent compatible`">
+                <span v-for="n in 5" :key="n" class="compatibility-segment" :class="{ filled: n <= compatibility.filled }"></span>
+              </div>
+              <p v-if="sharedNames.length" class="compatibility-shared">
+                You both listen to
+                <template v-for="(item, index) in sharedNames" :key="item.name"><router-link
+                  v-if="item.artistId"
+                  class="compatibility-artist"
+                  :to="{ name: 'Artist', params: { artistId: item.artistId } }"
+                ><b>{{ item.name }}</b></router-link><b v-else>{{ item.name }}</b>{{ nameSeparator(index, sharedNames.length) }}</template>.
+              </p>
             </div>
-            <div class="compatibility-meter" role="img" :aria-label="`${profile.compatibility} percent compatible`">
-              <span v-for="n in 5" :key="n" class="compatibility-segment" :class="{ filled: n <= compatibility.filled }"></span>
-              <span class="compatibility-percent">{{ profile.compatibility }}%</span>
-            </div>
-            <p v-if="sharedNames.length" class="compatibility-shared">
-              You both listen to
-              <template v-for="(name, index) in sharedNames" :key="name"><b>{{ name }}</b>{{ nameSeparator(index, sharedNames.length) }}</template>.
-            </p>
           </section>
 
           <section aria-labelledby="recent-heading">
@@ -245,7 +250,10 @@ const compatibility = computed(() => profile.value?.compatibility == null ? null
 const sharedNames = computed(() => {
   if (!profile.value?.compatibility) return []
   const artists = profile.value.sharedArtists ?? []
-  return (artists.length ? artists.map((artist) => artist.artistName) : profile.value.sharedTags ?? []).slice(0, 3)
+  const items = artists.length
+    ? artists.map((artist) => ({ name: artist.artistName, artistId: artist.artistId }))
+    : (profile.value.sharedTags ?? []).map((tag) => ({ name: tag }))
+  return items.slice(0, 3)
 })
 
 // Counts come formatted by the server ("1.2K"). Followers and Following open their lists, unless the user's
@@ -399,19 +407,19 @@ p.page-state { display: block; }
 .side { position: sticky; top: calc(var(--header-height) + env(safe-area-inset-top, 0px)); align-self: start; height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px)); overflow-y: auto; }
 .main-col { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8) 0 var(--space-8) var(--space-8); border-left: 1px solid var(--line); }
 
-.compatibility { background: var(--surface-alt); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-3); max-width: 420px; padding: var(--space-4); }
-.compatibility-top { align-items: center; display: flex; gap: var(--space-3); }
-.compatibility-avatar { border-radius: var(--radius-pill); flex: none; height: 44px; object-fit: cover; width: 44px; }
-.compatibility-initial { background: var(--primary); color: var(--on-primary); display: grid; font: 700 17px/1 var(--font-sans); place-items: center; }
-.compatibility-line { font: 400 15px/22px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
-.compatibility-line b { font-weight: 600; }
-.compatibility-level { color: var(--link); font-weight: 700; }
-.compatibility-meter { align-items: center; display: flex; gap: var(--space-1); }
-.compatibility-segment { background: var(--surface); border-radius: 2px; flex: 1; height: 8px; }
+/* Same panel treatment as the other sections' content (EmptyState): hairline border, no fill */
+.compatibility-body { align-items: center; border: 1px solid var(--line); border-radius: var(--radius-md); column-gap: var(--space-6); display: grid; grid-template-columns: auto minmax(0, 1fr); padding: var(--space-4); row-gap: var(--space-4); }
+.compatibility-score { align-items: baseline; display: flex; gap: var(--space-2); margin: 0; }
+.compatibility-percent { font: 700 32px/36px var(--font-sans); font-variant-numeric: tabular-nums; }
+.compatibility-unit { color: var(--ink-muted); font-size: 18px; font-weight: 600; margin-left: 1px; }
+.compatibility-level { color: var(--link); font: 600 16px/24px var(--font-sans); }
+.compatibility-meter { display: flex; gap: var(--space-1); }
+.compatibility-segment { background: var(--line); border-radius: var(--radius-pill); flex: 1; height: 6px; }
 .compatibility-segment.filled { background: var(--purple); }
-.compatibility-percent { color: var(--ink-muted); font: 600 12px/16px var(--font-sans); margin-left: var(--space-2); }
-.compatibility-shared { color: var(--ink-muted); font: 500 14px/20px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
+.compatibility-shared { border-top: 1px solid var(--line); color: var(--ink-muted); font: 500 14px/20px var(--font-sans); grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; padding-top: var(--space-3); }
 .compatibility-shared b { color: var(--ink); font-weight: 600; }
+.compatibility-artist { border-radius: var(--radius-sm); text-decoration: none; }
+.compatibility-artist:hover b { color: var(--link); text-decoration: underline; }
 
 .badge { align-self: flex-start; margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--purple-soft); font: 600 12px/16px var(--font-sans); }
 .stats { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
@@ -438,5 +446,8 @@ a.group-head:hover .group-name { color: var(--link); text-decoration: underline;
   .side { position: static; height: auto; overflow: visible; margin-right: calc(-1 * var(--page-gutter)); border-bottom: 1px solid var(--line); }
   .side :deep(.body) { padding-right: var(--page-gutter); }
   .main-col { padding-left: var(--page-gutter); border-left: 0; }
+}
+@media (max-width: 480px) {
+  .compatibility-body { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
