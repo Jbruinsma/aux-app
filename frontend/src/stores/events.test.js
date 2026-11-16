@@ -118,3 +118,28 @@ it('closes the stream and forgets its data on disconnect', async () => {
   expect(events.uploads).toBeNull()
   expect(events.status).toBe('idle')
 })
+
+it('refreshes an expired token and reconnects instead of logging out', async () => {
+  vi.useFakeTimers()
+  const user = useUserStore()
+  user.startSession({
+    user: { userId: 'u1', username: 'me', onboardingStep: 'DONE' },
+    token: 'old-token', expiresAt: '2026-11-16T12:00:00Z', refreshToken: 'refresh-1',
+  })
+  const fetch = vi.fn()
+    .mockResolvedValueOnce(failure(401, 'INVALID_TOKEN'))
+    .mockResolvedValueOnce({
+      ok: true, status: 200,
+      json: async () => ({ user: { userId: 'u1' }, token: 'new-token', expiresAt: '2026-11-16T13:00:00Z', refreshToken: 'refresh-2' }),
+    })
+    .mockResolvedValue(stream([]))
+  vi.stubGlobal('fetch', fetch)
+  const events = useEventsStore()
+  events.connect()
+  await vi.advanceTimersByTimeAsync(0)
+
+  expect(user.loggedIn).toBe(true)
+  expect(router.replace).not.toHaveBeenCalled()
+  expect(fetch).toHaveBeenCalledTimes(3)
+  expect(fetch.mock.calls[2][1].headers).toMatchObject({ Authorization: 'Bearer new-token' })
+})

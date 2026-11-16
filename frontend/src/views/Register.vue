@@ -66,7 +66,7 @@ async function register() {
       email: email.value,
       password: password.value,
     })
-    userStore.login(response.user, response.token)
+    userStore.startSession(response)
     notification.success('Your account is created.')
     await router.push({ name: 'Onboarding' })
   } catch (err) {

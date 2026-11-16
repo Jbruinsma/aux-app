@@ -82,7 +82,7 @@ async function handleLogin() {
       password: password.value,
     })
 
-    userStore.login(response.user, response.token)
+    userStore.startSession(response)
     notification.success('You are logged in.')
 
     await router.push(route.query.redirect || '/music')

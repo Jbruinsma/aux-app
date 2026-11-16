@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import BottomPlayer from '@/components/BottomPlayer.vue'
@@ -22,6 +22,7 @@ import { useEventsStore } from '@/stores/events.js'
 
 import { fetchAPI } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
+import { keepSessionAlive } from '@/utils/session.js'
 
 const bannedRoutes = ['/', '/login', '/register', '/onboarding']
 
@@ -30,12 +31,17 @@ const userStore = useUserStore()
 const musicStore = useMusicStore()
 const eventsStore = useEventsStore()
 
-// One live stream per session: opens after login (once onboarding is done), restarts with a new token, closes on logout
+// Refreshes the token before it expires, so leaving music playing never logs anyone out
+onUnmounted(keepSessionAlive())
+
+// One live stream per session: opens after login (once onboarding is done), restarts for a different account, closes
+// on logout. A refreshed token doesn't restart it: the server ends the stream when its token expires and it reconnects
+// with the current one
 watch(
-  () => [userStore.loggedIn && userStore.onboarded, userStore.token],
-  ([active, token], [wasActive, previousToken] = []) => {
-    if (!active || !token) eventsStore.disconnect()
-    else if (wasActive && previousToken && token !== previousToken) eventsStore.restart()
+  () => [userStore.loggedIn && userStore.onboarded, userStore.userData?.userId],
+  ([active, userId], [wasActive, previousUserId] = []) => {
+    if (!active) eventsStore.disconnect()
+    else if (wasActive && previousUserId && userId !== previousUserId) eventsStore.restart()
     else eventsStore.connect()
   },
   { immediate: true },
@@ -51,9 +57,9 @@ const hideBottomPlayerOnThisRoute = computed(() => {
   return !(currentUser || musicStore.forceShowPlayerActive || musicStore.currentSong)
 })
 
-// Restore once per authenticated session, not on page changes. Ignore stale replies.
+// Restore once per login, not on page changes or token refreshes. Ignore stale replies.
 watch(
-  () => [userStore.loggedIn, userStore.token, userStore.onboarded],
+  () => [userStore.loggedIn, userStore.userData?.userId, userStore.onboarded],
   async ([loggedIn, , onboarded], previous, onCleanup) => {
     if (!loggedIn || !onboarded) return
     let cancelled = false

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ApiError, authHeaders, endSession } from '@/utils/api.js'
+import { ApiError, authHeaders, endSession, refreshSession } from '@/utils/api.js'
 import { API_BASE_URL } from '@/utils/variables.js'
 
 // GET /api/users/me/events: one server-sent-event stream that keeps the header, the Dashboard and Explore current. On connect the
@@ -108,10 +108,20 @@ export const useEventsStore = defineStore('events', () => {
       throw new Error('The event stream closed without sending anything')
     } catch (err) {
       if (signal.aborted) return
+      // The token expired before it was refreshed (a laptop waking up, say): refresh and reconnect. Only a refresh the
+      // server refuses ends the session
       if (err.status === 401) {
-        disconnect()
-        await endSession()
-        return
+        const outcome = await refreshSession()
+        if (signal.aborted) return
+        if (outcome === 'ok') {
+          scheduleReconnect(0)
+          return
+        }
+        if (outcome === 'ended') {
+          disconnect()
+          await endSession()
+          return
+        }
       }
       failures++
       status.value = 'error'

@@ -22,8 +22,8 @@ public class AccountService {
     private static final String PIECES = "(SELECT music_piece_id FROM music_pieces WHERE uploader_user_id = :userId)";
     private static final String PLAYLISTS = "(SELECT playlist_id FROM playlists WHERE owner_id = :userId)";
 
-    // In foreign-key order (foreign_keys is on). playlist_members, notifications, otp_codes and user_play_preferences
-    // cascade on their own. The user's pieces leave every playlist they were in, other people's plays and favorites
+    // In foreign-key order (foreign_keys is on). playlist_members, notifications, otp_codes, refresh_tokens and
+    // user_play_preferences cascade on their own. The user's pieces leave every playlist they were in, other people's plays and favorites
     // of them go too, and other people's plays from the user's playlists keep the play and lose the playlist.
     // Artists and albums the user created stay (other people's pieces may use them); only the creator link goes.
     static final List<String> DELETES = List.of(
