@@ -64,17 +64,21 @@ it('follows and unfollows, says Follow back to a follower, and marks friends', a
   expect(wrapper.get('.badge').text()).toBe('Friends')
 })
 
-it('opens your own follower and following lists from the counts, but not other people\'s yet', async () => {
+it('opens follower and following lists from the counts, unless canViewFollows is false', async () => {
   route.params = { username: 'me' }
   backend(profile({ username: 'me', isMe: true }))
   await render()
   const counts = wrapper.findAll('.stats button.stat-link')
   expect(counts.map((count) => count.text())).toEqual(['12', '8'])
 
-  // Nobody else's lists can be loaded until the backend lists followers (FOLLOWS_MOCKED)
   wrapper.unmount()
   route.params = { username: 'pal' }
   backend(profile())
+  await render()
+  expect(wrapper.findAll('.stats button.stat-link')).toHaveLength(2)
+
+  wrapper.unmount()
+  backend(profile({ canViewFollows: false }))
   await render()
   expect(wrapper.findAll('.stats button.stat-link')).toHaveLength(0)
   expect(wrapper.get('.stats').text()).toContain('12')

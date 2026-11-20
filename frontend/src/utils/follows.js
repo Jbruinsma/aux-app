@@ -4,11 +4,10 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const quiet = { notifyOnError: false }
 const userUrl = (username) => `${API_BASE_URL}/api/users/${encodeURIComponent(username)}`
 
-// The follower and following lists, and who may see them, aren't in the API yet (BACKEND_REQUESTS.md, "Follower and
-// following lists" and "Who can see your follows"). While this is true your own lists show your friends (GET
-// /api/users/me/friends), other people's can't be opened, and the visibility setting is kept in this browser; set it
-// to false once GET /api/users/{username}/followers, .../following and the followsVisibility setting exist
-export const FOLLOWS_MOCKED = true
+// Who may see someone's follows isn't in the API yet (BACKEND_REQUESTS.md, "Who can see your follows"). While this is
+// true the visibility setting is kept in this browser; set it to false once PUT /api/users/me/follows-visibility and
+// `followsVisibility` on GET /api/users/settings exist
+export const FOLLOWS_VISIBILITY_MOCKED = true
 
 // Who can see the people a user follows and is followed by. Friends are people who follow each other
 export const FOLLOWS_VISIBILITY = [
@@ -26,29 +25,10 @@ export function isFriend(user) {
   return Boolean(user?.isFollowing && user?.followsMe)
 }
 
-const FRIENDS_PAGE = 50
-
-// GET /api/users/me/friends (offset paging, `totalResults`) as a follow-list page. Friends follow the caller and are
-// followed back, so they belong on both of the caller's lists
-async function fetchFriendsPage(cursor) {
-  const offset = Number(cursor) || 0
-  const page = await fetchAPI(`${API_BASE_URL}/api/users/me/friends?${new URLSearchParams({ limit: FRIENDS_PAGE, offset })}`, quiet)
-  const friends = page?.friends ?? []
-  const users = friends.map(({ userId, username, pfpUrl }) => ({ userId, username, pfpUrl: pfpUrl ?? null, isFollowing: true, followsMe: true }))
-  const next = offset + friends.length
-  return { users, nextCursor: friends.length && next < (page?.totalResults ?? 0) ? String(next) : null }
-}
-
-// { users: [FollowUser], nextCursor, partial?, unavailable? }, newest follow first, 50 per page. FollowUser:
-// { userId, username, pfpUrl, isFollowing (the caller follows them), followsMe (they follow the caller) }. 403
-// FOLLOWS_HIDDEN when the user's followsVisibility doesn't include the caller; 404 USER_NOT_FOUND.
-// While FOLLOWS_MOCKED only real people are shown: the caller's own lists hold their friends (`partial`), and anyone
-// else's lists can't be loaded yet (`unavailable`)
-export function fetchFollowList(username, which, cursor = null, { own = false } = {}) {
-  if (FOLLOWS_MOCKED) {
-    if (!own) return Promise.resolve({ users: [], nextCursor: null, unavailable: true })
-    return fetchFriendsPage(cursor).then((page) => ({ ...page, partial: true }))
-  }
+// { users: [FollowUser], nextCursor }, newest follow first, 50 per page. FollowUser: { userId, username, pfpUrl,
+// isFollowing (the caller follows them), followsMe (they follow the caller) }. 403 FOLLOWS_HIDDEN when the user's
+// followsVisibility doesn't include the caller; 404 USER_NOT_FOUND
+export function fetchFollowList(username, which, cursor = null) {
   const query = cursor ? `?${new URLSearchParams({ cursor })}` : ''
   return fetchAPI(`${userUrl(username)}/${which === 'following' ? 'following' : 'followers'}${query}`, quiet)
 }
@@ -57,7 +37,7 @@ const visibilityKey = (userId) => `aux-follows-visibility-${userId}`
 
 // The caller's followsVisibility: from GET /api/users/settings once the backend sends it, from this browser until then
 export function readFollowsVisibility(settings, userId) {
-  if (!FOLLOWS_MOCKED) return settings?.followsVisibility ?? 'EVERYONE'
+  if (!FOLLOWS_VISIBILITY_MOCKED) return settings?.followsVisibility ?? 'EVERYONE'
   try {
     return localStorage.getItem(visibilityKey(userId)) ?? 'EVERYONE'
   } catch {
@@ -67,7 +47,7 @@ export function readFollowsVisibility(settings, userId) {
 
 // PUT /api/users/me/follows-visibility { followsVisibility }; returns the saved value
 export async function saveFollowsVisibility(followsVisibility, userId) {
-  if (!FOLLOWS_MOCKED) {
+  if (!FOLLOWS_VISIBILITY_MOCKED) {
     const saved = await request('PUT', `${API_BASE_URL}/api/users/me/follows-visibility`, { followsVisibility }, quiet)
     return saved?.followsVisibility ?? followsVisibility
   }
