@@ -23,8 +23,10 @@
             <EmptyState
               v-else-if="!recent.items.length"
               title="No plays yet"
-              text="Play a song from one of your playlists or uploads and it shows up here."
-            />
+              text="Play a song and it will show up here."
+            >
+              <router-link :to="{ name: 'Explore', query: { category: 'MUSIC' } }" class="btn secondary">Find songs</router-link>
+            </EmptyState>
             <div v-else class="scroll-area">
               <ul
                 ref="recentScroller"
@@ -103,11 +105,14 @@
             <EmptyState v-if="libraryError" tone="error" :title="libraryError" :text="STREAM_RETRY" />
             <EmptyState v-else-if="libraryLoading" tone="loading" title="Loading your library…" />
             <EmptyState
-              v-else-if="libraryFilter === 'saved' && filteredLibrary.length === 0"
-              title="Nothing saved yet"
-              text="Save a playlist from someone else and it shows up here."
+              v-else-if="!filteredLibrary.length"
+              :title="libraryFilter === 'saved' ? 'Nothing saved yet' : 'No playlists yet'"
+              :text="libraryFilter === 'saved'
+                ? 'Save a playlist from someone else and it shows up here.'
+                : 'Create a playlist to collect your favorite songs.'"
             >
-              <button type="button" class="btn secondary" @click="findPlaylists">Find playlists</button>
+              <button v-if="libraryFilter !== 'saved'" type="button" class="btn secondary" @click="createDialog.open()">Create playlist</button>
+              <router-link v-if="libraryFilter !== 'yours'" :to="explorePlaylists" class="btn secondary">Find playlists</router-link>
             </EmptyState>
             <PlaylistGrid v-else ref="libraryGrid" class="big-grid" :class="{ dragging: libraryDragging }" :playlists="shownLibrary" :owner="username">
               <li v-if="libraryFilter !== 'saved'">
@@ -198,8 +203,10 @@
                 v-else-if="!topArtists.items.length"
                 icon="mic"
                 title="No top artists yet"
-                text="Your most-played artists appear here once you've listened to a few songs."
-              />
+                text="Artists appear here as you listen to their songs."
+              >
+                <router-link :to="{ name: 'Artists' }" class="btn secondary">Find artists</router-link>
+              </EmptyState>
               <template v-else>
                 <ol class="artists" aria-label="Your Top Artists">
                   <li v-for="(artist, index) in shownArtists" :key="artist.artistId">
@@ -260,6 +267,7 @@ const LIBRARY_TABS = [
 const ARTISTS_PREVIEW_COUNT = 5
 
 const router = useRouter()
+const explorePlaylists = { name: 'Explore', query: { category: 'PLAYLISTS' } }
 const createDialog = ref(null)
 const editDialog = ref(null)
 const userStore = useUserStore()
@@ -314,10 +322,6 @@ function playRecent({ musicPiece, playlistId, playlistOwnerUsername, playlistNam
   return musicStore.playPlaylist(playlistId, { start: musicPiece.musicPieceId, shuffle: musicStore.shuffleOn, fallback: musicPiece, name: playlistName ?? null, ownerUsername: playlistOwnerUsername ?? null })
 }
 
-// Next step for an empty Saved tab: search playlists on Explore
-function findPlaylists() {
-  router.push({ name: 'Explore', query: { category: 'PLAYLISTS' } })
-}
 const libraryExpanded = ref(false)
 
 const filteredLibrary = computed(() => {
@@ -457,8 +461,6 @@ button.card-main:focus-visible, a.card-main:focus-visible { outline: 2px solid v
 .card-art { aspect-ratio: 1; background: var(--surface-alt); display: block; object-fit: cover; width: 100%; }
 .card-art-empty { color: var(--ink-muted); display: grid; place-items: center; }
 .card-icon { fill: none; height: 48px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; width: 48px; }
-.card-initial { background: var(--purple-soft); color: var(--link); font: 800 56px/1 var(--font-sans); }
-.rank { background: var(--primary); border-radius: var(--radius-pill); color: var(--on-primary); font: 600 12px/16px var(--font-sans); left: var(--space-3); padding: 2px var(--space-2); position: absolute; top: var(--space-3); }
 .card-body { background: var(--surface-alt); border-top: 1px solid var(--line); display: flex; flex: 1; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4); }
 .card-title { font: 600 16px/24px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 button.card-main:hover .card-title, a.card-main:hover .card-title, .playing .card-title { color: var(--link); }

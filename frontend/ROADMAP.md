@@ -11,12 +11,6 @@ ______________________________________________________
 
 ## P1: Do next
 
-### 9. Finish the empty states
-
-**Files:** `src/views/Dashboard.vue`
-
-- [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
-
 ### 28. Follower and following lists
 
 **Files:** new `src/components/FollowListDialog.vue`, `src/views/PublicProfile.vue`, `src/utils/follows.js`

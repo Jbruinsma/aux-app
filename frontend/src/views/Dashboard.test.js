@@ -12,14 +12,13 @@ import EditPieceDialog from '@/components/EditPieceDialog.vue'
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: {} }), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
-// The samples are switched off on main; turn them on here to check they only fill empty rows
-vi.mock('@/utils/dashboardPreview.js', async (original) => ({ ...(await original()), DASHBOARD_PREVIEW: true }))
 
 const piece = (n) => ({ tags: [],
   musicPieceId: `m${n}`, name: `Song ${n}`, coverUrl: null, artistSummary: { artistId: `a${n}`, artistName: `Artist ${n}` },
   uploader: { userId: `u${n}`, pfpUrl: null, username: `user${n}` }, isAvailable: true,
 })
 
+const openCreate = vi.fn()
 let wrapper
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -33,7 +32,16 @@ afterEach(() => {
 })
 
 async function render() {
-  wrapper = mount(Dashboard, { global: { stubs: { AppHeader: true, AppFooter: true, CreateDialog: true, RouterLink: { name: 'RouterLink', props: ['to'], template: '<a><slot /></a>' } } } })
+  wrapper = mount(Dashboard, {
+    global: {
+      stubs: {
+        AppHeader: true,
+        AppFooter: true,
+        CreateDialog: { template: '<div />', methods: { open: openCreate } },
+        RouterLink: { name: 'RouterLink', props: ['to'], template: '<a><slot /></a>' },
+      },
+    },
+  })
   await flushPromises()
 }
 
@@ -92,16 +100,9 @@ it('makes no REST calls for its rows, which load from the event stream and updat
   }
 })
 
-it('fills empty rows with the samples, and shows all 20 recents in the scrolling row', async () => {
-  const events = useEventsStore()
-  events.recents = { recents: [] }
-  events.topArtists = { artists: [] }
+it('shows all 20 recents in the scrolling row', async () => {
+  useEventsStore().recents = { recents: Array.from({ length: 20 }, (_, i) => ({ musicPiece: piece(i), playlistId: null })) }
   await render()
-  expect(wrapper.findAll('section[aria-labelledby="recent-heading"] .card').length).toBeGreaterThan(0)
-  expect(section('artists-heading')).toContain('Frank Ocean')
-
-  events.recents = { recents: Array.from({ length: 20 }, (_, i) => ({ musicPiece: piece(i), playlistId: null })) }
-  await nextTick()
   expect(wrapper.findAll('section[aria-labelledby="recent-heading"] .card')).toHaveLength(20)
   expect(section('recent-heading')).toContain('The last songs you played, newest first.')
 })
@@ -141,24 +142,48 @@ it('links a recent card to the playlist it was played from, and nothing without 
   expect(JSON.parse(links[0].attributes('data-to'))).toEqual({ name: 'Playlist', params: { username: 'owner', id: 'p1' } })
 })
 
-it('does not make the sample recents playable', async () => {
-  useEventsStore().recents = { recents: [] }
+it('gives a new account a next step in every empty section and library filter', async () => {
+  const events = useEventsStore()
+  events.status = 'open'
+  events.recents = { recents: [] }
+  events.library = []
+  events.uploads = { uploadedPiecesCount: 0, uploadedMusicPieces: [] }
+  events.topArtists = { artists: [] }
   await render()
-  expect(wrapper.find('section[aria-labelledby="recent-heading"] button.card-main').exists()).toBe(false)
+
+  const empty = (heading) => wrapper.get(`section[aria-labelledby="${heading}"] .empty`)
+  for (const [heading, title, label, to] of [
+    ['recent-heading', 'No plays yet', 'Find songs', { name: 'Explore', query: { category: 'MUSIC' } }],
+    ['uploads-heading', 'No uploads yet', 'Upload music', { name: 'Upload' }],
+    ['artists-heading', 'No top artists yet', 'Find artists', { name: 'Artists' }],
+  ]) {
+    const state = empty(heading)
+    expect(state.get('.title').text()).toBe(title)
+    const link = state.getComponent({ name: 'RouterLink' })
+    expect(link.text()).toBe(label)
+    expect(link.props('to')).toEqual(to)
+  }
+
+  const library = () => empty('library-heading')
+  const findPlaylists = () => library().getComponent({ name: 'RouterLink' })
+  expect(library().get('.title').text()).toBe('No playlists yet')
+  expect(findPlaylists().text()).toBe('Find playlists')
+  await library().get('button').trigger('click')
+  expect(openCreate).toHaveBeenCalledOnce()
+
+  const tabs = wrapper.findAll('[aria-label="Library filter"] [role="tab"]')
+  await tabs[1].trigger('click')
+  expect(library().get('button').text()).toBe('Create playlist')
+  expect(library().find('a').exists()).toBe(false)
+  await tabs[2].trigger('click')
+  expect(library().get('.title').text()).toBe('Nothing saved yet')
+  expect(library().find('button').exists()).toBe(false)
+  expect(findPlaylists().props('to')).toEqual({ name: 'Explore', query: { category: 'PLAYLISTS' } })
 })
 
-it('shows uploads as cover cards that play with the rest queued after, and next steps on empty rows', async () => {
-  const events = useEventsStore()
-  events.uploads = { uploadedPiecesCount: 0, uploadedMusicPieces: [] }
-  events.library = []
+it('shows uploads as cover cards that play with the rest queued after', async () => {
+  useEventsStore().uploads = { uploadedPiecesCount: 2, uploadedMusicPieces: [piece(5), piece(6)] }
   await render()
-  expect(section('uploads-heading')).toContain('No uploads yet')
-  expect(section('uploads-heading')).toContain('Upload music')
-  await wrapper.findAll('section[aria-labelledby="library-heading"] .tab')[2].trigger('click')
-  expect(section('library-heading')).toContain('Find playlists')
-
-  events.uploads = { uploadedPiecesCount: 2, uploadedMusicPieces: [piece(5), piece(6)] }
-  await nextTick()
   const music = useMusicStore()
   const playPieces = vi.spyOn(music, 'playPieces').mockReturnValue(true)
   const cards = wrapper.findAll('section[aria-labelledby="uploads-heading"] .card button.card-main')
