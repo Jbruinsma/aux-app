@@ -5,7 +5,7 @@ its items are left. Git history keeps what's done. Exact request and response sh
 (`../backend/docs/index.html`); check them before wiring up an endpoint. If something the frontend needs isn't there,
 add it to `../backend/BACKEND_REQUESTS.md`.
 
-Last updated 2026-11-15.
+Last updated 2026-11-20.
 
 ______________________________________________________
 
@@ -17,19 +17,13 @@ ______________________________________________________
 
 - [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
 
-### 28. Follower and following lists
-
-**Files:** new `src/components/FollowListDialog.vue`, `src/views/PublicProfile.vue`, `src/utils/follows.js`
-**API:** `GET /api/users/{username}/followers`, `.../following` (not in the docs yet: "Follower and following lists" in `../backend/BACKEND_REQUESTS.md`)
-
-- [ ] Turn off `FOLLOWS_MOCKED` in `src/utils/follows.js` once the list endpoints are in the docs.
-
 ### 29. Who can see your follows
 
 **Files:** `src/views/Settings.vue`, `src/utils/follows.js`
 **API:** `PUT /api/users/me/follows-visibility`, `followsVisibility` on `GET /api/users/settings` ("Who can see your follows")
 
-- [ ] Turn off `FOLLOWS_MOCKED` (the choice is kept in this browser until then).
+- [ ] Turn off `FOLLOWS_VISIBILITY_MOCKED` (the choice is kept in this browser until then).
+- [ ] Check other people's counts stop opening their lists when the backend sends `canViewFollows: false`.
 
 ### 30. Follow notifications
 
@@ -136,7 +130,7 @@ order")
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-- **Tasks 28 and 29:** follower and following lists, `canViewFollows`, and `followsVisibility`.
+- **Task 29:** `canViewFollows`, `403 FOLLOWS_HIDDEN` and `followsVisibility`.
 - **Task 30:** the `NEW_FOLLOWER` notification type.
 - **Task 31:** a paged list of every artist.
 - **Task 32:** `GET /api/users/{username}/music-pieces`.

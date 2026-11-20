@@ -223,7 +223,7 @@
             </fieldset>
             <p id="follows-hint" class="hint">
               Applies to both lists on your profile: your followers and the people you follow. Your counts still show.
-              <template v-if="FOLLOWS_MOCKED"> For now this is saved on this browser only.</template>
+              <template v-if="FOLLOWS_VISIBILITY_MOCKED"> For now this is saved on this browser only.</template>
             </p>
             <p v-if="visibilityError" class="error" role="alert">{{ visibilityError }}</p>
           </section>
@@ -607,7 +607,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { BANNER_ERRORS, PHOTO_ERRORS, bannerProblem, photoProblem } from '@/utils/photo.js'
 import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerCropRect, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
 import { COUNTRIES } from '@/utils/countries.js'
-import { FOLLOWS_MOCKED, FOLLOWS_VISIBILITY, readFollowsVisibility, saveFollowsVisibility } from '@/utils/follows.js'
+import { FOLLOWS_VISIBILITY_MOCKED, FOLLOWS_VISIBILITY, readFollowsVisibility, saveFollowsVisibility } from '@/utils/follows.js'
 import { setSkipExternalWarning, skipExternalWarning } from '@/utils/externalLinks.js'
 import {
   EMAIL_MAX,

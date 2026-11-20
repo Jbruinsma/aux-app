@@ -7,7 +7,7 @@ endpoint before it exists, it's mocked in the frontend and the flag to switch it
 The Dashboard and the header get their data from the live event stream (`GET /api/users/me/events`), so changes to
 that data are asked for on the event, not on the REST endpoint it mirrors.
 
-Last checked against `main` on 2026-11-14.
+Last checked against `main` on 2026-11-20.
 
 Sections are referred to by title, not number, from the frontend's code and `ROADMAP.md`, so they stay findable when
 finished ones are removed. These were built on the frontend (Mo, 2026-11-13) against mocked data and are listed most
@@ -15,47 +15,14 @@ visible first; the frontend switches each one on by turning off the flag named i
 
 ______________________________________________________
 
-## Follower and following lists
-
-**Frontend:** `FollowListDialog.vue`, `PublicProfile.vue`, `src/utils/follows.js` (`FOLLOWS_MOCKED`). Roadmap task 28.
-
-**Most needed.** Until this exists the frontend can only show the caller's own lists, filled from
-`GET /api/users/me/friends` (people who follow each other), and other people's counts can't be opened. Every row needs
-a real `pfpUrl` (null only when the user has no picture) and the current `username`, because each row links to
-`/{username}`: a stale or wrong username lands on "This user isn't on Aux".
-
-### GET /api/users/{username}/followers?cursor=
-### GET /api/users/{username}/following?cursor=
-
-Public-ish: a token is optional, but `isFollowing`/`followsMe` need one. Newest follow first, 50 per page, with the
-same opaque cursor as the other paged lists.
-
-```json
-{
-  "users": [
-    { "userId": "u_8f2kD1", "username": "arjay", "pfpUrl": "https://…/pfp/….webp", "isFollowing": true, "followsMe": false }
-  ],
-  "nextCursor": "…"
-}
-```
-
-- `isFollowing`: the caller follows this user. `followsMe`: this user follows the caller. Both false without a token.
-  The frontend shows "Friends" when both are true.
-- `403 FOLLOWS_HIDDEN` when the user's follows visibility (next section) leaves the caller out. The user themselves can
-  always see their own lists.
-- `404 USER_NOT_FOUND` for an unknown username.
-
-### `canViewFollows` on GET /api/users/profile/{username}
-
-A boolean: whether the caller may open those lists. The profile shows the counts either way, but only makes them
-clickable when this is true. The frontend treats a missing field as true.
-
-______________________________________________________
-
 ## Who can see your follows (`followsVisibility`)
 
-**Frontend:** Settings → Profile → "Who can see your followers", `src/utils/follows.js` (`FOLLOWS_MOCKED`; the choice
-is kept in the browser until this exists). Roadmap task 29.
+**Frontend:** Settings → Profile → "Who can see your followers", `src/utils/follows.js` (`FOLLOWS_VISIBILITY_MOCKED`;
+the choice is kept in the browser until this exists), `FollowListDialog.vue`, `PublicProfile.vue`. Roadmap task 29.
+
+The follower and following lists (`GET /api/users/{username}/followers` and `.../following`) are live, but anyone can
+open anyone's. They should return `403 FOLLOWS_HIDDEN` when the user's follows visibility leaves the caller out; the
+user themselves can always see their own lists.
 
 ### PUT /api/users/me/follows-visibility
 
@@ -65,7 +32,12 @@ is kept in the browser until this exists). Roadmap task 29.
 
 Returns `{ "followsVisibility": "FRIENDS" }`. Values: `EVERYONE` (default), `FRIENDS` (people who follow each other
 with the user), `NO_ONE` (only the user). `400 INVALID_FIELD` on anything else. Also add `followsVisibility` to
-`GET /api/users/settings`. It decides `canViewFollows` and `403 FOLLOWS_HIDDEN` above.
+`GET /api/users/settings`. It decides `canViewFollows` and `403 FOLLOWS_HIDDEN`.
+
+### `canViewFollows` on GET /api/users/profile/{username}
+
+A boolean: whether the caller may open those lists. The profile shows the counts either way, but only makes them
+clickable when this is true. The frontend treats a missing field as true.
 
 ______________________________________________________
 

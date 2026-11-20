@@ -22,16 +22,12 @@
       </div>
 
       <div class="body" role="tabpanel">
-        <p v-if="list.partial && list.users.length" class="preview">
-          Only your friends, people you follow who follow you back, show here until Aux can list everyone.
-        </p>
-        <EmptyState v-if="list.unavailable" icon="users" title="Follower lists are coming soon" text="For now, you can see your own friends from your profile." />
-        <EmptyState v-else-if="list.hidden" icon="users" :title="hiddenTitle" text="They chose who can see the people they follow." />
+        <EmptyState v-if="list.hidden" icon="users" :title="hiddenTitle" text="They chose who can see the people they follow." />
         <EmptyState v-else-if="list.error" tone="error" icon="users" :title="list.error" text="Check that the server is running, then try again.">
           <button type="button" class="btn secondary" @click="load()">Try again</button>
         </EmptyState>
         <EmptyState v-else-if="list.loading && !list.users.length" tone="loading" icon="users" title="Loading…" />
-        <EmptyState v-else-if="!list.users.length" icon="users" :title="emptyTitle" :text="list.partial ? 'Friends show up here once you follow each other.' : ''" />
+        <EmptyState v-else-if="!list.users.length" icon="users" :title="emptyTitle" />
         <template v-else>
           <ul class="people">
             <li v-for="user in list.users" :key="user.userId" class="person">
@@ -88,7 +84,7 @@ const userStore = useUserStore()
 const notification = useNotificationStore()
 const dialogEl = ref(null)
 const which = ref('followers')
-const list = reactive({ users: [], nextCursor: null, loading: false, error: '', hidden: false, partial: false, unavailable: false })
+const list = reactive({ users: [], nextCursor: null, loading: false, error: '', hidden: false })
 const busy = ref(new Set())
 let request = 0
 let changed = false
@@ -96,11 +92,9 @@ let changed = false
 const hiddenTitle = computed(() => (which.value === 'followers'
   ? `@${props.username} keeps their followers private`
   : `@${props.username} keeps who they follow private`))
-const own = computed(() => props.username === userStore.userData?.username)
-const emptyTitle = computed(() => {
-  if (list.partial) return 'No friends yet'
-  return which.value === 'followers' ? `No one follows @${props.username} yet` : `@${props.username} doesn't follow anyone yet`
-})
+const emptyTitle = computed(() => (which.value === 'followers'
+  ? `No one follows @${props.username} yet`
+  : `@${props.username} doesn't follow anyone yet`))
 
 function open(target = 'followers') {
   changed = false
@@ -124,7 +118,7 @@ onBeforeUnmount(() => document.documentElement.classList.remove('scroll-locked')
 function show(target, force = false) {
   if (which.value === target && !force) return
   which.value = target
-  Object.assign(list, { users: [], nextCursor: null, error: '', hidden: false, partial: false, unavailable: false })
+  Object.assign(list, { users: [], nextCursor: null, error: '', hidden: false })
   load()
 }
 
@@ -134,10 +128,8 @@ async function load(cursor = null) {
   list.loading = true
   list.error = ''
   try {
-    const page = await fetchFollowList(props.username, target, cursor, { own: own.value })
+    const page = await fetchFollowList(props.username, target, cursor)
     if (id !== request) return
-    list.partial = Boolean(page.partial)
-    list.unavailable = Boolean(page.unavailable)
     list.users = cursor ? [...list.users, ...page.users] : page.users
     list.nextCursor = page.nextCursor ?? null
   } catch (err) {
@@ -188,7 +180,6 @@ h2 { font: 700 20px/28px var(--font-sans); margin: 0; overflow-wrap: anywhere; }
 .tab.active { border-bottom-color: var(--primary); color: var(--link); }
 .tab-count { font-variant-numeric: tabular-nums; }
 .body { display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto; padding: var(--space-4) var(--space-6) var(--space-6); }
-.preview { color: var(--ink-muted); font: 500 12px/16px var(--font-sans); margin: 0; }
 .people { list-style: none; margin: 0; padding: 0; }
 .person { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: var(--space-3); padding: var(--space-2) 0; }
 .who { align-items: center; color: var(--ink); display: flex; flex: 1; gap: var(--space-3); min-width: 0; text-decoration: none; }
