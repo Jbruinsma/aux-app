@@ -29,22 +29,28 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     }
 
     @Query("""
-            SELECT new com.aux_app.repository.NotificationRepository$NotificationWithDetails(n, a, p, o)
+            SELECT new com.aux_app.repository.NotificationRepository$NotificationWithDetails(n, a, p, o,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity f
+                                  WHERE f.followerUserId = n.recipientId AND f.followingUserId = n.actorId)
+                     THEN true ELSE false END)
             FROM NotificationEntity n
             JOIN UserEntity a ON a.userId = n.actorId
-            JOIN PlaylistEntity p ON p.playlistId = n.playlistId
-            JOIN UserEntity o ON o.userId = p.ownerId
+            LEFT JOIN PlaylistEntity p ON p.playlistId = n.playlistId
+            LEFT JOIN UserEntity o ON o.userId = p.ownerId
             WHERE n.recipientId = :recipientId
             ORDER BY n.createdAt DESC, n.notificationId DESC
             """)
     List<NotificationWithDetails> findFirstPage(@Param("recipientId") String recipientId, Limit limit);
 
     @Query("""
-            SELECT new com.aux_app.repository.NotificationRepository$NotificationWithDetails(n, a, p, o)
+            SELECT new com.aux_app.repository.NotificationRepository$NotificationWithDetails(n, a, p, o,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity f
+                                  WHERE f.followerUserId = n.recipientId AND f.followingUserId = n.actorId)
+                     THEN true ELSE false END)
             FROM NotificationEntity n
             JOIN UserEntity a ON a.userId = n.actorId
-            JOIN PlaylistEntity p ON p.playlistId = n.playlistId
-            JOIN UserEntity o ON o.userId = p.ownerId
+            LEFT JOIN PlaylistEntity p ON p.playlistId = n.playlistId
+            LEFT JOIN UserEntity o ON o.userId = p.ownerId
             WHERE n.recipientId = :recipientId
               AND (n.createdAt < :afterCreatedAt
                    OR (n.createdAt = :afterCreatedAt AND n.notificationId < :afterNotificationId))
@@ -56,8 +62,23 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
             @Param("afterNotificationId") String afterNotificationId,
             Limit limit);
 
-    // `owner` is the playlist's owner, for the link to it (the actor isn't always the owner)
-    record NotificationWithDetails(NotificationEntity notification, UserEntity actor, PlaylistEntity playlist, UserEntity owner) {}
+    // `owner` is the playlist's owner, for the link to it (the actor isn't always the owner). Both are null on
+    // NEW_FOLLOWER. `recipientFollowsActor` backs `followingBack`
+    record NotificationWithDetails(NotificationEntity notification, UserEntity actor, @Nullable PlaylistEntity playlist,
+                                   @Nullable UserEntity owner, boolean recipientFollowsActor) {}
+
+    // One NEW_FOLLOWER per follower (idx_notifications_new_follower): a repeat moves it to the top, unread again
+    @Transactional
+    @Modifying
+    @Query(value = """
+            INSERT INTO notifications (notification_id, public_id, recipient_id, actor_id, type, is_read, created_at)
+            VALUES (:notificationId, :publicId, :recipientId, :actorId, 'NEW_FOLLOWER', FALSE, :createdAt)
+            ON CONFLICT (recipient_id, actor_id) WHERE type = 'NEW_FOLLOWER'
+            DO UPDATE SET is_read = FALSE, created_at = excluded.created_at
+            """, nativeQuery = true)
+    void upsertNewFollower(@Param("notificationId") String notificationId, @Param("publicId") String publicId,
+                           @Param("recipientId") String recipientId, @Param("actorId") String actorId,
+                           @Param("createdAt") Instant createdAt);
 
     long countByRecipientIdAndIsReadFalse(String recipientId);
 

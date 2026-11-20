@@ -21,7 +21,7 @@ import com.aux_app.repository.NotificationRepository.NotificationWithDetails;
 import com.aux_app.services.LiveEventService.Section;
 
 // Reading and marking notifications. Rows are written where the event happens (PlaylistMembersService for invites,
-// PlaylistService for added tracks), each followed by a NOTIFICATIONS live update to the recipient.
+// PlaylistService for added tracks, FollowService for new followers), each followed by a NOTIFICATIONS live update to the recipient.
 @Service
 public class NotificationService {
 

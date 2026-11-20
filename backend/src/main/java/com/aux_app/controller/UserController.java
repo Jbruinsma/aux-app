@@ -42,6 +42,7 @@ import com.aux_app.dto.users.FollowsVisibility;
 import com.aux_app.dto.users.FollowsVisibilityUpdate;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.FollowListService;
+import com.aux_app.services.FollowService;
 import com.aux_app.services.FriendsService;
 import com.aux_app.services.OnboardingService;
 import com.aux_app.services.UploadService;
@@ -68,6 +69,7 @@ public class UserController {
     private final ApplicationEventPublisher events;
     private final FriendsService friends;
     private final FollowListService followLists;
+    private final FollowService followService;
 
     public UserController(
             UserRepository users,
@@ -84,7 +86,8 @@ public class UserController {
             AccountService accounts,
             ApplicationEventPublisher events,
             FriendsService friends,
-            FollowListService followLists
+            FollowListService followLists,
+            FollowService followService
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
@@ -101,6 +104,7 @@ public class UserController {
         this.events = events;
         this.friends = friends;
         this.followLists = followLists;
+        this.followService = followService;
     }
 
     @GetMapping("/check-username/{username}")
@@ -190,7 +194,11 @@ public class UserController {
     }
 
     @PutMapping("/{username}/follow")
-    @Operation(summary = "Follow a user", description = "The caller follows `username`. Does nothing if they already follow them.")
+    @Operation(summary = "Follow a user", description = """
+            The caller follows `username`. Does nothing if they already follow them. Otherwise `username` gets a
+            `NEW_FOLLOWER` notification; following them again after an unfollow moves that one notification to the
+            top, unread, rather than adding another.
+            """)
     @ApiResponse(responseCode = "204", description = "Following")
     @ApiResponse(responseCode = "400", description = "Following yourself (code INVALID_FIELD)")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
@@ -199,14 +207,7 @@ public class UserController {
             @Parameter(description = "Username to follow", example = "justin") @PathVariable String username,
             @CurrentUser UserEntity user
     ) {
-        if (username.equalsIgnoreCase(user.getUsername())) {
-            throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD", "You can't follow yourself", "username");
-        }
-        if (follows.follow(user.getUserId(), username, Instant.now()) == 0) {
-            throw new AuxException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found", "username");
-        }
-        // Followed users leave the caller's matches
-        events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.MATCHES)));
+        followService.follow(user, username);
     }
 
     @GetMapping("/{username}/followers")
@@ -262,7 +263,9 @@ public class UserController {
             @CurrentUser UserEntity user
     ) {
         follows.unfollow(user.getUserId(), username);
-        events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.MATCHES)));
+        // MATCHES: they can be matched again. NOTIFICATIONS: a NEW_FOLLOWER from them loses followingBack
+        events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()),
+                Set.of(LiveEventService.Section.MATCHES, LiveEventService.Section.NOTIFICATIONS)));
     }
 
     @GetMapping("/settings")

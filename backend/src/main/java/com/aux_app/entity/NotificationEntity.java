@@ -13,8 +13,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-// Maps the `notifications` table. Every type is about a playlist; `permission` is only set on PLAYLIST_INVITE,
-// `trackCount` only on TRACKS_ADDED. Rows go away with their recipient, actor or playlist (ON DELETE CASCADE).
+// Maps the `notifications` table. Every type but NEW_FOLLOWER is about a playlist (NEW_FOLLOWER has no playlistId);
+// `permission` is only set on PLAYLIST_INVITE, `trackCount` only on TRACKS_ADDED. Rows go away with their recipient, actor or playlist (ON DELETE CASCADE).
 @Entity
 @Table(name = "notifications")
 public class NotificationEntity {
@@ -33,7 +33,7 @@ public class NotificationEntity {
     @Column(name = "actor_id", nullable = false)
     private String actorId;
 
-    @Column(name = "playlist_id", nullable = false)
+    @Column(name = "playlist_id")
     private String playlistId;
 
     @Enumerated(EnumType.STRING)

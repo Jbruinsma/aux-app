@@ -15,34 +15,6 @@ visible first; the frontend switches each one on by turning off the flag named i
 
 ______________________________________________________
 
-## Follow notifications (`NEW_FOLLOWER`)
-
-**Frontend:** `NotificationBell.vue` already renders it. Roadmap task 30.
-
-A new `type` on `NotificationResponse` (`GET /api/notifications` and the `notifications` event), sent to the user who
-was followed:
-
-```json
-{
-  "notificationId": "n_3kD9",
-  "type": "NEW_FOLLOWER",
-  "actor": { "userId": "u_8f2kD1", "username": "arjay", "pfpUrl": null },
-  "followingBack": false,
-  "playlist": null,
-  "playlistOwnerUsername": null,
-  "isRead": false,
-  "createdAt": "2026-11-14T15:04:05Z"
-}
-```
-
-- `followingBack`: whether the recipient already follows the actor (so they're now friends). Only on `NEW_FOLLOWER`.
-- `playlist` and `playlistOwnerUsername` are null for this type; today they're always set, so their schemas need to
-  allow null.
-- Following, unfollowing and following again shouldn't stack up notifications: one per follower, moved to the top
-  (and marked unread) when they follow again.
-
-______________________________________________________
-
 ## Another user's uploads
 
 **Frontend:** `PublicProfile.vue`, `src/utils/music.js` (`USER_UPLOADS_MOCKED`). Roadmap task 32.

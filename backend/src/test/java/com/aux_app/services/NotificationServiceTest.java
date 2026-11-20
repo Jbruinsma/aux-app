@@ -17,7 +17,7 @@ class NotificationServiceTest {
         NotificationEntity n = NotificationEntity.playlistInvite("u1", "u2", "p1", PlaylistPermission.LISTENER);
 
         NotificationService.Cursor cursor = NotificationService.decodeCursor(
-                NotificationService.encodeCursor(new NotificationWithDetails(n, null, null, null)));
+                NotificationService.encodeCursor(new NotificationWithDetails(n, null, null, null, false)));
 
         assertEquals(n.getCreatedAt(), cursor.createdAt());
         assertEquals(n.getNotificationId(), cursor.notificationId());
