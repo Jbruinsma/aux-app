@@ -15,32 +15,6 @@ visible first; the frontend switches each one on by turning off the flag named i
 
 ______________________________________________________
 
-## Who can see your follows (`followsVisibility`)
-
-**Frontend:** Settings → Profile → "Who can see your followers", `src/utils/follows.js` (`FOLLOWS_VISIBILITY_MOCKED`;
-the choice is kept in the browser until this exists), `FollowListDialog.vue`, `PublicProfile.vue`. Roadmap task 29.
-
-The follower and following lists (`GET /api/users/{username}/followers` and `.../following`) are live, but anyone can
-open anyone's. They should return `403 FOLLOWS_HIDDEN` when the user's follows visibility leaves the caller out; the
-user themselves can always see their own lists.
-
-### PUT /api/users/me/follows-visibility
-
-```json
-{ "followsVisibility": "FRIENDS" }
-```
-
-Returns `{ "followsVisibility": "FRIENDS" }`. Values: `EVERYONE` (default), `FRIENDS` (people who follow each other
-with the user), `NO_ONE` (only the user). `400 INVALID_FIELD` on anything else. Also add `followsVisibility` to
-`GET /api/users/settings`. It decides `canViewFollows` and `403 FOLLOWS_HIDDEN`.
-
-### `canViewFollows` on GET /api/users/profile/{username}
-
-A boolean: whether the caller may open those lists. The profile shows the counts either way, but only makes them
-clickable when this is true. The frontend treats a missing field as true.
-
-______________________________________________________
-
 ## Follow notifications (`NEW_FOLLOWER`)
 
 **Frontend:** `NotificationBell.vue` already renders it. Roadmap task 30.

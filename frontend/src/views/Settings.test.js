@@ -3,11 +3,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
-import { deleteAccount } from '@/utils/account.js'
+import { deleteAccount, fetchSettings } from '@/utils/account.js'
+import { request } from '@/utils/api.js'
 import Settings from './Settings.vue'
 
 const replace = vi.fn()
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { tab: 'account' } }), useRouter: () => ({ push: vi.fn(), replace }) }))
+const { route } = vi.hoisted(() => ({ route: { params: {} } }))
+vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
 vi.mock('@/utils/account.js', async (original) => ({
@@ -22,6 +24,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
   useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
   replace.mockClear()
+  route.params = { tab: 'account' }
+  request.mockReset()
   deleteAccount.mockReset()
 })
 afterEach(() => {
@@ -94,4 +98,30 @@ it('asks the user to wait when rate limited', async () => {
   await flushPromises()
   expect(wrapper.get('dialog.confirm [role="alert"]').text()).toBe("You've tried too many times. Wait a minute, then try again.")
   expect(useUserStore().loggedIn).toBe(true)
+})
+
+it('loads who can see your followers from settings and saves a new choice', async () => {
+  route.params = { tab: 'profile' }
+  fetchSettings.mockResolvedValueOnce({ email: 'me@example.com', username: 'me', profileDetails: {}, followsVisibility: 'FRIENDS' })
+  request.mockResolvedValue({ followsVisibility: 'NO_ONE' })
+  wrapper = mount(Settings, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
+  await flushPromises()
+  const choice = (id) => wrapper.get(`input[name="follows-visibility"][value="${id}"]`)
+  expect(choice('FRIENDS').element.checked).toBe(true)
+  await choice('NO_ONE').trigger('change')
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('PUT', expect.stringMatching(/\/api\/users\/me\/follows-visibility$/), { followsVisibility: 'NO_ONE' }, { notifyOnError: false })
+  expect(choice('NO_ONE').element.checked).toBe(true)
+  expect(wrapper.get('#follows-hint').text()).not.toContain('this browser')
+})
+
+it('puts the old choice back when saving fails', async () => {
+  route.params = { tab: 'profile' }
+  request.mockRejectedValue(new Error('down'))
+  wrapper = mount(Settings, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
+  await flushPromises()
+  await wrapper.get('input[name="follows-visibility"][value="NO_ONE"]').trigger('change')
+  await flushPromises()
+  expect(wrapper.get('input[name="follows-visibility"][value="EVERYONE"]').element.checked).toBe(true)
+  expect(wrapper.get('[role="alert"]').text()).toContain("We couldn't save who can see your followers")
 })

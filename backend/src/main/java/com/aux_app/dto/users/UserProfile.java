@@ -25,6 +25,7 @@ public record UserProfile(
         @Schema(description = "Whether the caller owns this profile", example = "false") boolean isMe,
         @Schema(description = "Whether the caller follows this user", example = "true") boolean isFollowing,
         @Schema(description = "Whether this user follows the caller", example = "false") boolean followingMe,
+        @Schema(description = "Whether the caller may open this user's followers and following lists (`GET /api/users/{username}/followers` and `.../following`), as their `followsVisibility` decides. Always true on the caller's own profile", example = "true") boolean canViewFollows,
         @Schema(description = "How many users follow this user: exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)", example = "1.2K") String followersCount,
         @Schema(description = "How many users this user follows: exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)", example = "856") String followingCount,
         @Schema(description = "Uploads the caller can see (public ones, plus private ones on the caller's own profile): exact up to 999, then rounded down (1.2K, 15.8K, 3.4M)", example = "5") String uploadsCount,
@@ -38,7 +39,7 @@ public record UserProfile(
                                      List<AlbumOverview> topAlbums, List<ArtistSummary> favoriteArtists,
                                      CompatibilityMatch match) {
         return new UserProfile(username, pfpUrl, bannerUrl, profileDetails, playlists,
-                recentPlays, topArtists, topAlbums, favoriteArtists, isMe, isFollowing, followingMe,
+                recentPlays, topArtists, topAlbums, favoriteArtists, isMe, isFollowing, followingMe, canViewFollows,
                 followersCount, followingCount, uploadsCount,
                 match == null ? null : match.compatibility(),
                 match == null ? null : match.sharedArtists(),

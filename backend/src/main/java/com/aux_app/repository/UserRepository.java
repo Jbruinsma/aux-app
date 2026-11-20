@@ -6,6 +6,7 @@ import com.aux_app.dto.playlist.CorePlaylist;
 import com.aux_app.dto.playlist.LibraryPlaylist;
 import com.aux_app.dto.playlist.PlaylistAccess;
 import com.aux_app.dto.playlist.ProfilePlaylist;
+import com.aux_app.dto.users.FollowsVisibility;
 import com.aux_app.dto.users.ProfileDetails;
 import com.aux_app.dto.users.UserProfile;
 import org.jspecify.annotations.NonNull;
@@ -38,6 +39,9 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         }
 
         ProfileRow first = rows.getFirst();
+        boolean isMe = first.getUserId().equals(currentUserId);
+        boolean isFollowing = Integer.valueOf(1).equals(first.getIsFollowing());
+        boolean followingMe = Integer.valueOf(1).equals(first.getFollowingMe());
 
         return new UserProfile(
                 first.getUsername(),
@@ -50,9 +54,10 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                         first.getAbout()),
                 formatPlaylists(rows),
                 List.of(), List.of(), List.of(), List.of(), // listening: added by the controller (ProfileListeningService)
-                first.getUserId().equals(currentUserId),
-                Integer.valueOf(1).equals(first.getIsFollowing()),
-                Integer.valueOf(1).equals(first.getFollowingMe()),
+                isMe,
+                isFollowing,
+                followingMe,
+                FollowsVisibility.valueOf(first.getFollowsVisibility()).allows(isMe, isFollowing, followingMe),
                 UserProfile.compactCount(first.getFollowersCount()),
                 UserProfile.compactCount(first.getFollowingCount()),
                 UserProfile.compactCount(first.getUploadsCount()),
@@ -90,6 +95,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
                    pd.country AS country,
                    pd.website AS website,
                    pd.about AS about,
+                   u.follows_visibility AS followsVisibility,
                             EXISTS (SELECT 1 FROM follows f1
                                     WHERE f1.follower_user_id = CAST(:currentUserId AS varchar) AND f1.following_user_id = u.user_id) AS isFollowing,
                    EXISTS (SELECT 1 FROM follows f2
@@ -182,6 +188,7 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
         String getAbout();
         Integer getIsFollowing(); // SQLite has no boolean type: 1 or 0
         Integer getFollowingMe(); // SQLite has no boolean type: 1 or 0
+        String getFollowsVisibility();
         int getFollowersCount();
         int getFollowingCount();
         int getUploadsCount();

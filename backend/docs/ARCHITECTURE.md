@@ -206,7 +206,7 @@ sequenceDiagram
 
 ## 5. Data model
 
-Flyway migrations: `V1__baseline.sql`, `V2__Public_ids.java` (adds a random base62 `public_id` to users, playlists, artists, and music_pieces), `V3__playlist_members.sql`, `V4__notifications.sql`, `V5__user_play_preferences.sql`, `V6__tags.sql`, `V7__music_pieces_artist_index.sql`, `V8__play_events_millis.sql`, `V9__albums.sql`.
+Flyway migrations: `V1__baseline.sql`, `V2__Public_ids.java` (adds a random base62 `public_id` to users, playlists, artists, and music_pieces), `V3__playlist_members.sql`, `V4__notifications.sql`, `V5__user_play_preferences.sql`, `V6__tags.sql`, `V7__music_pieces_artist_index.sql`, `V8__play_events_millis.sql`, `V9__albums.sql`, `V10__user_roles.sql`, `V11__refresh_tokens.sql`, `V12__follows_visibility.sql`.
 
 ### Core tables
 
@@ -233,6 +233,7 @@ erDiagram
         string email
         string password_hash
         string onboarding_step
+        string follows_visibility "EVERYONE, FRIENDS or NO_ONE"
     }
     playlists {
         string playlist_id PK
