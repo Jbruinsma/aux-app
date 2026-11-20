@@ -207,24 +207,24 @@
 
           <section aria-labelledby="follows-heading">
             <h2 id="follows-heading">Who can see your followers</h2>
-            <fieldset class="choices" aria-describedby="follows-hint">
-              <legend class="visually-hidden">Who can see your followers and the people you follow</legend>
-              <label v-for="option in FOLLOWS_VISIBILITY" :key="option.id" class="check">
-                <input
-                  type="radio"
-                  name="follows-visibility"
-                  :value="option.id"
-                  :checked="followsVisibility === option.id"
-                  :disabled="savingVisibility"
-                  @change="changeFollowsVisibility(option.id)"
-                />
-                {{ option.label }}<span v-if="option.hint" class="choice-hint">{{ option.hint }}</span>
-              </label>
-            </fieldset>
-            <p id="follows-hint" class="hint">
-              Applies to both lists on your profile: your followers and the people you follow. Your counts still show.
-              <template v-if="FOLLOWS_MOCKED"> For now this is saved on this browser only.</template>
-            </p>
+            <template v-if="followsVisibility">
+              <fieldset class="choices" aria-describedby="follows-hint" :disabled="savingVisibility">
+                <legend class="visually-hidden">Who can see your followers and the people you follow</legend>
+                <label v-for="option in FOLLOWS_VISIBILITY" :key="option.id" class="check">
+                  <input
+                    type="radio"
+                    name="follows-visibility"
+                    :value="option.id"
+                    :checked="followsVisibility === option.id"
+                    @change="changeFollowsVisibility(option.id)"
+                  />
+                  {{ option.label }}<span v-if="option.hint" class="choice-hint">{{ option.hint }}</span>
+                </label>
+              </fieldset>
+              <p id="follows-hint" class="hint">This applies to both lists. Your follower and following counts still show.</p>
+            </template>
+            <p v-else-if="visibilityLoading" class="hint" role="status">Loading follower visibility…</p>
+            <p v-else-if="!visibilityError" class="hint">Follow-list privacy settings aren’t available yet.</p>
             <p v-if="visibilityError" class="error" role="alert">{{ visibilityError }}</p>
           </section>
         </div>
@@ -607,7 +607,7 @@ import { resolveCoverURL } from '@/utils/display.js'
 import { BANNER_ERRORS, PHOTO_ERRORS, bannerProblem, photoProblem } from '@/utils/photo.js'
 import { DEFAULT_CROP, MAX_ZOOM, MIN_ZOOM, bannerCropRect, bannerImageStyle, clampCrop, panCrop } from '@/utils/banner.js'
 import { COUNTRIES } from '@/utils/countries.js'
-import { FOLLOWS_MOCKED, FOLLOWS_VISIBILITY, readFollowsVisibility, saveFollowsVisibility } from '@/utils/follows.js'
+import { FOLLOWS_VISIBILITY, readFollowsVisibility, saveFollowsVisibility } from '@/utils/follows.js'
 import { setSkipExternalWarning, skipExternalWarning } from '@/utils/externalLinks.js'
 import {
   EMAIL_MAX,
@@ -866,21 +866,23 @@ function showDetails(saved) {
 }
 
 // Who can see your followers and following: saves as soon as it's picked, and goes back if the save fails
-const followsVisibility = ref(readFollowsVisibility(null, userStore.userData?.userId))
+const followsVisibility = ref(null)
+const visibilityLoading = ref(true)
 const savingVisibility = ref(false)
 const visibilityError = ref('')
 
 async function changeFollowsVisibility(next) {
   const previous = followsVisibility.value
+  if (!previous || savingVisibility.value || next === previous) return
   followsVisibility.value = next
   visibilityError.value = ''
   savingVisibility.value = true
   try {
-    followsVisibility.value = await saveFollowsVisibility(next, userStore.userData?.userId)
-    notification.success(`${FOLLOWS_VISIBILITY.find((option) => option.id === followsVisibility.value)?.label ?? 'Your choice'} can now see your followers.`)
+    followsVisibility.value = await saveFollowsVisibility(next)
+    notification.success('Follower visibility saved.')
   } catch (err) {
-    if (err.sessionEnded) return
     followsVisibility.value = previous
+    if (err.sessionEnded) return
     visibilityError.value = "We couldn't save who can see your followers. Check that the server is running, then try again."
   } finally {
     savingVisibility.value = false
@@ -892,13 +894,16 @@ async function loadSettings() {
   try {
     const settings = await fetchSettings()
     showDetails(settings.profileDetails)
-    followsVisibility.value = readFollowsVisibility(settings, userStore.userData?.userId)
+    followsVisibility.value = readFollowsVisibility(settings)
     currentEmail.value = settings.email
     userStore.updateUser({ bannerUrl: settings.bannerUrl })
   } catch (err) {
     if (err.sessionEnded) return
     detailsError.value = "We couldn't load your settings. Check that the server is running, then reload."
     accountError.value = "We couldn't load your email address. Check that the server is running, then reload."
+    visibilityError.value = "We couldn't load follower visibility. Reload to try again."
+  } finally {
+    visibilityLoading.value = false
   }
 }
 

@@ -4,10 +4,7 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const quiet = { notifyOnError: false }
 const userUrl = (username) => `${API_BASE_URL}/api/users/${encodeURIComponent(username)}`
 
-// The follower and following lists, and who may see them, aren't in the API yet (BACKEND_REQUESTS.md, "Follower and
-// following lists" and "Who can see your follows"). While this is true your own lists show your friends (GET
-// /api/users/me/friends), other people's can't be opened, and the visibility setting is kept in this browser; set it
-// to false once GET /api/users/{username}/followers, .../following and the followsVisibility setting exist
+// Keep the friends-only fallback until the full lists support server-enforced follow visibility.
 export const FOLLOWS_MOCKED = true
 
 // Who can see the people a user follows and is followed by. Friends are people who follow each other
@@ -53,28 +50,14 @@ export function fetchFollowList(username, which, cursor = null, { own = false } 
   return fetchAPI(`${userUrl(username)}/${which === 'following' ? 'following' : 'followers'}${query}`, quiet)
 }
 
-const visibilityKey = (userId) => `aux-follows-visibility-${userId}`
-
-// The caller's followsVisibility: from GET /api/users/settings once the backend sends it, from this browser until then
-export function readFollowsVisibility(settings, userId) {
-  if (!FOLLOWS_MOCKED) return settings?.followsVisibility ?? 'EVERYONE'
-  try {
-    return localStorage.getItem(visibilityKey(userId)) ?? 'EVERYONE'
-  } catch {
-    return 'EVERYONE'
-  }
+// A settings response without a supported value can't offer follow-list privacy controls.
+export function readFollowsVisibility(settings) {
+  return FOLLOWS_VISIBILITY.find((option) => option.id === settings?.followsVisibility)?.id ?? null
 }
 
-// PUT /api/users/me/follows-visibility { followsVisibility }; returns the saved value
-export async function saveFollowsVisibility(followsVisibility, userId) {
-  if (!FOLLOWS_MOCKED) {
-    const saved = await request('PUT', `${API_BASE_URL}/api/users/me/follows-visibility`, { followsVisibility }, quiet)
-    return saved?.followsVisibility ?? followsVisibility
-  }
-  try {
-    localStorage.setItem(visibilityKey(userId), followsVisibility)
-  } catch {
-    // Blocked storage: the choice holds until the page reloads
-  }
-  return followsVisibility
+export async function saveFollowsVisibility(followsVisibility) {
+  const saved = await request('PUT', `${API_BASE_URL}/api/users/me/follows-visibility`, { followsVisibility }, quiet)
+  const confirmed = readFollowsVisibility(saved)
+  if (!confirmed) throw new Error('The server did not confirm follower visibility')
+  return confirmed
 }

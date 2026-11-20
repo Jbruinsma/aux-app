@@ -29,7 +29,7 @@ ______________________________________________________
 **Files:** `src/views/Settings.vue`, `src/utils/follows.js`
 **API:** `PUT /api/users/me/follows-visibility`, `followsVisibility` on `GET /api/users/settings` ("Who can see your follows")
 
-- [ ] Turn off `FOLLOWS_MOCKED` (the choice is kept in this browser until then).
+- [ ] Verify that saving follower visibility in Settings changes who can open both lists once the backend supports it.
 
 ### 30. Follow notifications
 

@@ -3,11 +3,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { useUserStore } from '@/stores/user.js'
 import { useNotificationStore } from '@/stores/notification.js'
-import { deleteAccount } from '@/utils/account.js'
+import { deleteAccount, fetchSettings } from '@/utils/account.js'
+import { request } from '@/utils/api.js'
 import Settings from './Settings.vue'
 
 const replace = vi.fn()
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { tab: 'account' } }), useRouter: () => ({ push: vi.fn(), replace }) }))
+let tab
+vi.mock('vue-router', () => ({ useRoute: () => ({ params: { tab } }), useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('@/router/index.js', () => ({ default: { push: vi.fn(), replace: vi.fn() } }))
 vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
 vi.mock('@/utils/account.js', async (original) => ({
@@ -19,6 +21,8 @@ vi.mock('@/utils/account.js', async (original) => ({
 let wrapper
 beforeEach(() => {
   vi.useFakeTimers()
+  tab = 'account'
+  request.mockReset()
   setActivePinia(createPinia())
   useUserStore().login({ userId: 'u1', username: 'me', onboardingStep: 'DONE' }, 'token')
   replace.mockClear()
@@ -43,6 +47,43 @@ async function openDelete() {
 }
 
 const submit = () => wrapper.get('dialog.confirm .confirm-actions .btn.primary')
+
+async function openFollowSettings(settings = {}) {
+  tab = 'profile'
+  fetchSettings.mockResolvedValueOnce({ email: 'me@example.com', username: 'me', profileDetails: {}, ...settings })
+  wrapper = mount(Settings, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
+  await flushPromises()
+  return wrapper.get('section[aria-labelledby="follows-heading"]')
+}
+
+it('shows follower privacy as unavailable until the server sends a setting', async () => {
+  const section = await openFollowSettings()
+  expect(section.text()).toContain('Follow-list privacy settings aren’t available yet.')
+  expect(section.findAll('input[type="radio"]')).toHaveLength(0)
+  expect(request).not.toHaveBeenCalled()
+})
+
+it('loads the server choice and saves a change through the visibility API', async () => {
+  const section = await openFollowSettings({ followsVisibility: 'FRIENDS' })
+  expect(section.get('input[value="FRIENDS"]').element.checked).toBe(true)
+  request.mockResolvedValueOnce({ followsVisibility: 'NO_ONE' })
+  await section.get('input[value="NO_ONE"]').setValue()
+  await flushPromises()
+  expect(request).toHaveBeenCalledWith('PUT', expect.stringContaining('/api/users/me/follows-visibility'),
+    { followsVisibility: 'NO_ONE' }, { notifyOnError: false })
+  expect(section.get('input[value="NO_ONE"]').element.checked).toBe(true)
+  expect(useNotificationStore().message).toBe('Follower visibility saved.')
+})
+
+it('restores the last confirmed choice when the server does not confirm the save', async () => {
+  const section = await openFollowSettings({ followsVisibility: 'FRIENDS' })
+  request.mockResolvedValueOnce({})
+  await section.get('input[value="NO_ONE"]').setValue()
+  await flushPromises()
+  expect(section.get('input[value="FRIENDS"]').element.checked).toBe(true)
+  expect(section.get('[role="alert"]').text()).toContain("We couldn't save who can see your followers.")
+  expect(useNotificationStore().message).not.toBe('Follower visibility saved.')
+})
 
 it('needs the countdown and the current password before deleting', async () => {
   wrapper = mount(Settings, { global: { stubs: { AppHeader: true, AppFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
