@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.aux_app.repository.UserRepository;
+import com.aux_app.services.FollowListService;
 import com.aux_app.services.FriendsService;
 import com.aux_app.services.OnboardingService;
 import com.aux_app.services.UploadService;
@@ -64,6 +65,7 @@ public class UserController {
     private final AccountService accounts;
     private final ApplicationEventPublisher events;
     private final FriendsService friends;
+    private final FollowListService followLists;
 
     public UserController(
             UserRepository users,
@@ -79,7 +81,8 @@ public class UserController {
             ProfileListeningService listening,
             AccountService accounts,
             ApplicationEventPublisher events,
-            FriendsService friends
+            FriendsService friends,
+            FollowListService followLists
     ) {
         this.users = users;
         this.profileDetails = profileDetails;
@@ -95,6 +98,7 @@ public class UserController {
         this.accounts = accounts;
         this.events = events;
         this.friends = friends;
+        this.followLists = followLists;
     }
 
     @GetMapping("/check-username/{username}")
@@ -201,6 +205,46 @@ public class UserController {
         }
         // Followed users leave the caller's matches
         events.publishEvent(new LiveEventService.Update(Set.of(user.getUserId()), Set.of(LiveEventService.Section.MATCHES)));
+    }
+
+    @GetMapping("/{username}/followers")
+    @Operation(
+            summary = "List a user's followers",
+            description = """
+                    Public; the token is optional. Newest follow first, 50 per page. Pass `nextCursor` back as `cursor`
+                    for the next page; it is null on the last page. `isFollowing` is true when the caller follows that
+                    user and `followsMe` when that user follows the caller; both are false without a token.
+                    Only users who finished onboarding are listed.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Bad cursor (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
+    public FollowListPage followers(
+            @Parameter(description = "Username whose followers to list", example = "justin") @PathVariable String username,
+            @Parameter(description = "`nextCursor` of the previous page; leave out for the first page") @RequestParam(required = false) String cursor,
+            @OptionalCurrentUser UserEntity user
+    ) {
+        return followLists.followers(username, user, cursor);
+    }
+
+    @GetMapping("/{username}/following")
+    @Operation(
+            summary = "List the users a user follows",
+            description = """
+                    Public; the token is optional. Newest follow first, 50 per page. Pass `nextCursor` back as `cursor`
+                    for the next page; it is null on the last page. `isFollowing` is true when the caller follows that
+                    user and `followsMe` when that user follows the caller; both are false without a token.
+                    Only users who finished onboarding are listed.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Bad cursor (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
+    public FollowListPage following(
+            @Parameter(description = "Username whose followed users to list", example = "justin") @PathVariable String username,
+            @Parameter(description = "`nextCursor` of the previous page; leave out for the first page") @RequestParam(required = false) String cursor,
+            @OptionalCurrentUser UserEntity user
+    ) {
+        return followLists.following(username, user, cursor);
     }
 
     @DeleteMapping("/{username}/follow")

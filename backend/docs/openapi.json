@@ -4965,6 +4965,186 @@
         } ]
       }
     },
+    "/api/users/{username}/following" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "List the users a user follows",
+        "description" : "Public; the token is optional. Newest follow first, 50 per page. Pass `nextCursor` back as `cursor`\nfor the next page; it is null on the last page. `isFollowing` is true when the caller follows that\nuser and `followsMe` when that user follows the caller; both are false without a token.\nOnly users who finished onboarding are listed.\n",
+        "operationId" : "following",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "description" : "Username whose followed users to list",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "justin"
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` of the previous page; leave out for the first page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowListPage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad cursor (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "User not found (code USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      }
+    },
+    "/api/users/{username}/followers" : {
+      "get" : {
+        "tags" : [ "user-controller" ],
+        "summary" : "List a user's followers",
+        "description" : "Public; the token is optional. Newest follow first, 50 per page. Pass `nextCursor` back as `cursor`\nfor the next page; it is null on the last page. `isFollowing` is true when the caller follows that\nuser and `followsMe` when that user follows the caller; both are false without a token.\nOnly users who finished onboarding are listed.\n",
+        "operationId" : "followers",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "description" : "Username whose followers to list",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "justin"
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "description" : "`nextCursor` of the previous page; leave out for the first page",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowListPage"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad cursor (code INVALID_FIELD)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "User not found (code USER_NOT_FOUND)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "Too many requests from this IP (code RATE_LIMITED). Rate limit: 120 requests per minute per IP, shared by all other endpoints; short bursts are fine. Wait `Retry-After` seconds before retrying.",
+            "headers" : {
+              "Retry-After" : {
+                "description" : "Seconds until the next request is allowed",
+                "schema" : {
+                  "type" : "integer",
+                  "format" : "int32"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Unexpected server error (code INTERNAL_ERROR)",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuxServerError"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, { } ]
+      }
+    },
     "/api/users/settings" : {
       "get" : {
         "tags" : [ "user-controller" ],
@@ -8544,6 +8724,53 @@
           }
         },
         "required" : [ "albumName" ]
+      },
+      "FollowListPage" : {
+        "type" : "object",
+        "description" : "One page of a user's followers or following, newest follow first",
+        "properties" : {
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FollowListUser"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Pass as `cursor` for the next page; null on the last page"
+          }
+        }
+      },
+      "FollowListUser" : {
+        "type" : "object",
+        "description" : "A user in someone's followers or following list",
+        "properties" : {
+          "userId" : {
+            "type" : "string",
+            "description" : "Public id of the user",
+            "example" : "u_8f2kD1"
+          },
+          "username" : {
+            "type" : "string",
+            "description" : "Username",
+            "example" : "arjay"
+          },
+          "pfpUrl" : {
+            "type" : "string",
+            "description" : "Profile picture URL",
+            "example" : "https://aux.justinabruinsma.com/pfp/3f2b8c1e-8d4a-4c6e-9a51-2f0d7b9e6c11.webp"
+          },
+          "isFollowing" : {
+            "type" : "boolean",
+            "description" : "The caller follows this user; false when signed out",
+            "example" : true
+          },
+          "followsMe" : {
+            "type" : "boolean",
+            "description" : "This user follows the caller; false when signed out",
+            "example" : false
+          }
+        }
       },
       "UserSettings" : {
         "type" : "object",
