@@ -55,15 +55,15 @@
         <template v-else>
           <section v-if="!ARTIST_DIRECTORY_MOCKED" aria-labelledby="all-heading">
             <h2 id="all-heading">All artists</h2>
-            <EmptyState v-if="directory.error" tone="error" icon="mic" :title="directory.error" text="Check that the server is running, then try again." />
+            <ArtistGrid v-if="directory.items.length" :artists="directory.items" />
+            <EmptyState v-if="directory.error" tone="error" icon="mic" :title="directory.error" text="Check that the server is running, then try again.">
+              <button type="button" class="btn secondary" @click="loadDirectory(directory.nextCursor)">Try again</button>
+            </EmptyState>
             <EmptyState v-else-if="directory.loading && !directory.items.length" tone="loading" icon="mic" title="Loading artists…" />
-            <EmptyState v-else-if="!directory.items.length" icon="mic" title="No artists yet" text="Upload a song and create its artist." />
-            <template v-else>
-              <ArtistGrid :artists="directory.items" />
-              <button v-if="directory.nextCursor" type="button" class="btn secondary more" :disabled="directory.loading" @click="loadDirectory(directory.nextCursor)">
-                {{ directory.loading ? 'Loading…' : 'Show more' }}
-              </button>
-            </template>
+            <EmptyState v-else-if="!directory.items.length && !directory.nextCursor" icon="mic" title="No artists yet" text="Upload a song and create its artist." />
+            <button v-if="directory.nextCursor && !directory.error" type="button" class="btn secondary more" :disabled="directory.loading" @click="loadDirectory(directory.nextCursor)">
+              {{ directory.loading ? 'Loading…' : 'Show more' }}
+            </button>
           </section>
 
           <section aria-labelledby="favorites-heading">
