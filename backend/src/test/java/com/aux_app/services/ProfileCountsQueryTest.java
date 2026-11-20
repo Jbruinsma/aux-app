@@ -1,6 +1,7 @@
 package com.aux_app.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.aux_app.repository.FollowRepository;
@@ -43,6 +44,22 @@ class ProfileCountsQueryTest {
             // stranger: 2 followers, 1 following, only the public upload; owner sees both uploads
             assertCounts(db, "a", 2, 1, 1);
             assertCounts(db, "owner", 2, 1, 2);
+
+            // findProfile turns this into canViewFollows
+            assertEquals("EVERYONE", visibility(db));
+            exec(db, "UPDATE users SET follows_visibility = 'FRIENDS' WHERE user_id = 'owner'");
+            assertEquals("FRIENDS", visibility(db));
+        }
+    }
+
+    @Test
+    void followsVisibilityRejectsUnknownValues(@TempDir Path dir) throws Exception {
+        String url = "jdbc:sqlite:" + dir.resolve("test.db");
+        Flyway.configure().dataSource(url, null, null).load().migrate();
+        try (Connection db = DriverManager.getConnection(url)) {
+            exec(db, "INSERT INTO users (user_id, username, email, password_hash, onboarding_step, public_id) VALUES "
+                    + "('owner', 'owner', 'o@x', 'x', 'DONE', 'u_o')");
+            assertThrows(SQLException.class, () -> exec(db, "UPDATE users SET follows_visibility = 'SOME' WHERE user_id = 'owner'"));
         }
     }
 
@@ -56,6 +73,17 @@ class ProfileCountsQueryTest {
             assertEquals(followers, rows.getInt("followersCount"));
             assertEquals(following, rows.getInt("followingCount"));
             assertEquals(uploads, rows.getInt("uploadsCount"));
+        }
+    }
+
+    private static String visibility(Connection db) throws Exception {
+        String sql = UserRepository.class.getMethod("findProfileRows", String.class, String.class)
+                .getAnnotation(Query.class).value()
+                .replace(":username", "'owner'")
+                .replace(":currentUserId", "'a'");
+        try (Statement statement = db.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
+            assertTrue(rows.next());
+            return rows.getString("followsVisibility");
         }
     }
 

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,7 +19,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.aux_app.dto.users.FollowListPage;
+import com.aux_app.dto.users.FollowsVisibility;
 import com.aux_app.dto.users.OnboardingStep;
+import com.aux_app.entity.FollowId;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.FollowRepository;
@@ -108,5 +111,41 @@ class FollowListServiceTest {
         verify(follows).findFollowersPage(eq("target"), eq(""),
                 eq(Instant.parse("2026-01-01T00:00:00Z").minusSeconds(FollowListService.PAGE_SIZE - 1)),
                 eq("u" + (FollowListService.PAGE_SIZE - 1)), eq(FollowListService.PAGE_SIZE + 1));
+    }
+
+    private UserEntity hiddenTarget(FollowsVisibility visibility) {
+        UserEntity target = user("target");
+        target.setFollowsVisibility(visibility);
+        when(users.findByUsernameIgnoreCase("justin")).thenReturn(target);
+        return target;
+    }
+
+    @Test
+    void noOneHidesTheListsFromEveryoneButTheOwner() {
+        UserEntity target = hiddenTarget(FollowsVisibility.NO_ONE);
+
+        AuxException e = assertThrows(AuxException.class, () -> service.followers("justin", user("viewer"), null));
+        assertEquals(403, e.getStatus().value());
+        assertEquals("FOLLOWS_HIDDEN", e.getDetails().code());
+        assertThrows(AuxException.class, () -> service.following("justin", null, null));
+        verify(follows, never()).findFollowersPage(any(), any(), any(), any(), anyInt());
+
+        service.followers("justin", target, null);
+        verify(follows).findFollowersPage(eq("target"), eq("target"), any(), any(), anyInt());
+    }
+
+    @Test
+    void friendsShowsTheListsOnlyToMutualFollows() {
+        hiddenTarget(FollowsVisibility.FRIENDS);
+        when(follows.existsById(new FollowId("friend", "target"))).thenReturn(true);
+        when(follows.existsById(new FollowId("target", "friend"))).thenReturn(true);
+        when(follows.existsById(new FollowId("fan", "target"))).thenReturn(true);
+
+        service.following("justin", user("friend"), null);
+        verify(follows).findFollowingPage(eq("target"), eq("friend"), any(), any(), anyInt());
+
+        AuxException e = assertThrows(AuxException.class, () -> service.following("justin", user("fan"), null));
+        assertEquals("FOLLOWS_HIDDEN", e.getDetails().code());
+        assertThrows(AuxException.class, () -> service.following("justin", null, null));
     }
 }

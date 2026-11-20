@@ -2,6 +2,7 @@ package com.aux_app.entity;
 
 import java.time.Instant;
 
+import com.aux_app.dto.users.FollowsVisibility;
 import com.aux_app.dto.users.OnboardingStep;
 import com.aux_app.dto.users.UserRole;
 import jakarta.persistence.Column;
@@ -55,6 +56,10 @@ public class UserEntity {
     @Column(nullable = false)
     private UserRole role = UserRole.USER;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "follows_visibility", nullable = false)
+    private FollowsVisibility followsVisibility = FollowsVisibility.EVERYONE;
+
     protected UserEntity() {}
 
     public UserEntity(
@@ -85,6 +90,12 @@ public class UserEntity {
     public Instant getUpdatedAt() { return updatedAt; }
     public OnboardingStep getOnboardingStep() { return onboardingStep; }
     public UserRole getRole() { return role; }
+    public FollowsVisibility getFollowsVisibility() { return followsVisibility; }
+
+    public void setFollowsVisibility(FollowsVisibility followsVisibility) {
+        this.followsVisibility = followsVisibility;
+        this.updatedAt = Instant.now();
+    }
 
     public void setUsername(String username) {
         this.username = username;

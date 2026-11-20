@@ -38,6 +38,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 
+import com.aux_app.dto.users.FollowsVisibility;
+import com.aux_app.dto.users.FollowsVisibilityUpdate;
 import com.aux_app.repository.UserRepository;
 import com.aux_app.services.FollowListService;
 import com.aux_app.services.FriendsService;
@@ -214,10 +216,12 @@ public class UserController {
                     Public; the token is optional. Newest follow first, 50 per page. Pass `nextCursor` back as `cursor`
                     for the next page; it is null on the last page. `isFollowing` is true when the caller follows that
                     user and `followsMe` when that user follows the caller; both are false without a token.
-                    Only users who finished onboarding are listed.
+                    Only users who finished onboarding are listed. The user's `followsVisibility` decides who may
+                    see the list (`canViewFollows` on their profile); they can always see their own.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "Bad cursor (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "403", description = "The user's follows visibility leaves the caller out (code FOLLOWS_HIDDEN)")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
     public FollowListPage followers(
             @Parameter(description = "Username whose followers to list", example = "justin") @PathVariable String username,
@@ -234,10 +238,12 @@ public class UserController {
                     Public; the token is optional. Newest follow first, 50 per page. Pass `nextCursor` back as `cursor`
                     for the next page; it is null on the last page. `isFollowing` is true when the caller follows that
                     user and `followsMe` when that user follows the caller; both are false without a token.
-                    Only users who finished onboarding are listed.
+                    Only users who finished onboarding are listed. The user's `followsVisibility` decides who may
+                    see the list (`canViewFollows` on their profile); they can always see their own.
                     """)
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "Bad cursor (code INVALID_FIELD)")
+    @ApiResponse(responseCode = "403", description = "The user's follows visibility leaves the caller out (code FOLLOWS_HIDDEN)")
     @ApiResponse(responseCode = "404", description = "User not found (code USER_NOT_FOUND)")
     public FollowListPage following(
             @Parameter(description = "Username whose followed users to list", example = "justin") @PathVariable String username,
@@ -264,7 +270,8 @@ public class UserController {
             summary = "Get the caller's settings",
             description = """
                     Everything the settings page needs in one call: `email`, `username`, picture and banner URLs,
-                    and `profileDetails`. Every `profileDetails` field is null until the user fills it in.
+                    `profileDetails` and `followsVisibility`. Every `profileDetails` field is null until the user
+                    fills it in.
                     """
     )
     @ApiResponse(responseCode = "200", description = "OK")
@@ -281,8 +288,42 @@ public class UserController {
                 user.getUsername(),
                 user.getProfilePictureUrl(),
                 user.getBannerUrl(),
-                details
+                details,
+                user.getFollowsVisibility()
         );
+    }
+
+    @PutMapping("/me/follows-visibility")
+    @Operation(
+            summary = "Choose who can see the caller's follows",
+            description = """
+                    JSON body: `followsVisibility`, one of `EVERYONE` (default), `FRIENDS` (people who follow each
+                    other with the caller) or `NO_ONE` (only the caller). Decides who can open the caller's followers
+                    and following lists, and `canViewFollows` on their profile. The counts show to everyone either
+                    way. Returns the saved value; read it back with `GET /api/users/settings`.
+                    """)
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Missing or unknown `followsVisibility` (code INVALID_FIELD), or unreadable body (code MALFORMED_BODY)")
+    public FollowsVisibilityUpdate updateFollowsVisibility(
+            @CurrentUser UserEntity user,
+            @RequestBody FollowsVisibilityUpdate update
+    ) {
+        FollowsVisibility visibility = parseFollowsVisibility(update.followsVisibility());
+        user.setFollowsVisibility(visibility);
+        users.save(user);
+        return new FollowsVisibilityUpdate(visibility.name());
+    }
+
+    private static FollowsVisibility parseFollowsVisibility(String value) {
+        if (value != null) {
+            for (FollowsVisibility visibility : FollowsVisibility.values()) {
+                if (visibility.name().equals(value)) {
+                    return visibility;
+                }
+            }
+        }
+        throw new AuxException(HttpStatus.BAD_REQUEST, "INVALID_FIELD",
+                "followsVisibility must be EVERYONE, FRIENDS or NO_ONE", "followsVisibility");
     }
 
     @GetMapping("/me/friends")

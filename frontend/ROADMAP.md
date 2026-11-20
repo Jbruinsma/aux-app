@@ -17,14 +17,6 @@ ______________________________________________________
 
 - [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
 
-### 29. Who can see your follows
-
-**Files:** `src/views/Settings.vue`, `src/utils/follows.js`
-**API:** `PUT /api/users/me/follows-visibility`, `followsVisibility` on `GET /api/users/settings` ("Who can see your follows")
-
-- [ ] Turn off `FOLLOWS_VISIBILITY_MOCKED` (the choice is kept in this browser until then).
-- [ ] Check other people's counts stop opening their lists when the backend sends `canViewFollows: false`.
-
 ### 30. Follow notifications
 
 **Files:** `src/components/NotificationBell.vue`
@@ -130,7 +122,6 @@ order")
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-- **Task 29:** `canViewFollows`, `403 FOLLOWS_HIDDEN` and `followsVisibility`.
 - **Task 30:** the `NEW_FOLLOWER` notification type.
 - **Task 31:** a paged list of every artist.
 - **Task 32:** `GET /api/users/{username}/music-pieces`.

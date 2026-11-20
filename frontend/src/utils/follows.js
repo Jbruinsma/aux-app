@@ -4,11 +4,6 @@ import { API_BASE_URL } from '@/utils/variables.js'
 const quiet = { notifyOnError: false }
 const userUrl = (username) => `${API_BASE_URL}/api/users/${encodeURIComponent(username)}`
 
-// Who may see someone's follows isn't in the API yet (BACKEND_REQUESTS.md, "Who can see your follows"). While this is
-// true the visibility setting is kept in this browser; set it to false once PUT /api/users/me/follows-visibility and
-// `followsVisibility` on GET /api/users/settings exist
-export const FOLLOWS_VISIBILITY_MOCKED = true
-
 // Who can see the people a user follows and is followed by. Friends are people who follow each other
 export const FOLLOWS_VISIBILITY = [
   { id: 'EVERYONE', label: 'Everyone' },
@@ -33,28 +28,13 @@ export function fetchFollowList(username, which, cursor = null) {
   return fetchAPI(`${userUrl(username)}/${which === 'following' ? 'following' : 'followers'}${query}`, quiet)
 }
 
-const visibilityKey = (userId) => `aux-follows-visibility-${userId}`
-
-// The caller's followsVisibility: from GET /api/users/settings once the backend sends it, from this browser until then
-export function readFollowsVisibility(settings, userId) {
-  if (!FOLLOWS_VISIBILITY_MOCKED) return settings?.followsVisibility ?? 'EVERYONE'
-  try {
-    return localStorage.getItem(visibilityKey(userId)) ?? 'EVERYONE'
-  } catch {
-    return 'EVERYONE'
-  }
+// The caller's followsVisibility, from GET /api/users/settings
+export function readFollowsVisibility(settings) {
+  return settings?.followsVisibility ?? 'EVERYONE'
 }
 
 // PUT /api/users/me/follows-visibility { followsVisibility }; returns the saved value
-export async function saveFollowsVisibility(followsVisibility, userId) {
-  if (!FOLLOWS_VISIBILITY_MOCKED) {
-    const saved = await request('PUT', `${API_BASE_URL}/api/users/me/follows-visibility`, { followsVisibility }, quiet)
-    return saved?.followsVisibility ?? followsVisibility
-  }
-  try {
-    localStorage.setItem(visibilityKey(userId), followsVisibility)
-  } catch {
-    // Blocked storage: the choice holds until the page reloads
-  }
-  return followsVisibility
+export async function saveFollowsVisibility(followsVisibility) {
+  const saved = await request('PUT', `${API_BASE_URL}/api/users/me/follows-visibility`, { followsVisibility }, quiet)
+  return saved?.followsVisibility ?? followsVisibility
 }

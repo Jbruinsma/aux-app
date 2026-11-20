@@ -12,13 +12,16 @@ import org.springframework.stereotype.Service;
 
 import com.aux_app.dto.users.FollowListPage;
 import com.aux_app.dto.users.FollowListUser;
+import com.aux_app.dto.users.FollowsVisibility;
+import com.aux_app.entity.FollowId;
 import com.aux_app.entity.UserEntity;
 import com.aux_app.error.AuxException;
 import com.aux_app.repository.FollowRepository;
 import com.aux_app.repository.FollowRepository.FollowListRow;
 import com.aux_app.repository.UserRepository;
 
-// Pages through who follows a user and who they follow. Same keyset cursor idea as NotificationService.
+// Pages through who follows a user and who they follow, if their follows visibility lets the caller see them. Same
+// keyset cursor idea as NotificationService.
 @Service
 public class FollowListService {
 
@@ -45,6 +48,9 @@ public class FollowListService {
         if (target == null) {
             throw new AuxException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found", "username");
         }
+        if (!canView(target, viewer)) {
+            throw new AuxException(HttpStatus.FORBIDDEN, "FOLLOWS_HIDDEN", "This user's follows are hidden", "username");
+        }
         Cursor after = cursor == null || cursor.isEmpty() ? null : decodeCursor(cursor);
         // "" matches no user id, so both flags come back false when signed out
         String viewerId = viewer == null ? "" : viewer.getUserId();
@@ -63,6 +69,21 @@ public class FollowListService {
                         r.user().getProfilePictureUrl(), r.isFollowing(), r.followsMe()))
                 .toList();
         return new FollowListPage(list, more ? encodeCursor(shown.getLast()) : null);
+    }
+
+    // Same rule as `canViewFollows` on the profile. The follow lookups only run for FRIENDS
+    boolean canView(UserEntity target, @Nullable UserEntity viewer) {
+        FollowsVisibility visibility = target.getFollowsVisibility();
+        boolean isOwner = viewer != null && viewer.getUserId().equals(target.getUserId());
+        if (isOwner || visibility != FollowsVisibility.FRIENDS) {
+            return visibility.allows(isOwner, false, false);
+        }
+        if (viewer == null) {
+            return false;
+        }
+        return visibility.allows(false,
+                follows.existsById(new FollowId(viewer.getUserId(), target.getUserId())),
+                follows.existsById(new FollowId(target.getUserId(), viewer.getUserId())));
     }
 
     // Keyset cursor: the last row's follow time and the listed user's internal id. Base64 so clients treat it as opaque.
