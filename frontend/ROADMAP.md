@@ -17,13 +17,6 @@ ______________________________________________________
 
 - [ ] Go through every Dashboard section with a brand-new account; none may show a blank area.
 
-### 30. Follow notifications
-
-**Files:** `src/components/NotificationBell.vue`
-**API:** `NEW_FOLLOWER` on `GET /api/notifications` and the `notifications` event ("Follow notifications")
-
-- [ ] Check it against real notifications once the backend sends `NEW_FOLLOWER`.
-
 ### 31. Artists tab
 
 **Files:** new `src/views/ArtistsPage.vue`, new `src/components/ArtistGrid.vue`, `src/components/AppHeader.vue`,
@@ -122,7 +115,6 @@ order")
 
 Don't start these until the endpoint is in the OpenAPI docs.
 
-- **Task 30:** the `NEW_FOLLOWER` notification type.
 - **Task 31:** a paged list of every artist.
 - **Task 32:** `GET /api/users/{username}/music-pieces`.
 - **Task 33:** `playCount` on song lists.
