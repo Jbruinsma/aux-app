@@ -2,7 +2,10 @@ package com.aux_app.repository;
 
 import com.aux_app.entity.FollowEntity;
 import com.aux_app.entity.FollowId;
+import com.aux_app.entity.UserEntity;
 
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -71,6 +74,88 @@ public interface FollowRepository extends JpaRepository<FollowEntity, FollowId> 
             LEFT JOIN latest l ON l.user_id = u.user_id AND l.rn = 1
             """, nativeQuery = true)
     List<FriendRow> findFriends(@Param("userId") String userId);
+
+    // ---- Follower / following lists (newest follow first) ----
+    // Keyset on (follow createdAt, listed user's internal id): pass the last row of the previous page, or nulls for the
+    // first page. `viewerId` is the caller's internal id, or "" when signed out (matches nobody, so both flags are false).
+    // Only users who finished onboarding are listed, same as friends.
+
+    default List<FollowListRow> findFollowersPage(
+            String targetId, String viewerId, @Nullable Instant afterCreatedAt, @Nullable String afterUserId, int limit) {
+        return afterCreatedAt == null
+                ? findFollowersFirstPage(targetId, viewerId, Limit.of(limit))
+                : findFollowersPageAfter(targetId, viewerId, afterCreatedAt, afterUserId, Limit.of(limit));
+    }
+
+    default List<FollowListRow> findFollowingPage(
+            String targetId, String viewerId, @Nullable Instant afterCreatedAt, @Nullable String afterUserId, int limit) {
+        return afterCreatedAt == null
+                ? findFollowingFirstPage(targetId, viewerId, Limit.of(limit))
+                : findFollowingPageAfter(targetId, viewerId, afterCreatedAt, afterUserId, Limit.of(limit));
+    }
+
+    @Query("""
+            SELECT new com.aux_app.repository.FollowRepository$FollowListRow(u, f.createdAt,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity x
+                                  WHERE x.followerUserId = :viewerId AND x.followingUserId = u.userId) THEN true ELSE false END,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity y
+                                  WHERE y.followerUserId = u.userId AND y.followingUserId = :viewerId) THEN true ELSE false END)
+            FROM FollowEntity f
+            JOIN UserEntity u ON u.userId = f.followerUserId
+            WHERE f.followingUserId = :targetId AND u.onboardingStep = com.aux_app.dto.users.OnboardingStep.DONE
+            ORDER BY f.createdAt DESC, u.userId DESC
+            """)
+    List<FollowListRow> findFollowersFirstPage(@Param("targetId") String targetId, @Param("viewerId") String viewerId,
+            Limit limit);
+
+    @Query("""
+            SELECT new com.aux_app.repository.FollowRepository$FollowListRow(u, f.createdAt,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity x
+                                  WHERE x.followerUserId = :viewerId AND x.followingUserId = u.userId) THEN true ELSE false END,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity y
+                                  WHERE y.followerUserId = u.userId AND y.followingUserId = :viewerId) THEN true ELSE false END)
+            FROM FollowEntity f
+            JOIN UserEntity u ON u.userId = f.followerUserId
+            WHERE f.followingUserId = :targetId AND u.onboardingStep = com.aux_app.dto.users.OnboardingStep.DONE
+              AND (f.createdAt < :afterCreatedAt OR (f.createdAt = :afterCreatedAt AND u.userId < :afterUserId))
+            ORDER BY f.createdAt DESC, u.userId DESC
+            """)
+    List<FollowListRow> findFollowersPageAfter(@Param("targetId") String targetId, @Param("viewerId") String viewerId,
+            @Param("afterCreatedAt") Instant afterCreatedAt, @Param("afterUserId") String afterUserId,
+            Limit limit);
+
+    @Query("""
+            SELECT new com.aux_app.repository.FollowRepository$FollowListRow(u, f.createdAt,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity x
+                                  WHERE x.followerUserId = :viewerId AND x.followingUserId = u.userId) THEN true ELSE false END,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity y
+                                  WHERE y.followerUserId = u.userId AND y.followingUserId = :viewerId) THEN true ELSE false END)
+            FROM FollowEntity f
+            JOIN UserEntity u ON u.userId = f.followingUserId
+            WHERE f.followerUserId = :targetId AND u.onboardingStep = com.aux_app.dto.users.OnboardingStep.DONE
+            ORDER BY f.createdAt DESC, u.userId DESC
+            """)
+    List<FollowListRow> findFollowingFirstPage(@Param("targetId") String targetId, @Param("viewerId") String viewerId,
+            Limit limit);
+
+    @Query("""
+            SELECT new com.aux_app.repository.FollowRepository$FollowListRow(u, f.createdAt,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity x
+                                  WHERE x.followerUserId = :viewerId AND x.followingUserId = u.userId) THEN true ELSE false END,
+                CASE WHEN EXISTS (SELECT 1 FROM FollowEntity y
+                                  WHERE y.followerUserId = u.userId AND y.followingUserId = :viewerId) THEN true ELSE false END)
+            FROM FollowEntity f
+            JOIN UserEntity u ON u.userId = f.followingUserId
+            WHERE f.followerUserId = :targetId AND u.onboardingStep = com.aux_app.dto.users.OnboardingStep.DONE
+              AND (f.createdAt < :afterCreatedAt OR (f.createdAt = :afterCreatedAt AND u.userId < :afterUserId))
+            ORDER BY f.createdAt DESC, u.userId DESC
+            """)
+    List<FollowListRow> findFollowingPageAfter(@Param("targetId") String targetId, @Param("viewerId") String viewerId,
+            @Param("afterCreatedAt") Instant afterCreatedAt, @Param("afterUserId") String afterUserId,
+            Limit limit);
+
+    // `user` is the listed user (the follower or the followed one); `followedAt` is when that follow happened
+    record FollowListRow(UserEntity user, Instant followedAt, boolean isFollowing, boolean followsMe) {}
 
     interface FriendRow {
         String getInternalUserId();
