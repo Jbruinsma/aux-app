@@ -127,11 +127,11 @@ function describe(item) {
   return `added ${count === 1 ? '1 song' : `${count} songs`} to`
 }
 
-// NEW_FOLLOWER carries `followingBack`: whether the caller already follows the actor, which makes them friends
-const followedBack = ref(new Set())
+// A successful follow updates the displayed row immediately. A fresh row uses the server's followingBack value.
+const followedBack = reactive(new WeakSet())
 
 function followsBack(item) {
-  return Boolean(item.followingBack) || followedBack.value.has(item.actor.username)
+  return Boolean(item.followingBack) || followedBack.has(item)
 }
 
 async function followBack(item) {
@@ -139,7 +139,7 @@ async function followBack(item) {
   busy[id] = 'follow'
   try {
     await setFollowing(item.actor.username, true)
-    followedBack.value = new Set([...followedBack.value, item.actor.username])
+    followedBack.add(item)
     notification.success(`You and ${item.actor.username} are now friends.`)
   } catch (err) {
     if (!err.sessionEnded) notification.error(`We couldn't follow ${item.actor.username}. Check that the server is running, then try again.`)

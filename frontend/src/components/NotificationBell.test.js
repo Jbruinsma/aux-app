@@ -12,7 +12,12 @@ import NotificationBell from './NotificationBell.vue'
 const { push } = vi.hoisted(() => ({ push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 vi.mock('@/router/index.js', () => ({ default: { push } }))
-vi.mock('@/utils/api.js', () => ({ fetchAPI: vi.fn(), postToAPI: vi.fn(), request: vi.fn() }))
+vi.mock('@/utils/api.js', async (original) => ({
+  ...(await original()),
+  fetchAPI: vi.fn(),
+  postToAPI: vi.fn(),
+  request: vi.fn(),
+}))
 
 const NOW = new Date().toISOString()
 const playlist = { playlistId: 'p1', playlistName: 'Mix', playlistCoverUrl: null }
@@ -30,7 +35,9 @@ beforeEach(() => {
 afterEach(() => {
   wrapper?.unmount()
   wrapper = null
+  useEventsStore().disconnect()
   useNotificationStore().hide()
+  vi.unstubAllGlobals()
 })
 
 async function render() {
@@ -155,4 +162,60 @@ it('shows a new follower with Follow back, and says when you are already friends
   expect(request).toHaveBeenCalledWith('PUT', expect.stringContaining('/api/users/pal/follow'), undefined, { notifyOnError: false })
   expect(wrapper.findAll('.item')[0].text()).toContain("You're now friends.")
   expect(useNotificationStore().message).toBe('You and pal are now friends.')
+})
+
+it('uses follower notifications from the stream and older pages, and trusts a fresh snapshot after following back', async () => {
+  const api = await vi.importActual('@/utils/api.js')
+  request.mockImplementationOnce(api.request)
+  fetchAPI.mockImplementationOnce(api.fetchAPI)
+
+  const follower = note('live', 'NEW_FOLLOWER', { playlist: null, playlistOwnerUsername: null, followingBack: false })
+  const olderFollower = note('older', 'NEW_FOLLOWER', {
+    playlist: null,
+    playlistOwnerUsername: null,
+    actor: { userId: 'u3', username: 'sam', pfpUrl: null },
+    followingBack: true,
+  })
+  let stream
+  const backend = vi.fn((url, { method = 'GET', signal } = {}) => {
+    const { pathname, searchParams } = new URL(url, 'http://localhost')
+    if (pathname === '/api/users/me/events' && method === 'GET') {
+      return new Response(new ReadableStream({
+        start(controller) {
+          stream = controller
+          signal.addEventListener('abort', () => controller.close(), { once: true })
+        },
+      }), { headers: { 'Content-Type': 'text/event-stream' } })
+    }
+    if (pathname === '/api/notifications' && method === 'GET' && searchParams.get('cursor') === 'older-page') {
+      return Response.json(firstPage([olderFollower], 0))
+    }
+    if (pathname === '/api/users/pal/follow' && method === 'PUT') return new Response(null, { status: 204 })
+    throw new Error(`Unexpected request ${method} ${pathname}`)
+  })
+  vi.stubGlobal('fetch', backend)
+
+  const send = (notification, cursor = null) => {
+    const data = JSON.stringify(firstPage([notification], 0, cursor))
+    stream.enqueue(new TextEncoder().encode(`event:notifications\ndata:${data}\n\n`))
+  }
+
+  await render()
+  useEventsStore().connect()
+  send(follower, 'older-page')
+  await wrapper.get('.bell').trigger('click')
+  await vi.waitFor(() => expect(wrapper.get('.item').text()).toContain('pal started following you.'))
+
+  await wrapper.get('button.older').trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('.item')[1].text()).toContain("sam started following you. You're now friends.")
+  expect(backend).toHaveBeenCalledWith(expect.stringContaining('/api/notifications?cursor=older-page'), expect.objectContaining({ method: 'GET' }))
+
+  await wrapper.get('.item button').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.item').text()).toContain("You're now friends.")
+  expect(backend).toHaveBeenCalledWith(expect.stringContaining('/api/users/pal/follow'), expect.objectContaining({ method: 'PUT' }))
+
+  send(follower)
+  await vi.waitFor(() => expect(wrapper.get('.item button').text()).toBe('Follow back'))
 })
