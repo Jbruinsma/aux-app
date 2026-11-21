@@ -4,7 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // AUX_BACKEND=local in .env.local (gitignored) proxies to your local backend; anything else uses the shared server
-const backends = { local: 'http://localhost:5000', server: 'http://150.136.105.240:5000' }
+const backends = { local: 'http://localhost:5000', server: 'https://services.aux.justinabruinsma.com' }
 
 export default defineConfig(({ mode }) => {
   const target = backends[loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '').AUX_BACKEND] ?? backends.server
