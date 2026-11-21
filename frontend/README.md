@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-The dev server sends `/api` and `/uploads` to the shared backend at `http://150.136.105.240:5000`. To use a backend
+The dev server sends `/api` and `/uploads` to the shared backend at `https://services.aux.justinabruinsma.com`. To use a backend
 running on your machine, create `.env.local` (gitignored) with `AUX_BACKEND=local` and restart `npm run dev`.
 
 ## Other commands

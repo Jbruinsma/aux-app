@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-By default the dev server sends `/api` and `/uploads` to the shared backend at `http://150.136.105.240:5000`, so
+By default the dev server sends `/api` and `/uploads` to the shared backend at `https://services.aux.justinabruinsma.com`, so
 you don't need to run the backend. The shared server has its own database: register an account there first.
 
 ## Run the backend locally (optional)
@@ -32,7 +32,7 @@ cp .env.example .env   # then set AUX_JWT_SECRET
 
 To point the frontend at it, create `frontend/.env.local` with `AUX_BACKEND=local` and restart `npm run dev`.
 
-API docs: `http://localhost:5000/swagger-ui.html`, or `http://150.136.105.240:5000/swagger-ui.html` on the shared server.
+API docs: `http://localhost:5000/swagger-ui.html`, or `https://services.aux.justinabruinsma.com/swagger-ui.html` on the shared server.
 
 ## Roadmap
 
